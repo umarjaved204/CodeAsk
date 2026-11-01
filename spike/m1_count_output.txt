@@ -1,0 +1,131 @@
+﻿== itsdangerous ==
+category    files  chunks    tokens
+source          9      69    11,522
+test            5      31     4,455
+doc             9      12     3,854
+total                 112    19,831   (unique texts: 112 chunks, 19,831 tokens)
+chunk tokens: mean 177, median 121, p95 505, max 714, under 60: 8
+methods: {'windows': 10, 'ast': 13}
+excluded (category not requested): none; ignored file types: 17
+skipped 2:
+  docs/conf.py: path rule: docs/conf.py
+  tests/test_itsdangerous/__init__.py: empty
+embedding (before cache): 7 requests of <= 3,000 tokens -> ETA ~2.2 min at 3 requests per 65 s
+(counted in 3.2 s)
+== itsdangerous ==
+category    files  chunks    tokens
+source          9      69    11,522
+doc             1       1       400
+total                  70    11,922   (unique texts: 70 chunks, 11,922 tokens)
+chunk tokens: mean 170, median 123, p95 505, max 714, under 60: 5
+methods: {'windows': 2, 'ast': 8}
+excluded (category not requested): {'doc': 8, 'test': 6}; ignored file types: 17
+skipped 1:
+  docs/conf.py: path rule: docs/conf.py
+embedding (before cache): 5 requests of <= 3,000 tokens -> ETA ~1.1 min at 3 requests per 65 s
+(counted in 2.5 s)
+== requests ==
+category    files  chunks    tokens
+source         21     287    57,847
+test           13     108    18,264
+doc            20      65    27,133
+total                 460   103,244   (unique texts: 460 chunks, 103,244 tokens)
+chunk tokens: mean 224, median 168, p95 510, max 756, under 60: 52
+methods: {'windows': 20, 'ast': 34}
+excluded (category not requested): none; ignored file types: 54
+skipped 3:
+  docs/conf.py: path rule: docs/conf.py
+  tests/test_requests.py: over 100 KB
+  tests/testserver/__init__.py: empty
+embedding (before cache): 37 requests of <= 3,000 tokens -> ETA ~13.0 min at 3 requests per 65 s
+(counted in 3.7 s)
+== requests ==
+category    files  chunks    tokens
+source         21     287    57,847
+doc             1       2       776
+total                 289    58,623   (unique texts: 289 chunks, 58,623 tokens)
+chunk tokens: mean 203, median 157, p95 516, max 756, under 60: 32
+methods: {'windows': 1, 'ast': 21}
+excluded (category not requested): {'doc': 19, 'test': 15}; ignored file types: 54
+skipped 1:
+  docs/conf.py: path rule: docs/conf.py
+embedding (before cache): 21 requests of <= 3,000 tokens -> ETA ~6.5 min at 3 requests per 65 s
+(counted in 3.1 s)
+== flask ==
+category    files  chunks    tokens
+source         36     428    90,530
+test           46     433    61,185
+doc            79     257   107,239
+total                1118   258,954   (unique texts: 1118 chunks, 258,954 tokens)
+chunk tokens: mean 232, median 158, p95 502, max 763, under 60: 104
+methods: {'windows': 82, 'ast': 79}
+excluded (category not requested): none; ignored file types: 62
+skipped 4:
+  docs/conf.py: path rule: docs/conf.py
+  tests/test_apps/blueprintapp/apps/__init__.py: empty
+  tests/test_apps/cliapp/__init__.py: empty
+  tests/test_apps/cliapp/inner1/inner2/__init__.py: empty
+embedding (before cache): 92 requests of <= 3,000 tokens -> ETA ~32.5 min at 3 requests per 65 s
+(counted in 5.6 s)
+== flask ==
+category    files  chunks    tokens
+source         36     428    90,530
+doc             1       1       410
+total                 429    90,940   (unique texts: 429 chunks, 90,940 tokens)
+chunk tokens: mean 212, median 158, p95 520, max 763, under 60: 36
+methods: {'windows': 3, 'ast': 34}
+excluded (category not requested): {'doc': 78, 'test': 49}; ignored file types: 62
+skipped 1:
+  docs/conf.py: path rule: docs/conf.py
+embedding (before cache): 32 requests of <= 3,000 tokens -> ETA ~10.8 min at 3 requests per 65 s
+(counted in 2.8 s)
+== express ==
+category    files  chunks    tokens
+source         50      88    30,307
+test           92     291   119,657
+doc             3       9     3,603
+total                 388   153,567   (unique texts: 388 chunks, 153,567 tokens)
+chunk tokens: mean 396, median 488, p95 503, max 508, under 60: 14
+methods: {'windows': 145}
+excluded (category not requested): none; ignored file types: 65
+embedding (before cache): 55 requests of <= 3,000 tokens -> ETA ~19.5 min at 3 requests per 65 s
+(counted in 2.9 s)
+== express ==
+category    files  chunks    tokens
+source         50      88    30,307
+doc             1       7     3,170
+total                  95    33,477   (unique texts: 95 chunks, 33,477 tokens)
+chunk tokens: mean 352, median 421, p95 502, max 506, under 60: 4
+methods: {'windows': 51}
+excluded (category not requested): {'doc': 2, 'test': 92}; ignored file types: 65
+embedding (before cache): 12 requests of <= 3,000 tokens -> ETA ~3.2 min at 3 requests per 65 s
+(counted in 2.4 s)
+== TableTalk ==
+category    files  chunks    tokens
+source        104     674   179,657
+test           75     731   173,328
+doc            12     122    58,356
+total                1527   411,341   (unique texts: 1527 chunks, 411,341 tokens)
+chunk tokens: mean 269, median 209, p95 512, max 762, under 60: 133
+methods: {'windows': 115, 'ast': 76}
+excluded (category not requested): none; ignored file types: 166
+skipped 5:
+  web/src/data/contract.gen.ts: generated file name
+  web/tests/fixtures/illustrated.ts: path rule: fixtures/
+  web/tests/fixtures/make-e2e-data.ts: path rule: fixtures/
+  web/tests/fixtures/make-rollover-data.ts: path rule: fixtures/
+  web/tests/fixtures/rollover.ts: path rule: fixtures/
+embedding (before cache): 147 requests of <= 3,000 tokens -> ETA ~52.0 min at 3 requests per 65 s
+(counted in 4.2 s)
+== TableTalk ==
+category    files  chunks    tokens
+source        104     674   179,657
+doc             1       5     2,344
+total                 679   182,001   (unique texts: 679 chunks, 182,001 tokens)
+chunk tokens: mean 268, median 216, p95 531, max 762, under 60: 55
+methods: {'windows': 57, 'ast': 48}
+excluded (category not requested): {'doc': 11, 'test': 79}; ignored file types: 166
+skipped 1:
+  web/src/data/contract.gen.ts: generated file name
+embedding (before cache): 65 requests of <= 3,000 tokens -> ETA ~22.8 min at 3 requests per 65 s
+(counted in 3.2 s)

@@ -9,6 +9,13 @@ MAX_AVG_LINE_CHARS = 200
 # Generated-file markers are only looked for in the first few lines.
 MARKER_LINES = 5
 
+# ---------- Voyage (no-card limits: 3 requests and 10K tokens per minute) ----------
+EMBED_MODEL = "voyage-code-3"
+EMBED_DIM = 1024
+VOYAGE_REQUESTS_PER_WINDOW = 3
+VOYAGE_WINDOW_SECONDS = 65  # 60 s + 5 s margin: M0's 4th request 429'd at ~60 s
+BATCH_TOKENS = 3_000  # M0: 9K-token requests were never accepted; 3K worked
+
 # ---------- Chunker ----------
 # "ast" = tree-sitter where we have a grammar; "windows" = token-packed line windows for every
 # file (the M3 naive baseline, with everything else held equal).

@@ -57,10 +57,45 @@ Designed in a grilling session (3 rounds, 2026-11-01) with mentor review; decisi
 2. ✅ **tree-sitter smoke test:** parse one Python, JS, TS and TSX file and print the node-type
    names; record them here (see "Step 2 results" below). If tree-sitter-typescript 0.23.2 won't
    load with tree-sitter 0.26, pin the newest tree-sitter that works.
-3. **File filters** + tests (skip rules, categories, per-file reasons).
-4. **Python chunker** + tests + the real-corpus sweep over the 5 cloned repos.
-5. **`count` command.** Compare with the M0 table: expect ~15–20% fewer tokens, because the
-   10-line overlap is gone.
+3. ✅ **File filters** + tests (plus a rule not in the grilling: symlinks are never followed) (skip rules, categories, per-file reasons).
+4. ✅ **Python chunker** + tests + the real-corpus sweep over the 5 cloned repos.
+   Sweep (2026-11-01, fake ~4 chars/token counter, max 800, tests + docs included): invariants
+   hold on all 574 files; no chunk over 759.
+   | Repo | Chunks | Median | p95 | Max | < 60 tokens |
+   |---|---|---|---|---|---|
+   | itsdangerous | 115 | 124 | 477 | 737 | 10 |
+   | requests | 492 | 156 | 502 | 754 | 55 |
+   | flask | 1,169 | 171 | 489 | 743 | 99 |
+   | TableTalk | 1,548 | 190 | 498 | 759 | 108 |
+   | express (all windows until step 7) | 387 | 469 | 483 | 491 | 10 |
+
+   Changes made while building:
+   - Parts of a split function are packed greedily up to the target. The sibling rule (merge
+     only below the min) would cut a function of 125-token statements into 125-token parts.
+   - The class header holds only the attributes **before** the first member, because a chunk
+     must be one contiguous line range. Later attributes merge with their neighbours.
+   - A header over the cap (long docstring) is windowed, and part 1 keeps the method outline.
+     Found by the real-tokenizer test on itsdangerous `Signer` (37-line docstring).
+5. ✅ **`count` command.** Compare with the M0 table: expect ~15–20% fewer tokens, because the
+   10-line overlap is gone. Result (real tokenizer, `spike/m1_count_output.txt`):
+   | Repo | M0 all | M1 all | Change | M1 source + README (default) | Requests | ETA |
+   |---|---|---|---|---|---|---|
+   | itsdangerous | 20,384 | 19,831 | −3% | 11,922 | 5 | 1.1 min |
+   | requests | 116,076 | 103,244 | −11% | 58,623 | 21 | 6.5 min |
+   | flask | 287,037 | 258,954 | −10% | 90,940 | 32 | 10.8 min |
+   | express | 176,465 | 153,567 | −13% | 33,477 | 12 | 3.2 min |
+   | TableTalk | 453,866 | 411,341 | −9% | 182,001 | 65 | 22.8 min |
+
+   The drop was smaller than expected, for two reasons:
+   - **Overlap only cost ~17% in files longer than one window.** A file under 60 lines had
+     no overlap (itsdangerous: −3%). Express, still all windows, shows the pure overlap saving:
+     −13%.
+   - **Syntax chunks add context back:** more chunks, each with its own `File:`/`Scope:` lines,
+     plus context lines on split pieces and outlines on class headers.
+   - The skip rules fired as intended: `docs/conf.py`, empty `__init__.py` files, the 100 KB+
+     `test_requests.py`, TableTalk's `contract.gen.ts` and 4 `fixtures/` files.
+   - **M3:** `requests` source = 58.6K tokens ≈ 6.5 min per variant, right at the ≤ 60K rule.
+   - ETA basis: 3K-token requests, 3 per 65 s ≈ 8.3K tokens/min. To be verified in step 6.
 6. **Vertical slice on itsdangerous (Python only):** schema + store (`repos`, `chunks`,
    `embeddings`; drop `m0_chunks`) → embedder + shared limiter → `ingest` CLI (clone with
    `--ref`, ETA + confirm, embed with a commit per batch, transactional swap, summary) + `gc` →
