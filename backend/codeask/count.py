@@ -26,6 +26,7 @@ class RepoChunks:
     methods: Counter = field(default_factory=Counter)
     skipped: list[tuple[str, str]] = field(default_factory=list)  # filter + chunker skips
     fallbacks: list[str] = field(default_factory=list)  # parse errors -> windows
+    window_reasons: Counter = field(default_factory=Counter)  # over-cap units -> windows
 
 
 def chunk_repo(root: Path, count_tokens, include_tests=False, include_docs=False,
@@ -37,6 +38,7 @@ def chunk_repo(root: Path, count_tokens, include_tests=False, include_docs=False
         out.methods[result.method] += 1
         if result.method == "fallback":
             out.fallbacks.append(f.path)
+        out.window_reasons.update(result.window_reasons)
         if result.skip_reason:
             out.skipped.append((f.path, result.skip_reason))
         out.chunks.extend((f.category, c) for c in result.chunks)
@@ -96,6 +98,8 @@ def report(name: str, rc: RepoChunks) -> str:
     lines.append(f"methods: {dict(rc.methods)}")
     if rc.fallbacks:
         lines.append(f"parse-error fallbacks ({len(rc.fallbacks)}): {', '.join(rc.fallbacks)}")
+    if rc.window_reasons:
+        lines.append(f"units windowed (over cap, couldn't recurse): {dict(rc.window_reasons)}")
     excluded = dict(rc.scan.excluded)
     lines.append(f"excluded (category not requested): {excluded or 'none'}; "
                  f"ignored file types: {rc.scan.ignored}")

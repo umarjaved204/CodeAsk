@@ -1,0 +1,52 @@
+﻿== express ==
+category    files  chunks    tokens
+source         50     337    33,628
+test           92     445   128,311
+doc             3       9     3,603
+total                 791   165,542   (unique texts: 791 chunks, 165,542 tokens)
+chunk tokens: mean 209, median 119, p95 573, max 781, under 60: 226
+methods: {'windows': 3, 'ast': 142}
+excluded (category not requested): none; ignored file types: 65
+embedding (before cache): 59 requests of <= 3,000 tokens -> ETA ~20.6 min at 3 requests per 65 s
+(counted in 3.3 s)
+== express ==
+category    files  chunks    tokens
+source         50     337    33,628
+doc             1       7     3,170
+total                 344    36,798   (unique texts: 344 chunks, 36,798 tokens)
+chunk tokens: mean 107, median 82, p95 319, max 623, under 60: 114
+methods: {'windows': 1, 'ast': 50}
+excluded (category not requested): {'doc': 2, 'test': 92}; ignored file types: 65
+embedding (before cache): 13 requests of <= 3,000 tokens -> ETA ~4.3 min at 3 requests per 65 s
+(counted in 2.3 s)
+== TableTalk ==
+category    files  chunks    tokens
+source        104     959   184,013
+test           75     904   178,733
+doc            12     122    58,356
+total                1985   421,102   (unique texts: 1985 chunks, 421,102 tokens)
+chunk tokens: mean 212, median 151, p95 515, max 783, under 60: 231
+methods: {'windows': 14, 'ast': 177}
+units windowed (over cap, couldn't recurse): {'oversized anonymous unit': 3, 'IIFE': 2}
+excluded (category not requested): none; ignored file types: 166
+skipped 5:
+  web/src/data/contract.gen.ts: generated file name
+  web/tests/fixtures/illustrated.ts: path rule: fixtures/
+  web/tests/fixtures/make-e2e-data.ts: path rule: fixtures/
+  web/tests/fixtures/make-rollover-data.ts: path rule: fixtures/
+  web/tests/fixtures/rollover.ts: path rule: fixtures/
+embedding (before cache): 148 requests of <= 3,000 tokens -> ETA ~53.1 min at 3 requests per 65 s
+(counted in 4.1 s)
+== TableTalk ==
+category    files  chunks    tokens
+source        104     959   184,013
+doc             1       5     2,344
+total                 964   186,357   (unique texts: 964 chunks, 186,357 tokens)
+chunk tokens: mean 193, median 136, p95 527, max 783, under 60: 130
+methods: {'windows': 3, 'ast': 102}
+units windowed (over cap, couldn't recurse): {'oversized anonymous unit': 1, 'IIFE': 2}
+excluded (category not requested): {'doc': 11, 'test': 79}; ignored file types: 166
+skipped 1:
+  web/src/data/contract.gen.ts: generated file name
+embedding (before cache): 66 requests of <= 3,000 tokens -> ETA ~22.8 min at 3 requests per 65 s
+(counted in 3.8 s)

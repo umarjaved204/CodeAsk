@@ -30,11 +30,15 @@ chunk over the cap is re-split exactly. Pure: the token counter is passed in.
 
 from __future__ import annotations
 
+import re
+from collections import Counter
 from dataclasses import dataclass, field, replace
 from pathlib import PurePosixPath
 from typing import Callable
 
+import tree_sitter_javascript as tsjs
 import tree_sitter_python as tspy
+import tree_sitter_typescript as tsts
 from tree_sitter import Language, Parser
 
 from codeask import config
@@ -42,17 +46,203 @@ from codeask import config
 CountTokens = Callable[[str], int]
 # Bump when chunking output changes for the same input; recorded in repos.settings so M3
 # results can be traced to the chunker that produced them.
-CHUNKER_VERSION = "1"
+CHUNKER_VERSION = "2"  # 2: JS/TS, closing-bracket glue, sibling decorators attach
 
-LANG_BY_EXT = {".py": "python"}
-_GRAMMARS = {"python": tspy.language}
-_parsers: dict[str, Parser] = {}
-
-PY_DEFINITIONS = {"function_definition": "function", "class_definition": "class"}
-PY_COMPOUND = {"if_statement", "for_statement", "while_statement", "try_statement",
-               "with_statement"}
 # Tokens reserved in estimates for what the Scope line may add (merged names, "part i/n").
 NAME_ALLOWANCE = 15
+MAX_CALL_NAME_CHARS = 60
+# Glue made only of closing brackets (`}`, `});`, `]`) attaches to the unit before it, so a
+# class's last `}` isn't a stranded one-line chunk. Python never produces such glue.
+CLOSING_ONLY = re.compile(r"^[\]\)\};,]+$")
+
+_parsers: dict[str, Parser] = {}
+
+
+def _text(node) -> str:
+    return node.text.decode("utf-8", "replace")
+
+
+def _short(node) -> str:
+    text = " ".join(_text(node).split())
+    return text if len(text) <= MAX_CALL_NAME_CHARS else text[:MAX_CALL_NAME_CHARS - 3] + "..."
+
+
+# ---------- languages ----------
+# describe(node) -> (kind, name, inner, header_row): kind is "function", "class", "type" or
+# "anon"; inner is the node whose "body" field holds the children to recurse into; header_row
+# is the line carried as context by split pieces (and listed in a class outline).
+
+PY_DEFINITIONS = {"function_definition": "function", "class_definition": "class"}
+
+
+def _py_describe(node):
+    inner = node.child_by_field_name("definition") if node.type == "decorated_definition" \
+        else node
+    if inner is not None and inner.type in PY_DEFINITIONS:
+        name = inner.child_by_field_name("name")
+        return PY_DEFINITIONS[inner.type], _text(name) if name else "?", inner, _rows(inner)[0]
+    inner = inner if inner is not None else node
+    return "anon", None, inner, _rows(inner)[0]
+
+
+def _py_window_reason(node, kind):
+    return "named without block body" if kind != "anon" else "oversized anonymous unit"
+
+
+JS_FN = {"arrow_function", "function_expression", "function", "generator_function"}
+JS_FUNC_DECL = {"function_declaration", "generator_function_declaration", "function_signature"}
+JS_CLASS_DECL = {"class_declaration", "abstract_class_declaration"}
+JS_TYPE_DECL = {"interface_declaration", "type_alias_declaration", "enum_declaration"}
+JS_MEMBER_FN = {"method_definition", "method_signature", "abstract_method_signature"}
+
+
+def _js_callback(call):
+    """The last function argument with a block body, e.g. the handler in app.get(...)."""
+    args = call.child_by_field_name("arguments")
+    fns = [a for a in (args.named_children if args else []) if a.type in JS_FN]
+    if fns:
+        body = fns[-1].child_by_field_name("body")
+        if body is not None and body.type == "statement_block":
+            return fns[-1]
+    return None
+
+
+def _js_statement_call(node):
+    if node.type == "expression_statement" and node.named_children \
+            and node.named_children[0].type == "call_expression":
+        return node.named_children[0]
+    return None
+
+
+def _js_describe(node):
+    row = _rows(node)[0]
+    inner = node
+    if node.type == "export_statement":
+        decl = node.child_by_field_name("declaration")
+        if decl is None:  # export default <expression>
+            value = node.child_by_field_name("value")
+            if value is not None and value.type in JS_FN:
+                return "function", "default", value, row
+            if value is not None and value.type == "class":
+                return "class", "default", value, row
+            return "anon", None, node, row
+        inner = decl
+    t = inner.type
+    if t in JS_CLASS_DECL or t in JS_FUNC_DECL or t in JS_TYPE_DECL or t in JS_MEMBER_FN:
+        kind = "class" if t in JS_CLASS_DECL else "type" if t in JS_TYPE_DECL else "function"
+        name = inner.child_by_field_name("name")
+        return kind, _text(name) if name else "default", inner, _rows(inner)[0]
+    if t in ("lexical_declaration", "variable_declaration"):
+        decl = next((c for c in inner.named_children if c.type == "variable_declarator"), None)
+        value = decl.child_by_field_name("value") if decl is not None else None
+        if value is not None and (value.type in JS_FN or value.type == "class"):
+            kind = "class" if value.type == "class" else "function"
+            return kind, _text(decl.child_by_field_name("name")), value, row
+        return "anon", None, node, row
+    if t == "expression_statement" and inner.named_children:
+        expr = inner.named_children[0]
+        if expr.type == "internal_module":  # TS namespace: a container, like a class
+            name = expr.child_by_field_name("name")
+            return "class", _text(name) if name else "namespace", expr, row
+        if expr.type == "assignment_expression":  # app.handle = function handle(...) {...}
+            right = expr.child_by_field_name("right")
+            if right is not None and right.type in JS_FN:
+                return "function", _short(expr.child_by_field_name("left")), right, row
+        if expr.type == "call_expression":
+            # Named only for callback calls whose first argument is a string/template literal:
+            # app.get("/users/:id", ...), describe("Router", ...), it("works", ...).
+            args = expr.child_by_field_name("arguments")
+            first = args.named_children[0] if args and args.named_children else None
+            callback = _js_callback(expr)
+            if callback is not None and first is not None \
+                    and first.type in ("string", "template_string"):
+                callee = expr.child_by_field_name("function")
+                return "function", _short(callee) + "(" + _short(first) + ")", callback, row
+    return "anon", None, node, row
+
+
+def _has_object(node, depth):
+    return node.type == "object" or (
+        depth > 0 and any(_has_object(c, depth - 1) for c in node.named_children))
+
+
+def _js_window_reason(node, kind):
+    expr = node.named_children[0] if node.type == "expression_statement" \
+        and node.named_children else None
+    if expr is not None:
+        call = expr
+        if call.type in ("parenthesized_expression", "unary_expression") and call.named_children:
+            call = call.named_children[0]
+        if call.type == "call_expression":
+            fn = call.child_by_field_name("function")
+            if fn is not None and fn.type == "parenthesized_expression" and fn.named_children:
+                fn = fn.named_children[0]
+            if fn is not None and fn.type in JS_FN:
+                return "IIFE"
+        if expr.type == "assignment_expression" and \
+                getattr(expr.child_by_field_name("right"), "type", None) == "object":
+            return "object literal"
+    if node.type in ("export_statement", "lexical_declaration", "variable_declaration") and \
+            _has_object(node, 3):  # export default {...} / const routes = {...}
+        return "object literal"
+    return "named without block body" if kind != "anon" else "oversized anonymous unit"
+
+
+@dataclass(frozen=True)
+class _Lang:
+    grammar: Callable
+    describe: Callable
+    window_reason: Callable
+    body_types: frozenset  # node types a definition's "body" must have to be recursed into
+    blocks: frozenset  # statement containers inside compound statements
+    clauses: Callable  # node type -> is it a clause (elif/else/except/catch/finally)?
+    compound: frozenset
+    attachable: frozenset  # sibling nodes that attach to the unit below (comments, decorators)
+    callback: Callable  # anonymous statement -> callback function to recurse into, or None
+
+
+_PY = _Lang(
+    grammar=tspy.language, describe=_py_describe, window_reason=_py_window_reason,
+    body_types=frozenset({"block"}), blocks=frozenset({"block"}),
+    clauses=lambda t: t.endswith("_clause"),
+    compound=frozenset({"if_statement", "for_statement", "while_statement", "try_statement",
+                        "with_statement"}),
+    attachable=frozenset({"comment"}), callback=lambda node: None)
+
+
+def _js_lang(grammar):
+    return _Lang(
+        grammar=grammar, describe=_js_describe, window_reason=_js_window_reason,
+        body_types=frozenset({"statement_block", "class_body"}),
+        blocks=frozenset({"statement_block", "switch_body"}),
+        clauses=lambda t: t in ("else_clause", "catch_clause", "finally_clause"),
+        compound=frozenset({"if_statement", "for_statement", "for_in_statement",
+                            "while_statement", "do_statement", "try_statement",
+                            "switch_statement", "with_statement"}),
+        attachable=frozenset({"comment", "decorator"}),
+        callback=lambda node: _js_callback(c) if (c := _js_statement_call(node)) else None)
+
+
+LANGS = {
+    "python": _PY,
+    "javascript": _js_lang(tsjs.language),
+    "typescript": _js_lang(tsts.language_typescript),
+    "tsx": _js_lang(tsts.language_tsx),
+}
+LANG_BY_EXT = {".py": "python",
+               ".js": "javascript", ".jsx": "javascript", ".mjs": "javascript",
+               ".cjs": "javascript",
+               ".ts": "typescript", ".mts": "typescript", ".cts": "typescript",
+               ".tsx": "tsx"}
+
+
+def language_for(path: str) -> str | None:
+    """Grammar name for a path. Declaration files (.d.ts) take precedence over .ts: they are
+    skipped by the filters, and never parsed here."""
+    name = PurePosixPath(path).name.lower()
+    if name.endswith((".d.ts", ".d.mts", ".d.cts")):
+        return None
+    return LANG_BY_EXT.get(PurePosixPath(path).suffix.lower())
 
 
 @dataclass(frozen=True)
@@ -89,6 +279,8 @@ class FileChunks:
     chunks: list[Chunk]
     method: str  # "ast", "windows", "fallback" (parse error), "empty" or "skipped"
     skip_reason: str | None = None
+    # Why units inside an AST-chunked file fell back to windows, e.g. {"IIFE": 1}.
+    window_reasons: Counter = field(default_factory=Counter)
 
 
 def chunk_file(path: str, text: str, count_tokens: CountTokens,
@@ -107,8 +299,9 @@ class _Unit:
     end: int
     node: object = None  # set only while the unit is exactly one node (so it can recurse)
     name: str | None = None
-    kind: str = "anon"  # "function", "class" or "anon"
+    kind: str = "anon"  # "function", "class", "type" or "anon"
     sig_row: int | None = None  # row of the def/class line, for the class outline
+    origin: str = "node"  # "node", "glue" (lines no node covers) or "composite" (coalesced)
 
 
 @dataclass
@@ -128,7 +321,7 @@ class _Piece:
 
 def _parser(lang: str) -> Parser:
     if lang not in _parsers:
-        _parsers[lang] = Parser(Language(_GRAMMARS[lang]()))
+        _parsers[lang] = Parser(Language(LANGS[lang].grammar()))
     return _parsers[lang]
 
 
@@ -149,6 +342,8 @@ class _FileChunker:
         for line in self.lines:
             self.prefix.append(self.prefix[-1] + count(line + "\n"))
         self._reserve_cache: dict = {}
+        self.lang: _Lang | None = None
+        self.window_reasons: Counter = Counter()
 
     # ---------- entry ----------
     def run(self) -> FileChunks:
@@ -159,8 +354,9 @@ class _FileChunker:
             return FileChunks([], "skipped", "line exceeds token cap")
 
         method, pieces = "windows", None
-        lang = LANG_BY_EXT.get(PurePosixPath(self.path).suffix.lower())
+        lang = language_for(self.path)
         if lang and self.s.mode == "ast":
+            self.lang = LANGS[lang]
             root = _parser(lang).parse(self.text.encode("utf-8")).root_node
             if root.has_error:
                 method = "fallback"  # tree-sitter repairs broken code silently; don't trust it
@@ -175,7 +371,7 @@ class _FileChunker:
             chunks = [chunk for piece in pieces for chunk in self._emit(piece)]
         except _LineTooLong:
             return FileChunks([], "skipped", "line exceeds token cap")
-        return FileChunks(chunks, method)
+        return FileChunks(chunks, method, window_reasons=self.window_reasons)
 
     # ---------- token estimates ----------
     def _tokens(self, start: int, end: int) -> int:
@@ -200,16 +396,6 @@ class _FileChunker:
         return self._reserve_cache[key]
 
     # ---------- units ----------
-    def _describe(self, node):
-        """(kind, name, inner node) for a top-level or body node."""
-        inner = node.child_by_field_name("definition") if node.type == "decorated_definition" \
-            else node
-        if inner is not None and inner.type in PY_DEFINITIONS:
-            name = inner.child_by_field_name("name")
-            return PY_DEFINITIONS[inner.type], name.text.decode("utf-8", "replace") if name \
-                else "?", inner
-        return "anon", None, inner if inner is not None else node
-
     def _own_line(self, node) -> bool:
         row, col = node.start_point[0], node.start_point[1]
         return not self.lines[row][:col].strip()
@@ -218,22 +404,21 @@ class _FileChunker:
         units, comments = [], []
         for node in nodes:
             start, end = _rows(node)
-            if node.type == "comment":
+            if node.type in self.lang.attachable:  # comments; sibling decorators in TS
                 comments.append((start, end, node))
                 continue
-            kind, name, inner = self._describe(node)
-            unit = _Unit(start, end, node, name, kind,
-                         _rows(inner)[0] if kind != "anon" else None)
+            kind, name, _, header_row = self.lang.describe(node)
+            unit = _Unit(start, end, node, name, kind, header_row if kind != "anon" else None)
             # Contiguous own-line comments directly above (no blank line) attach to the unit.
             k, top = len(comments), start
             while k and comments[k - 1][1] == top - 1 and self._own_line(comments[k - 1][2]):
                 k -= 1
                 top = comments[k][0]
-            units.extend(_Unit(cs, ce) for cs, ce, _ in comments[:k])
+            units.extend(_Unit(cs, ce, origin="comment") for cs, ce, _ in comments[:k])
             comments = []
             unit.start = top
             units.append(unit)
-        units.extend(_Unit(cs, ce) for cs, ce, _ in comments)
+        units.extend(_Unit(cs, ce, origin="comment") for cs, ce, _ in comments)
         return self._coalesce(units)
 
     def _coalesce(self, units: list[_Unit]) -> list[_Unit]:
@@ -248,7 +433,7 @@ class _FileChunker:
                 out[-1] = _Unit(prev.start, max(prev.end, unit.end), None,
                                 named.name if named else None,
                                 named.kind if named else "anon",
-                                named.sig_row if named else None)
+                                named.sig_row if named else None, origin="composite")
             else:
                 out.append(unit)
         return out
@@ -270,33 +455,45 @@ class _FileChunker:
             start += 1
         while end >= start and not self.lines[end].strip():
             end -= 1
-        if start <= end:
-            out.append(_Unit(start, end))
+        if start > end:
+            return
+        closing_only = all(CLOSING_ONLY.match(self.lines[i].strip()) or not self.lines[i].strip()
+                           for i in range(start, end + 1))
+        if out and closing_only:
+            out[-1].end = end  # `}` / `});` belongs with the unit it closes
+        else:
+            out.append(_Unit(start, end, origin="glue"))
 
     def _expand(self, unit: _Unit):
         """(kind, header row, child units) for a unit too big to keep whole, or None."""
         if unit.node is None:
             return None
-        kind, _, inner = self._describe(unit.node)
+        lang = self.lang
+        kind, _, inner, header_row = lang.describe(unit.node)
+        if kind == "anon" and (callback := lang.callback(unit.node)) is not None:
+            kind, inner = "function", callback  # e.g. app.use(function (req, res) {...})
         if kind in ("class", "function"):
             body = inner.child_by_field_name("body")
-            if body is None or not body.named_children:
+            if body is None or body.type not in lang.body_types or not body.named_children:
                 return None
-            return kind, _rows(inner)[0], self._units(body.named_children)
-        if inner.type in PY_COMPOUND:
-            # Statements of every block, including clause blocks (elif/else/except/finally).
-            # The clause lines themselves are covered by glue.
+            return kind, header_row, self._units(body.named_children)
+        if inner.type in lang.compound:
+            # Statements of every block, including clause blocks (elif/else/except/catch/
+            # finally); `else if` chains recurse as nested statements. Clause lines themselves
+            # (`else:`, `} else {`) are covered by glue.
             stmts = []
             for child in inner.named_children:
-                if child.type == "block":
+                if child.type in lang.blocks:
                     stmts.extend(child.named_children)
-                elif child.type.endswith("_clause"):
+                elif lang.clauses(child.type):
                     for grandchild in child.named_children:
-                        if grandchild.type == "block":
+                        if grandchild.type in lang.blocks:
                             stmts.extend(grandchild.named_children)
+                        elif grandchild.type in lang.compound:
+                            stmts.append(grandchild)
             if not stmts:
                 return None
-            return "compound", _rows(inner)[0], self._units(stmts)
+            return "compound", header_row, self._units(stmts)
         return None
 
     # ---------- levels ----------
@@ -318,6 +515,7 @@ class _FileChunker:
         own_scope = scope + [unit.name] if unit.name else scope
         expanded = self._expand(unit)
         if expanded is None:
+            self.window_reasons[self._window_reason(unit)] += 1
             reserve = self._reserve(own_scope, context)
             pieces = [_Piece(s, e, "window", own_scope, context, tokens=self._tokens(s, e),
                              final=True)
@@ -345,6 +543,7 @@ class _FileChunker:
                 else:
                     # A long docstring: window the header, but keep the outline on part 1
                     # (every window reserves room for it, so the cap can't push it out).
+                    self.window_reasons["class header over cap"] += 1
                     reserve = self._reserve(own_scope, context) + self.count(outline)
                     parts = self._label_parts([
                         _Piece(s, e, "part", own_scope, context, tokens=self._tokens(s, e),
@@ -361,6 +560,16 @@ class _FileChunker:
         for piece in pieces:
             piece.final = True
         return self._label_parts(pieces) if unit.name else pieces
+
+    def _window_reason(self, unit: _Unit) -> str:
+        """Why an over-cap unit couldn't recurse and fell back to windows (sweep report)."""
+        if unit.origin == "composite":
+            return "shared-line composite"  # e.g. `a(); b();` or K&R-style shared lines
+        if unit.origin in ("glue", "comment"):
+            return f"oversized {unit.origin}"
+        if unit.node is None:
+            return "other"
+        return self.lang.window_reason(unit.node, unit.kind)
 
     def _label_parts(self, pieces: list[_Piece]) -> list[_Piece]:
         unlabeled = [p for p in pieces if p.part is None]

@@ -18,6 +18,8 @@ out/
 
 # Cloned repos used for ingestion
 repos/
+# Chunk snapshots (regenerate with spike/chunk_snapshot.py; hundreds of KB each)
+spike/*.json
 
 # OS / editor
 .DS_Store

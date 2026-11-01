@@ -131,8 +131,39 @@ Designed in a grilling session (3 rounds, 2026-11-01) with mentor review; decisi
    - **The cross-process gap showed up for real:** a re-run started seconds after an
      interrupted run got 1 × 429 (the new process's limiter didn't know about the old
      process's 3 requests). The retry handled it; a shared limiter is on the M2 list.
-7. **JS/TS chunker** (named units from the step 2 node names, export wrappers, const arrow
+7. ✅ **JS/TS chunker** (named units from the step 2 node names, export wrappers, const arrow
    functions, Express callbacks) + tests + corpus sweep.
+
+   Built per the step 7 review (CHUNKER_VERSION 2):
+   - Per-language specs. **Python output proven unchanged** by a snapshot of all 2,999
+     chunks in 249 `.py` files (`spike/chunk_snapshot.py`): identical.
+   - **Named units:** callbacks only when the first argument is a string/template literal
+     (`app.get("/users/:id")`, `describe("Router")`); function assignments by their left side
+     (`app.handle`); `function_signature` overloads; namespaces as containers.
+   - **Attachment:** closing-bracket-only glue attaches to the previous unit; TS sibling
+     decorators attach like comments.
+   - **Window fallbacks report a reason.** The hand-written TS sample (decorators, abstract
+     class, generics, generators) found that a decorator on an *abstract* method doesn't
+     parse: TypeScript doesn't allow it. The sample was fixed, not the chunker.
+
+   Sweep + count (2026-11-02):
+   | | express before (windows) | express AST | TableTalk before | TableTalk AST |
+   |---|---|---|---|---|
+   | Source tokens | 30,307 | 33,628 (+11%) | 179,657 | 184,013 (+2%) |
+   | Source chunks | 88 | 337 | 674 | 959 |
+   | Median (source + README) | 421 | 82 | 216 | 136 |
+   | Under 60 tokens | 4 | 114 (33%) | 55 | 130 (13%) |
+   | Requests / ETA (default) | 12 / 3.2 min | 13 / 4.3 min | 65 / 22.8 min | 66 / 22.8 min |
+
+   - express: 142/145 files AST (the other 3 are markdown); 0 parse-error fallbacks anywhere.
+   - **Window-fallback reasons, whole corpus:** shared-line composite (K&R) **0**; IIFE **2**
+     (TableTalk, not worth supporting); oversized anonymous unit 5 (data-like statements);
+     class header over cap 5 (long Python docstrings, outline kept on part 1).
+   - **M3 ablation candidate:** express is very fine-grained (a third of its chunks are under
+     60 tokens). Small named functions alternate with anonymous statements (`require`,
+     `exports.x = …`), and like-with-like merging stops at every switch, so the File/Scope
+     header dominates tiny embeddings. Compare "like with like" vs "merge any small
+     neighbour".
 8. **README splitter** + tests; **fixed-window fallback** polish (other languages, parse
    errors) + tests.
 9. **Real runs:** express (source) and a re-run of itsdangerous; record the summaries.
