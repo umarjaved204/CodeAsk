@@ -186,7 +186,28 @@ Designed in a grilling session (3 rounds, 2026-11-01) with mentor review; decisi
      itsdangerous `.devcontainer/on-create-command.sh`).
    - Doc lines truncated in embed_text: **0** across the corpus (a safety net, not yet needed).
    - Oversized paragraphs windowed: 8 (TableTalk 7, requests 1).
-9. **Real runs:** express (source) and a re-run of itsdangerous; record the summaries.
+9. ✅ **Real runs:** express (source) and a re-run of itsdangerous; record the summaries.
+
+   Results (2026-11-02, CHUNKER_VERSION 3, default categories = source + README):
+   | Repo @ commit | Chunks (source / doc) | Tokens | Median / p95 / max | < 60 | Windowed units | Requests | Time |
+   |---|---|---|---|---|---|---|---|
+   | expressjs/express @ 1c6f1b0fe400 | 353 (337 / 16) | 36,587 | 82 / 315 / 623 | 117 | oversized paragraph 1 | 13 new, 0 × 429 | 293 s (ETA 4.3 min → 4.9 actual) |
+   | pallets/itsdangerous @ 672971d66a2e | 72 (69 / 3) | 11,877 | 122 / 505 / 714 | 5 | class header over cap 1 | 1 (5 new, 67 cached) | 4 s |
+   | psf/requests @ 3c7baaa05ab4 | 292 (288 / 4) | 58,456 | 154 / 520 / 756 | 33 | class header 1, oversized anonymous 1 | 1 (8 new, 284 cached) | 6 s |
+
+   - **Throughput:** express 7,481 tokens/min (partial last batch); requests 7,845. 0 × 429
+     in either run.
+   - **Re-ingest new texts** = README chunks (now sections) **plus windowed units whose
+     boundaries moved** with `window_prefer_blank_lines` (e.g. `Signer`'s docstring header).
+     Every function/class/merged chunk came from cache.
+   - **Sanity** (itsdangerous, v3 chunks): hit@5 = 5/5, MRR@10 = 1.00, same top results.
+   - **JS spot check** ("How does the router match a request path to a route?"):
+     - #1 was `app.route`'s **JSDoc block**, as its own chunk; #2 was the function.
+       Express puts a blank line between every `/** */` and its function, so the
+       comment-attachment rule (no blank line) splits docs from code across the repo. This
+       explains much of the 33% of chunks under 60 tokens.
+     - Express 5 moved path matching into the separate `router` package, so that code isn't
+       in this repo. M3 questions must be answerable from the repo itself.
 10. **Record** the results here and commit.
 
 ### Step 2 results: tree-sitter node types (spike/ts_smoke.py, 2026-11-01)
