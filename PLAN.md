@@ -336,11 +336,68 @@ Reranking, summaries, call graphs, languages beyond Python/JS/TS, the web UI, pe
 fallback, a cross-process limiter.
 
 ## [ ] M2 Basic RAG chat
-Next.js chat UI + FastAPI endpoint; answers cite files and lines.
+Next.js chat UI + FastAPI endpoint; answers cite files and lines. Built in six parts. The
+design of M2a–M2e is decided in a grilling session **after** the M2-0 spike results are in.
 
-**Done when:** locally, I can paste a repo URL, ask a question in the browser, and get an
-answer whose citations (file + line range) point to the correct code. The backend is deployed
-to Render once, and its cold-start time is recorded here.
+Pre-M2 fixes (done before the spike):
+- `requirements-api.txt` (runtime only: no tree-sitter, no tokenizer, no voyageai SDK).
+- The embedder calls Voyage over plain HTTP.
+- The ETA includes per-request latency.
+- `pytest` names the opt-in tests it didn't run and prints skip reasons.
+- **Proven (2026-11-02):** in a fresh `.venv-api` with only `requirements-api.txt` +
+  `pip install -e . --no-deps`, `tree_sitter`, `tokenizers` and `voyageai` are absent, and
+  `python -m codeask.search` returned `Signer > derive_key` first (0.377; 0.378 via the SDK).
+
+### [ ] M2-0 Spike: hosting facts before design
+Render (free web service), running a throwaway `spike/m2/` FastAPI app on the API
+requirements:
+- card-free signup? Current free-tier terms (the 2026 plan change, bandwidth)
+- Ohio region; pinned Python version
+- **cold start after 15+ min idle** (time to the first byte, measured from the browser)
+- **memory** with the API requirements loaded (RSS after a real search)
+- a **60 s request** from the browser: does Render's proxy keep it open?
+- **CORS** from the Vercel origin
+- **Neon connect and query time from Render** (same region)
+
+Vercel (Hobby): a Next.js hello page that calls the Render API **from the browser**.
+
+**Done when:** every item above has a measured or confirmed value recorded in "M2-0 results"
+below, and anything that contradicts the plan is flagged.
+
+### [ ] M2a Backend core
+FastAPI: `/ask` (retrieve → pack context → Groq → validated citations), repo/featured
+endpoints, connection pooling.
+
+**Done when:** a local `/ask` on an ingested repo returns an answer whose every citation is
+validated server-side against stored chunks, with tests for the packer and the validator.
+
+### [ ] M2b Frontend
+Next.js chat UI: repo picker (featured), question box, answer with clickable citations, safe
+markdown rendering.
+
+**Done when:** locally, I can pick a repo, ask in the browser, and click a citation that shows
+the right file and lines.
+
+### [ ] M2c Queue and abuse controls
+Bounded FIFO Voyage queue, "busy" responses, queue position, a global daily cap, per-IP rate
+limits.
+
+**Done when:** a burst test (more queries than slots) gets a queue position or "busy, try
+again" for every request, with no 429 reaching the user and no error, and the daily cap shows
+a friendly message.
+
+### [ ] M2d Pre-generated answers
+Suggested questions per featured repo, answered offline, stored with citations, labelled
+"pre-generated".
+
+**Done when:** clicking a suggested question answers instantly with zero Voyage/Groq calls, and
+the UI marks it as pre-generated.
+
+### [ ] M2e Deploy
+Render (API) + Vercel (UI), featured repos only, no ingestion endpoint on the internet.
+
+**Done when:** the public URLs work end to end, cold start is recorded here, and the deployed
+API exposes no ingestion route.
 
 ### M2 inputs (requirements collected in M0 and the M1 grilling)
 **Context building**
@@ -380,6 +437,47 @@ to Render once, and its cold-start time is recorded here.
   interleave.
 - **Repo-size limits for user-supplied URLs:** a token cap from `count`, refused before any
   embedding, plus clone size/time limits.
+
+**From the M1 review (before M2)**
+- **The limiter is synchronous** (`threading` + `time.sleep`). Use plain `def` FastAPI
+  endpoints, which run in a thread pool, never `async def` that would block the event loop.
+  Keep the max queue length **below the thread-pool size**, so waiting requests can't starve
+  the pool. `Limiter.acquire()` currently has **no timeout**: M2c must add one (or refuse
+  up front when the estimated wait is over ~45 s), so no request thread waits a full window.
+- **The packer budgets for the numbered display:** `chunks.token_count` counts `embed_text`,
+  but the LLM sees lines with absolute line numbers (~3 extra tokens per line). Budget from
+  the displayed text.
+- **Groq output budget:** qwen allows ~1,000 **output** tokens/min, so long answers cut capacity
+  below 2 questions/min. Keep answers to ~350 tokens; measure output tokens per answer, and
+  whether reasoning tokens count toward the limit.
+- **Global daily cap:** Groq allows 1,000 requests/day. Count them and answer with a friendly
+  "daily limit reached, try again tomorrow" before Groq does.
+- **Pre-generated answers for suggested questions:** generated offline, stored with their
+  citations, labelled "pre-generated" in the UI (M2d).
+- **Server-side citation validation:** every `path:start-end` in an answer must match a stored
+  chunk of that repo; invalid citations are dropped or flagged, never shown as links.
+- **Safe markdown rendering:** no raw HTML from the model in the UI.
+- **Public deployment = featured repos only.** No ingestion endpoint on the internet;
+  ingestion stays a local CLI job.
+- **Consider a separate Neon branch or database for the public demo,** so local experiments
+  can't break it.
+
+### M2-0 results
+_Fill in during the spike._
+
+| Item | Result |
+|---|---|
+| Render: signup without a card? | |
+| Render: free-tier terms checked (date, 2026 plan change, bandwidth) | |
+| Render: region / Python version | |
+| Render: cold start after 15+ min idle (browser, time to first byte) | |
+| Render: warm request time | |
+| Render: memory (RSS) at start / after a real search | |
+| Render: 60 s request from the browser | |
+| Render → Neon: connect / query time | |
+| CORS from the Vercel origin | |
+| Vercel: signup without a card? Hobby terms | |
+| Vercel page → Render from the browser | |
 
 ## [ ] M3 Eval harness
 Question set with expected files; hit rate and MRR baseline.

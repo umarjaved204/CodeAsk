@@ -62,11 +62,13 @@ def pack_batches(token_counts: list[int], limit: int = config.BATCH_TOKENS) -> l
 
 
 def eta_seconds(requests: int) -> int:
-    """The pacer sends 3 requests per 65 s window, so N requests take ceil(N/3)-1 windows."""
+    """3 requests per window, and a slot frees one window after its request completes, so N
+    requests take ceil(N/3)-1 windows of (window + latency), plus the last request itself."""
     if requests == 0:
         return 0
-    return (math.ceil(requests / config.VOYAGE_REQUESTS_PER_WINDOW) - 1) \
-        * config.VOYAGE_WINDOW_SECONDS
+    windows = math.ceil(requests / config.VOYAGE_REQUESTS_PER_WINDOW) - 1
+    latency = config.VOYAGE_REQUEST_LATENCY_S
+    return windows * (config.VOYAGE_WINDOW_SECONDS + latency) + latency
 
 
 def unique_texts(chunks: list[tuple[str, Chunk]]) -> dict[str, int]:

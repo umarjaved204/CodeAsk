@@ -14,6 +14,9 @@ EMBED_MODEL = "voyage-code-3"
 EMBED_DIM = 1024
 VOYAGE_REQUESTS_PER_WINDOW = 3
 VOYAGE_WINDOW_SECONDS = 65  # 60 s + 5 s margin: M0's 4th request 429'd at ~60 s
+# Typical request time. A slot frees one window after the request COMPLETES, so each window
+# really lasts window + latency. Fitted to M1: 13 requests took 293 s, 21 took 448 s.
+VOYAGE_REQUEST_LATENCY_S = 8
 BATCH_TOKENS = 3_000  # M0: 9K-token requests were never accepted; 3K worked
 VOYAGE_MAX_RETRIES = 3  # per request, on 429 only; each retry waits one full window
 RESERVED_FOR_QUERIES = 0  # slots per window ingestion may not use (set to 1 when the app runs)

@@ -75,48 +75,64 @@ class Limiter:
             self.release()
 
 
+VOYAGE_URL = "https://api.voyageai.com/v1/embeddings"
+REQUEST_TIMEOUT_S = 60
+
+
+class RateLimited(Exception):
+    """Voyage answered 429 on every attempt."""
+
+
 class VoyageEmbedder:
-    """embed(texts, input_type) -> vectors. One call = one Voyage request."""
+    """embed(texts, input_type) -> vectors. One call = one Voyage request.
+
+    Calls the REST endpoint directly instead of the voyageai SDK: the SDK pulls in tokenizers,
+    numpy, pillow and LangChain, which the API server doesn't need (counting tokens is an
+    ingestion job). It also keeps retries in our hands, so no 429 is hidden.
+    """
 
     def __init__(self, limiter: Limiter | None = None, model: str = config.EMBED_MODEL,
-                 dim: int = config.EMBED_DIM, client=None, sleep=time.sleep, log=print):
+                 dim: int = config.EMBED_DIM, post=None, api_key: str | None = None,
+                 sleep=time.sleep, log=print):
         self.limiter = limiter or Limiter()
         self.model, self.dim = model, dim
         self.space = f"{model}:{dim}:document"
         self.sleep, self.log = sleep, log
-        self._client = client
+        self._post, self._api_key = post, api_key
         self.calls = 0  # requests sent, including rejected ones
         self.rate_limited = 0
         self.requests: list[tuple[float, float, int]] = []  # (start, end, n_texts), monotonic
 
-    @property
-    def client(self):
-        if self._client is None:
-            import voyageai
+    def _send(self, body: dict):
+        if self._post is None:
+            import requests
+
+            self._post = requests.post
+        if self._api_key is None:
             from dotenv import load_dotenv
 
             load_dotenv()
-            # max_retries=0: the SDK's own retries would hide 429s from us.
-            self._client = voyageai.Client(api_key=os.environ["VOYAGE_API_KEY"], max_retries=0)
-        return self._client
+            self._api_key = os.environ["VOYAGE_API_KEY"]
+        return self._post(VOYAGE_URL, json=body, timeout=REQUEST_TIMEOUT_S,
+                          headers={"Authorization": f"Bearer {self._api_key}"})
 
     def embed(self, texts: list[str], input_type: str = "document") -> list[list[float]]:
-        from voyageai.error import RateLimitError
-
         priority = "query" if input_type == "query" else "ingest"
+        body = {"input": texts, "model": self.model, "input_type": input_type,
+                "output_dimension": self.dim, "truncation": False}
         for attempt in range(config.VOYAGE_MAX_RETRIES + 1):
             with self.limiter.slot(priority):
                 start = time.monotonic()
                 self.calls += 1
-                try:
-                    result = self.client.embed(texts, model=self.model, input_type=input_type,
-                                               output_dimension=self.dim, truncation=False)
+                response = self._send(body)
+                if response.status_code != 429:
+                    response.raise_for_status()  # anything else is a real error: stop
                     self.requests.append((start, time.monotonic(), len(texts)))
-                    return result.embeddings
-                except RateLimitError:
-                    self.rate_limited += 1
-                    if attempt == config.VOYAGE_MAX_RETRIES:
-                        raise
+                    data = sorted(response.json()["data"], key=lambda d: d["index"])
+                    return [d["embedding"] for d in data]
+            self.rate_limited += 1
+            if attempt == config.VOYAGE_MAX_RETRIES:
+                raise RateLimited(f"429 on all {attempt + 1} attempts")
             self.log(f"  429 from Voyage (attempt {attempt + 1}); waiting "
                      f"{self.limiter.window_s:.0f} s (Voyage sends no Retry-After)")
             self.sleep(self.limiter.window_s)

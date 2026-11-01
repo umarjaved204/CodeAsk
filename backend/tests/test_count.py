@@ -14,9 +14,15 @@ def test_pack_batches_empty():
     assert pack_batches([]) == []
 
 
-def test_eta_counts_whole_windows():
-    w = config.VOYAGE_WINDOW_SECONDS
+def test_eta_counts_windows_plus_latency():
+    w, lat = config.VOYAGE_WINDOW_SECONDS, config.VOYAGE_REQUEST_LATENCY_S
     assert eta_seconds(0) == 0
-    assert eta_seconds(3) == 0  # the first window goes out immediately
-    assert eta_seconds(4) == w
-    assert eta_seconds(7) == 2 * w
+    assert eta_seconds(3) == lat  # the first window goes out at once; wait for the last reply
+    assert eta_seconds(4) == (w + lat) + lat
+    assert eta_seconds(7) == 2 * (w + lat) + lat
+
+
+def test_eta_matches_m1_measurements():
+    # M1 step 9: express 13 requests in 293 s; step 6: requests 21 requests in 448 s.
+    assert abs(eta_seconds(13) - 293) <= 0.1 * 293
+    assert abs(eta_seconds(21) - 448) <= 0.1 * 448

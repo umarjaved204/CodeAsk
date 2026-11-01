@@ -1,9 +1,9 @@
-voyageai==0.5.0
+# Everything for local work: the API runtime plus ingestion (chunking, token counting) and
+# the M0/M3 clients. The deployed API installs requirements-api.txt only.
+-r requirements-api.txt
+voyageai==0.5.0  # only for its local tokenizer (count/ingest); embeddings use plain HTTP
 groq==1.7.0
 google-genai==2.34.0
-psycopg[binary]==3.3.6
-python-dotenv==1.2.4
-requests==2.34.2
 tree-sitter==0.26.0
 tree-sitter-python==0.25.0
 tree-sitter-javascript==0.25.0

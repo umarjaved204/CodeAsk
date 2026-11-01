@@ -20,5 +20,7 @@ markers = [
     "slow: uses the real Voyage tokenizer (downloaded on first run)",
     "db: uses Neon (a throwaway schema, dropped afterwards) and a fake embedder",
 ]
-# Skipped by default; run them with: pytest -m slow / pytest -m db
-addopts = "-m 'not slow and not db'"
+# slow/db are deselected by default; run them with: pytest -m slow / pytest -m db.
+# -rs prints the reason for every skipped test, so a test that silently stops running
+# (as the slow test did when its repo clone moved) shows up in the summary.
+addopts = "-m 'not slow and not db' -rs"
