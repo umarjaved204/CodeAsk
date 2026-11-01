@@ -99,11 +99,12 @@ def ingest_directory(root: Path, slug: str, url: str, commit_sha: str, embedder,
     started = time.monotonic()
     for i, batch in enumerate(batches, 1):
         hashes = [missing[j] for j in batch]
+        tokens = sum(unique[h][1] for h in hashes)
+        out(f"  sending batch {i}/{len(batches)} ({len(hashes)} texts, {tokens:,} tokens; "
+            f"waits for a free Voyage slot if needed) ...")
         vectors = embedder.embed([unique[h][0] for h in hashes], "document")
         store.insert_embeddings(space, [(h, unique[h][1], v) for h, v in zip(hashes, vectors)])
-        tokens = sum(unique[h][1] for h in hashes)
-        out(f"  batch {i}/{len(batches)}: {len(hashes)} texts, {tokens:,} tokens, "
-            f"committed at {time.monotonic() - started:.0f} s")
+        out(f"  batch {i}/{len(batches)} committed at {time.monotonic() - started:.0f} s")
     embed_seconds = time.monotonic() - started
 
     store.swap_repo(slug, url, commit_sha,
@@ -179,6 +180,8 @@ def main():
     parser.add_argument("--tests", action="store_true", help="include test files")
     parser.add_argument("--docs", action="store_true", help="include docs beyond the README")
     parser.add_argument("--yes", action="store_true", help="skip the confirmation prompt")
+    parser.add_argument("--batch-tokens", type=int, default=config.BATCH_TOKENS,
+                        help=f"max tokens per Voyage request (default {config.BATCH_TOKENS})")
     args = parser.parse_args()
 
     try:
@@ -212,7 +215,8 @@ def main():
     try:
         result = ingest_directory(dest, slug, f"https://github.com/{owner}/{name}", sha,
                                   embedder, store, voyage_counter(), args.tests, args.docs,
-                                  confirm=None if args.yes else ask)
+                                  confirm=None if args.yes else ask,
+                                  batch_tokens=args.batch_tokens)
     except KeyboardInterrupt:
         sys.exit("\ninterrupted: the previous index is untouched; finished batches are cached, "
                  "so a re-run resumes from here.")

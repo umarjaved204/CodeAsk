@@ -96,11 +96,41 @@ Designed in a grilling session (3 rounds, 2026-11-01) with mentor review; decisi
      `test_requests.py`, TableTalk's `contract.gen.ts` and 4 `fixtures/` files.
    - **M3:** `requests` source = 58.6K tokens ≈ 6.5 min per variant, right at the ≤ 60K rule.
    - ETA basis: 3K-token requests, 3 per 65 s ≈ 8.3K tokens/min. To be verified in step 6.
-6. **Vertical slice on itsdangerous (Python only):** schema + store (`repos`, `chunks`,
+6. ✅ **Vertical slice on itsdangerous (Python only):** schema + store (`repos`, `chunks`,
    `embeddings`; drop `m0_chunks`) → embedder + shared limiter → `ingest` CLI (clone with
    `--ref`, ETA + confirm, embed with a commit per batch, transactional swap, summary) + `gc` →
    `search`. Run it; re-run (0 requests); interruption test; sanity questions; measure
    tokens/min.
+
+   Built per the step 6 review:
+   - Injected embedder; `ingest_directory()` separate from the clone.
+   - 6 `db` integration tests on a throwaway Neon schema with a fake embedder.
+   - Git hardening: strict URL/ref, env vars, timeout.
+   - The limiter stamps at completion; gc keeps orphans < 24 h.
+   - Schema-qualified SQL, because the pooler drops `SET search_path`.
+   - `m0_chunks` kept until the final M1 cleanup.
+
+   Results (2026-11-02):
+   - **Interruption on a first ingest:** Ctrl+C after 3/5 batches; the re-run found
+     51 cached and embedded only 19.
+   - **Interruption on a re-ingest** (psf/requests `--tests`, Ctrl+C during batch 4's slot
+     wait): `search` still returned only `src/` paths (the old index stayed live), and `gc`
+     deleted 0 (young orphans kept as resume cache).
+   - **Re-run = 0 requests.** Switching variants back (`--tests` → default) = 0 requests.
+   - **Sanity** (itsdangerous, 5 M0 questions in one request): hit@5 = 5/5, MRR@10 = 1.00.
+     The top hits are now the right *functions* (`Signer > derive_key`,
+     `TimestampSigner > unsign`, `base64_decode`), not just the right files. For M3: the
+     key-rotation question matched `Signer > secret_key` (its docstring mentions rotation)
+     rather than `verify_signature`, which does it. File-level scoring hides that.
+   - **Throughput (psf/requests source, 21 full requests): 7,845 tokens/min, 0 × 429**
+     (58,623 tokens in 448 s). The limiter predicted Voyage's window exactly (requests at
+     4 / 71 / 148 / 230 … s).
+   - **The ETA runs ~15% short** (6.5 min predicted, 7.5 actual): each window lasts 65 s plus
+     that request's latency (2–12 s), because slots are stamped at completion. Matters for
+     M2's "busy past ~45 s" estimate.
+   - **The cross-process gap showed up for real:** a re-run started seconds after an
+     interrupted run got 1 × 429 (the new process's limiter didn't know about the old
+     process's 3 requests). The retry handled it; a shared limiter is on the M2 list.
 7. **JS/TS chunker** (named units from the step 2 node names, export wrappers, const arrow
    functions, Express callbacks) + tests + corpus sweep.
 8. **README splitter** + tests; **fixed-window fallback** polish (other languages, parse
@@ -330,6 +360,8 @@ Ingest estimates (all / source only). **Correction:** the original estimates ass
 documented 10K tokens/min, which is never reached. Measured throughput was **~5K tokens/min**
 (partly due to the 429 stall). With a pacer that adds a few seconds of margin, real throughput
 is probably **~8–9K tokens/min** (3 requests × ≤3K tokens). That must be re-measured in M1.
+**Measured in M1 step 6: 7,845 tokens/min** (psf/requests, 21 full requests, 0 × 429), so the
+"~8.5K/min" column below is ~8% optimistic.
 
 | Repo | Source tokens (files) | Tests tokens (files) | Docs tokens (files) | Total | Ingest at 5K/min (measured) | Ingest at ~8.5K/min (with margin, to verify) |
 |---|---|---|---|---|---|---|
