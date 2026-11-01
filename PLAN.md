@@ -51,12 +51,12 @@ Designed in a grilling session (3 rounds, 2026-11-01) with mentor review; decisi
    measured tokens/min.
 
 ### M1 task list (build order)
-1. **Skeleton:** root `pyproject.toml` (editable install, package in `backend/codeask/`, pytest
+1. ✅ **Skeleton:** root `pyproject.toml` (editable install, package in `backend/codeask/`, pytest
    config), pinned `requirements.txt`, `requirements-dev.txt` (pytest). `pytest` runs from the
    repo root.
-2. **tree-sitter smoke test:** parse one Python, JS, TS and TSX file and print the node-type
-   names; record them here. If tree-sitter-typescript 0.23.2 won't load with tree-sitter 0.26,
-   pin the newest tree-sitter that works.
+2. ✅ **tree-sitter smoke test:** parse one Python, JS, TS and TSX file and print the node-type
+   names; record them here (see "Step 2 results" below). If tree-sitter-typescript 0.23.2 won't
+   load with tree-sitter 0.26, pin the newest tree-sitter that works.
 3. **File filters** + tests (skip rules, categories, per-file reasons).
 4. **Python chunker** + tests + the real-corpus sweep over the 5 cloned repos.
 5. **`count` command.** Compare with the M0 table: expect ~15–20% fewer tokens, because the
@@ -72,6 +72,36 @@ Designed in a grilling session (3 rounds, 2026-11-01) with mentor review; decisi
    errors) + tests.
 9. **Real runs:** express (source) and a re-run of itsdangerous; record the summaries.
 10. **Record** the results here and commit.
+
+### Step 2 results: tree-sitter node types (spike/ts_smoke.py, 2026-11-01)
+All four grammars load in tree-sitter 0.26.0 (Python and JS grammars ABI 15; TypeScript and TSX
+ABI 14). Root nodes: `module` (Python), `program` (JS/TS/TSX).
+
+| Unit | Python | JS | TS / TSX (in addition to JS) |
+|---|---|---|---|
+| Function | `function_definition` | `function_declaration` | |
+| Decorated (wrapper holding its decorators) | `decorated_definition` | | Decorators sit inside `export_statement`, before the class |
+| Class | `class_definition` > `block` | `class_declaration` > `class_body` | `abstract_class_declaration` |
+| Class members | `function_definition`, `decorated_definition`, `expression_statement` (attributes, docstring) | `method_definition` | `public_field_definition`, `abstract_method_signature` |
+| Const function | | `lexical_declaration` > `variable_declarator` > `arrow_function` / `function_expression` | Same |
+| Export wrapper (unwrap to name the unit) | | `export_statement` > declaration | Same |
+| Type-level | | | `interface_declaration`, `type_alias_declaration`, `enum_declaration`, `expression_statement` > `internal_module` (namespace) |
+| Express callback path | | `expression_statement` > `call_expression` > `arguments` > `arrow_function` > `statement_block` | Same |
+| Docstring | `expression_statement` holding a single `string`, first in module/class/function body | | |
+| Comment | `comment` | `comment` | `comment` |
+| Anonymous (merge candidates) | `import_statement`, `import_from_statement`, `expression_statement` (assignments, calls), `if_statement` | `lexical_declaration` (non-function), `expression_statement` (`module.exports = …`, calls) | `import_statement` |
+
+Findings that affect the chunker:
+- **A broken file looks valid at the unit level.** `def broken(:` parsed as a normal
+  `function_definition` with no visible ERROR node among the named children; only
+  `root.has_error` was True. This confirms the whole-file fallback rule (per-unit detection
+  would have missed it).
+- **Units share lines in real code.** `MAX = 10  # constant` gives `expression_statement [5-5]`
+  and `comment [5-5]`. The "units sharing a line must merge" rule is needed, not theoretical.
+- **Namespaces hide inside a generic node** (`expression_statement` > `internal_module`), so
+  named-unit detection must look one level into `expression_statement`.
+- Not in the samples, to cover in tests: Python `async def`, JS `var` (`variable_declaration`),
+  `export default class`, `export { a, b }` lists, multiple declarators in one `const`.
 
 ### M1 decision log
 | Decision | Why | Rejected alternative |
