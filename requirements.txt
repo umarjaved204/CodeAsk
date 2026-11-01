@@ -3,3 +3,4 @@ groq
 google-genai
 psycopg[binary]
 python-dotenv
+requests
