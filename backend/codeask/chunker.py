@@ -41,12 +41,14 @@ import tree_sitter_python as tspy
 import tree_sitter_typescript as tsts
 from tree_sitter import Language, Parser
 
-from codeask import config
+from codeask import config, markdown
 
 CountTokens = Callable[[str], int]
 # Bump when chunking output changes for the same input; recorded in repos.settings so M3
 # results can be traced to the chunker that produced them.
-CHUNKER_VERSION = "2"  # 2: JS/TS, closing-bracket glue, sibling decorators attach
+# 2: JS/TS, closing-bracket glue, sibling decorators attach.
+# 3: Markdown/reST sections, embed-only noise stripping, window polish + "(part i)" labels.
+CHUNKER_VERSION = "3"
 
 # Tokens reserved in estimates for what the Scope line may add (merged names, "part i/n").
 NAME_ALLOWANCE = 15
@@ -253,6 +255,7 @@ class ChunkSettings:
     max_tokens: int = config.MAX_TOKENS
     min_tokens: int = config.MIN_TOKENS
     window_overlap_lines: int = config.WINDOW_OVERLAP_LINES
+    window_prefer_blank_lines: bool = config.WINDOW_PREFER_BLANK_LINES
     include_path: bool = config.EMBED_INCLUDE_PATH
     include_scope: bool = config.EMBED_INCLUDE_SCOPE
     max_context_headers: int = config.MAX_CONTEXT_HEADERS
@@ -281,6 +284,8 @@ class FileChunks:
     skip_reason: str | None = None
     # Why units inside an AST-chunked file fell back to windows, e.g. {"IIFE": 1}.
     window_reasons: Counter = field(default_factory=Counter)
+    # Docs: lines over the token cap, truncated in embed_text only (content stays intact).
+    truncated_lines: int = 0
 
 
 def chunk_file(path: str, text: str, count_tokens: CountTokens,
@@ -316,7 +321,7 @@ class _Piece:
     named: bool = False
     final: bool = False  # produced by a split; never merged with siblings
     outline: str = ""
-    part: tuple[int, int] | None = None
+    part: tuple[int, int | None] | None = None  # (i, n); n is None for whole-file windows
 
 
 def _parser(lang: str) -> Parser:
@@ -338,24 +343,36 @@ class _FileChunker:
         self.lines = text.split("\n")  # never splitlines(): see filters.decode
         if self.lines and self.lines[-1] == "":
             self.lines.pop()  # a final newline ends the last line; it isn't a line itself
-        self.prefix = [0]
-        for line in self.lines:
-            self.prefix.append(self.prefix[-1] + count(line + "\n"))
         self._reserve_cache: dict = {}
         self.lang: _Lang | None = None
         self.window_reasons: Counter = Counter()
+        self.truncated_lines = 0
+        self.is_doc = PurePosixPath(path).suffix.lower() in markdown.DOC_EXT
+        self.root = "<document>" if self.is_doc else "<module>"
+        self.fences: list[tuple[int, int]] = []
+        # What gets embedded per line. Code: the line itself. Docs: None for noise (badges,
+        # link definitions, front matter) and over-cap lines truncated; `self.lines` (what the
+        # UI shows and citations point at) is never changed.
+        self.embed_lines: list[str | None] = self._doc_embed_lines() if self.is_doc \
+            else self.lines
+        self.prefix = [0]
+        for line in self.embed_lines:
+            self.prefix.append(self.prefix[-1] + (count(line + "\n") if line is not None else 0))
 
     # ---------- entry ----------
     def run(self) -> FileChunks:
         if not any(line.strip() for line in self.lines):
             return FileChunks([], "empty")
         base = self._reserve([], [])
-        if any(self._tokens(i, i) + base > self.s.max_tokens for i in range(len(self.lines))):
+        if not self.is_doc and any(self._tokens(i, i) + base > self.s.max_tokens
+                                   for i in range(len(self.lines))):
             return FileChunks([], "skipped", "line exceeds token cap")
 
         method, pieces = "windows", None
         lang = language_for(self.path)
-        if lang and self.s.mode == "ast":
+        if self.is_doc and self.s.mode == "ast":
+            method, pieces = "ast", self._doc_pieces()
+        elif lang and self.s.mode == "ast":
             self.lang = LANGS[lang]
             root = _parser(lang).parse(self.text.encode("utf-8")).root_node
             if root.has_error:
@@ -367,11 +384,17 @@ class _FileChunker:
         if pieces is None:
             pieces = [_Piece(s, e, "window", [], [], tokens=self._tokens(s, e), final=True)
                       for s, e in self._window_ranges(0, len(self.lines) - 1, base)]
+            if len(pieces) > 1:
+                # "(part 2)" without a total: appending to a file must not relabel (and so
+                # re-embed) every earlier window.
+                for i, piece in enumerate(pieces, 1):
+                    piece.part = (i, None)
         try:
             chunks = [chunk for piece in pieces for chunk in self._emit(piece)]
         except _LineTooLong:
             return FileChunks([], "skipped", "line exceeds token cap")
-        return FileChunks(chunks, method, window_reasons=self.window_reasons)
+        return FileChunks(chunks, method, window_reasons=self.window_reasons,
+                          truncated_lines=self.truncated_lines)
 
     # ---------- token estimates ----------
     def _tokens(self, start: int, end: int) -> int:
@@ -392,7 +415,7 @@ class _FileChunker:
             ctx = "\n".join(context) + "\n...\n" if context else ""
             allowance = NAME_ALLOWANCE if self.s.include_scope else 0
             self._reserve_cache[key] = (
-                self.count(self._head(" > ".join(scope) or "<module>") + ctx) + allowance)
+                self.count(self._head(" > ".join(scope) or self.root) + ctx) + allowance)
         return self._reserve_cache[key]
 
     # ---------- units ----------
@@ -624,6 +647,131 @@ class _FileChunker:
         group.clear()
         return [combined]
 
+    # ---------- docs (Markdown / reST) ----------
+    def _doc_embed_lines(self) -> list[str | None]:
+        rst = self.path.lower().endswith(".rst")
+        front_end = -1 if rst else markdown.front_matter_end(self.lines)
+        # Fences are Markdown only: in reST `~~~~` is an underline, and code blocks are
+        # indented after `::` (already excluded, since titles can't be indented).
+        self.fences = [] if rst else markdown.fence_ranges(self.lines, front_end + 1)
+        fenced = {r for first, last in self.fences for r in range(first, last + 1)}
+        self._doc_skip = fenced | set(range(front_end + 1))
+        # Room left for one line once the File/Scope prefix (with a long breadcrumb) is added.
+        budget = self.s.max_tokens - self._reserve([], []) - 20
+        out: list[str | None] = []
+        for i, line in enumerate(self.lines):
+            if i <= front_end or (i not in fenced and markdown.is_noise(line)):
+                out.append(None)  # front matter, badges, link definitions: not embedded
+                continue
+            if self.count(line + "\n") > budget:
+                line = self._truncate(line, budget)
+                self.truncated_lines += 1
+            out.append(line)
+        return out
+
+    def _truncate(self, line: str, budget: int) -> str:
+        """Longest prefix of `line` that fits the budget (binary search on characters)."""
+        lo, hi = 0, len(line)
+        while lo < hi:
+            mid = (lo + hi + 1) // 2
+            if self.count(line[:mid] + " ...\n") <= budget:
+                lo = mid
+            else:
+                hi = mid - 1
+        return line[:lo] + " ..."
+
+    def _trim(self, start: int, end: int) -> int:
+        while end > start and not self.lines[end].strip():
+            end -= 1
+        return end
+
+    def _doc_pieces(self) -> list[_Piece]:
+        """Sections at H1/H2 (breadcrumb H1 > H2); an over-cap section splits at its next
+        heading level, then by paragraph, then windows. Small sections merge like code."""
+        rst = self.path.lower().endswith(".rst")
+        self._headings = markdown.headings(self.lines, rst, self._doc_skip)
+        last = len(self.lines) - 1
+        tops = [h for h in self._headings if h.level <= 2]
+        pieces = []
+        first_row = tops[0].row if tops else last + 1
+        if any(line.strip() for line in self.lines[:first_row]):
+            pieces.extend(self._doc_unit(0, self._trim(0, first_row - 1), None, 0, []))
+        h1 = None
+        for k, h in enumerate(tops):
+            end = self._trim(h.row, tops[k + 1].row - 1 if k + 1 < len(tops) else last)
+            if h.level == 1:
+                h1, scope = h.name, []
+            else:
+                scope = [h1] if h1 else []
+            pieces.extend(self._doc_unit(h.row, end, h.name or "(untitled)", h.level, scope))
+        return self._attach_empty(self._merge(pieces))
+
+    def _doc_unit(self, start: int, end: int, name: str | None, level: int,
+                  scope: list[str]) -> list[_Piece]:
+        tokens = self._tokens(start, end)
+        if tokens + self._reserve(scope, []) <= self.s.max_tokens:
+            return [_Piece(start, end, "section" if name else "intro", scope, [],
+                           [name] if name else [], tokens, bool(name))]
+        own_scope = scope + [name] if name else scope
+        inner = [h for h in self._headings if start < h.row <= end and h.level > level]
+        if not inner:
+            return self._doc_paragraphs(start, end, own_scope, named=bool(name))
+        sub_level = min(h.level for h in inner)
+        subs = [h for h in inner if h.level == sub_level]
+        out = []
+        # The section's head (its heading + intro text) keeps the section's own name.
+        head_end = self._trim(start, subs[0].row - 1)
+        out.extend(p for p in self._doc_unit(start, head_end, name, sub_level, scope))
+        children = []
+        for k, h in enumerate(subs):
+            sub_end = self._trim(h.row, subs[k + 1].row - 1 if k + 1 < len(subs) else end)
+            children.extend(self._doc_unit(h.row, sub_end, h.name or "(untitled)", sub_level,
+                                           own_scope))
+        out.extend(self._merge(children))
+        for piece in out:
+            piece.final = True
+        return out
+
+    def _doc_paragraphs(self, start: int, end: int, scope: list[str],
+                        named: bool) -> list[_Piece]:
+        pieces = []
+        reserve = self._reserve(scope, [])
+        for s, e in markdown.paragraph_blocks(self.lines, start, end, self.fences):
+            tokens = self._tokens(s, e)
+            if tokens + reserve <= self.s.max_tokens:
+                pieces.append(_Piece(s, e, "block", scope, [], tokens=tokens))
+            else:
+                self.window_reasons["oversized paragraph"] += 1
+                pieces.extend(_Piece(ws, we, "window", scope, [], tokens=self._tokens(ws, we),
+                                     final=True)
+                              for ws, we in self._window_ranges(s, e, reserve))
+        packed = self._pack(pieces)
+        for piece in packed:
+            piece.final = True
+        return self._label_parts(packed) if named else packed
+
+    def _has_embed_body(self, start: int, end: int) -> bool:
+        return any(line is not None and line.strip()
+                   for line in self.embed_lines[start:end + 1])
+
+    def _attach_empty(self, pieces: list[_Piece]) -> list[_Piece]:
+        """A chunk must never embed an empty body (e.g. a badge-only intro): attach such a
+        piece to the previous one, or to the next one at the start of the file."""
+        out, carry = [], None
+        for piece in pieces:
+            if not self._has_embed_body(piece.start, piece.end):
+                if out:
+                    out[-1].end = piece.end
+                elif carry is None:
+                    carry = piece.start
+                continue
+            if carry is not None:
+                piece.start, carry = carry, None
+            out.append(piece)
+        if carry is not None:  # nothing embeddable at all: keep one chunk for coverage
+            out.append(replace(pieces[0], start=carry, end=pieces[-1].end))
+        return out
+
     # ---------- windows ----------
     def _window_ranges(self, start: int, end: int, reserve: int) -> list[tuple[int, int]]:
         """Token-packed line windows over [start, end], never past the cap, no overlap
@@ -639,6 +787,14 @@ class _FileChunker:
             while j + 1 <= end and tokens + self._tokens(j + 1, j + 1) <= budget:
                 j += 1
                 tokens += self._tokens(j, j)
+            if self.s.window_prefer_blank_lines and j + 1 <= end:
+                # Stopped by the budget: end at the last blank line in the final quarter, so
+                # the window breaks between functions/paragraphs rather than inside one.
+                floor = i + (j - i) * 3 // 4
+                for k in range(j, floor, -1):
+                    if not self.lines[k].strip():
+                        j = k - 1
+                        break
             while not self.lines[j].strip():
                 j -= 1
             out.append((i, j))
@@ -671,20 +827,23 @@ class _FileChunker:
     def _breadcrumb(self, piece: _Piece) -> str:
         base = " > ".join(piece.scope)
         if piece.part:
-            return f"{base or '<module>'} (part {piece.part[0]}/{piece.part[1]})"
+            i, n = piece.part
+            return f"{base or self.root} (part {i}/{n})" if n else f"{base or self.root} (part {i})"
         if piece.names:
             return " > ".join(piece.scope + [self._names_label(piece.names)])
-        return base or "<module>"
+        return base or self.root
 
     def _build(self, piece: _Piece, start: int, end: int) -> Chunk:
-        code = "\n".join(self.lines[start:end + 1])
+        content = "\n".join(self.lines[start:end + 1])
+        code = content if self.embed_lines is self.lines else "\n".join(
+            line for line in self.embed_lines[start:end + 1] if line is not None)
         breadcrumb = self._breadcrumb(piece)
         body = "\n".join(piece.context) + "\n...\n" + code if piece.context else code
         if piece.outline:
             body += "\n\n" + piece.outline
         embed_text = self._head(breadcrumb) + body
         return Chunk(self.path, start + 1, end + 1, piece.kind, self._names_label(piece.names),
-                     breadcrumb, code, embed_text, self.count(embed_text))
+                     breadcrumb, content, embed_text, self.count(embed_text))
 
     def _emit(self, piece: _Piece) -> list[Chunk]:
         chunk = self._build(piece, piece.start, piece.end)

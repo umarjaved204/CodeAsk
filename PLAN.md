@@ -164,8 +164,28 @@ Designed in a grilling session (3 rounds, 2026-11-01) with mentor review; decisi
      `exports.x = …`), and like-with-like merging stops at every switch, so the File/Scope
      header dominates tiny embeddings. Compare "like with like" vs "merge any small
      neighbour".
-8. **README splitter** + tests; **fixed-window fallback** polish (other languages, parse
+8. ✅ **README splitter** + tests; **fixed-window fallback** polish (other languages, parse
    errors) + tests.
+
+   Built per the step 8 review (CHUNKER_VERSION 3; decisions in the log above):
+   - `markdown.py` line scanner; per-line "embed view" for docs (noise stripped, over-cap
+     lines truncated); no chunk with an empty embeddable body.
+   - **Code output proven unchanged:** snapshot of 4,036 chunks in 445 .py/.js/.ts files,
+     identical (windows compared in naive mode).
+   - **A bug found by the tests:** the Markdown fence scanner treated a reST `~~~~` underline as
+     an unclosed fence, hiding every later heading. Fences are now Markdown-only.
+
+   Results (2026-11-02, sweep with fake counter; count with real tokenizer):
+   | Docs | Before (windows) | After (sections) |
+   |---|---|---|
+   | flask (79 .rst) | 257 chunks, 107,239 tokens | 408 chunks (346 section, 58 part, 8 merged), 110,590 tokens (+3%) |
+   | itsdangerous | 12 chunks, 3,854 tokens | 30 chunks, 4,053 tokens |
+   | express (.md) | windows | 15 sections + 1 intro |
+
+   - express is now 145/145 files AST. The remaining windowed files have no grammar (e.g.
+     itsdangerous `.devcontainer/on-create-command.sh`).
+   - Doc lines truncated in embed_text: **0** across the corpus (a safety net, not yet needed).
+   - Oversized paragraphs windowed: 8 (TableTalk 7, requests 1).
 9. **Real runs:** express (source) and a re-run of itsdangerous; record the summaries.
 10. **Record** the results here and commit.
 
@@ -217,6 +237,10 @@ Findings that affect the chunker:
 | Class over the max: header chunk (own lines + **capped** method-signature outline in `embed_text`, counted toward the cap) + method chunks | "What can X do?" matches the header | Header without an outline |
 | Function over the max: split at top-level statements; recurse into compound statements and into call arguments → callback bodies (with the call's first line as context); then line windows; **never oversize**. Each piece carries the signature | The hard cap stays strict; Express callbacks get real chunks | Oversized chunks |
 | A line over the token cap: skip the file (measured with the real tokenizer; the character rule is a cheap pre-filter); count reported. If it drops meaningful files, revisit by truncating that line in `embed_text` only | "No chunk exceeds the max" is true by construction | Cutting lines by characters (breaks citations and coverage) |
+| **Line over the cap, reconciled (step 8):** code files are skipped as data-like (as above); **Markdown/reST lines are truncated in `embed_text` only**, with displayed content and line ranges intact. Round 2 exempted markdown from the line-length rule, but round 3 made the skip universal; docs legitimately have long unwrapped lines | A long paragraph shouldn't hide a whole README | Skipping doc files with one long line |
+| Doc noise (step 8): badges/images, HTML-tag-only lines, reference-link definitions and YAML front matter are stripped from `embed_text` only. A piece with no embeddable text attaches to its neighbour | No URL noise in embeddings; citations still match the file | Dropping the lines (breaks coverage) |
+| Doc sections (step 8): split at H1/H2 (ATX, setext, reST underlines; reST level = order of first appearance); an over-cap section splits at its next heading level, then by paragraph (fences whole), then line windows | Headings are the document's own boundaries; sentences can't be split inside a line range | A markdown grammar; sentence splitting |
+| Windows (step 8): prefer ending at a blank line in the final quarter (`window_prefer_blank_lines`, M3 runs both); whole-file windows labelled `<module> (part i)` without a total | Breaks between functions; appending to a file doesn't relabel (re-embed) earlier windows | Fixed cut points; `part i/n` everywhere |
 | Budgets (Voyage tokens, measured on `embed_text`, in config): target 200–500, max 800, min 60 | Top 5 × 800 = 4K tokens fits Groq's 8K tokens/min | 300–800 / 1,200 / 80 (top 5 = 6K) |
 | `embed_text` = `File: <path>\nScope: <breadcrumb>\n\n<code>`; flags `embed_include_path` and `embed_include_scope` | Adds the context raw code lacks; M3 can ablate each part | A `Language:` line; a natural-language prefix |
 | No overlap between chunks | The coverage invariant is exact; no near-duplicates | 10-line overlap (M0) |
@@ -314,6 +338,14 @@ correct file(s).
   repo is too big, but a subset could fit (e.g. `src/tabletalk/model` + `simulation` +
   `evaluation` ≈ 145 KB ≈ 41K tokens). I know it well, and the model hasn't memorized it.
 - Each result records the `repos.settings` snapshot (chunker, grammar versions, flags).
+- **Chunking ablations planned from M1:**
+  - merge policy: like-with-like (current) vs merge-any-small-neighbour vs a higher
+    `min_tokens` (express had 33% of chunks under 60 tokens);
+  - the windows control (`chunker = "windows"`), naive and with `window_prefer_blank_lines`;
+  - `embed_include_path` / `embed_include_scope` on and off;
+  - tests / docs included or not.
+  Report retrieval metrics overall **and by chunk kind** (function, class_header, merged,
+  part, section, window, ...), so a strategy that wins overall but hurts one kind is visible.
 - The M0 sanity result (5/5, MRR 1.0) shows the naive baseline is **saturated** on
   itsdangerous with easy questions, so it can't distinguish chunking strategies. The eval needs
   harder questions (no echoed identifiers) on a less trivial repo.

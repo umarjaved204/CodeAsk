@@ -29,6 +29,9 @@ TARGET_MAX_TOKENS = 500  # merges, packed parts and windows never grow past this
 MAX_TOKENS = 800  # hard cap on any chunk's embed_text
 MIN_TOKENS = 60  # only units smaller than this are merged with siblings
 WINDOW_OVERLAP_LINES = 0  # M3 ablation only; > 0 breaks the "one chunk per line" invariant
+# End a full window at the last blank line in its final quarter, so windows break between
+# functions/paragraphs. M3 runs the windows control both naive (False) and polished (True).
+WINDOW_PREFER_BLANK_LINES = True
 EMBED_INCLUDE_PATH = True
 EMBED_INCLUDE_SCOPE = True
 MAX_CONTEXT_HEADERS = 3  # enclosing header lines carried by a split piece (innermost kept)

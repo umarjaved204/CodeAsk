@@ -1,0 +1,26 @@
+﻿== flask ==
+category    files  chunks    tokens
+source         36     430    90,566
+doc            79     408   110,590
+total                 838   201,156   (unique texts: 838 chunks, 201,156 tokens)
+chunk tokens: mean 240, median 198, p95 549, max 764, under 60: 63
+methods: {'ast': 113, 'windows': 2}
+units windowed (over cap, couldn't recurse): {'class header over cap': 2, 'oversized anonymous unit': 1}
+excluded (category not requested): {'test': 49}; ignored file types: 62
+skipped 1:
+  docs/conf.py: path rule: docs/conf.py
+embedding (before cache): 72 requests of <= 3,000 tokens -> ETA ~24.9 min at 3 requests per 65 s
+(counted in 7.5 s)
+== pallets__itsdangerous ==
+category    files  chunks    tokens
+source          9      69    11,522
+doc             9      30     4,053
+total                  99    15,575   (unique texts: 99 chunks, 15,575 tokens)
+chunk tokens: mean 157, median 122, p95 443, max 714, under 60: 17
+methods: {'ast': 17, 'windows': 1}
+units windowed (over cap, couldn't recurse): {'class header over cap': 1}
+excluded (category not requested): {'test': 6}; ignored file types: 17
+skipped 1:
+  docs/conf.py: path rule: docs/conf.py
+embedding (before cache): 6 requests of <= 3,000 tokens -> ETA ~1.1 min at 3 requests per 65 s
+(counted in 3.6 s)

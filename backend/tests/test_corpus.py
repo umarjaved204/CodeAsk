@@ -35,10 +35,14 @@ def test_corpus_sweep():
     for repo in repos:
         scan = scan_repo(repo, include_tests=True, include_docs=True)
         sizes, methods, skips, reasons, fallbacks = [], Counter(), Counter(), Counter(), []
+        doc_kinds, truncated = Counter(), 0
         for f in scan.files:
             result = chunk_file(f.path, f.text, fake_count, settings)
             methods[result.method] += 1
             reasons.update(result.window_reasons)
+            truncated += result.truncated_lines
+            if f.path.endswith((".md", ".rst")):
+                doc_kinds.update(c.kind for c in result.chunks)
             if result.method == "fallback":
                 fallbacks.append(f.path)
             if result.skip_reason:
@@ -59,6 +63,8 @@ def test_corpus_sweep():
             f"{percentile(s, 0.95):>6}{s[-1]:>6}{small:>6}")
         details.append(f"  {repo.name}: methods {dict(methods)}; skips {dict(skips)}")
         details.append(f"    units windowed: {dict(reasons) or 'none'}")
+        details.append(f"    doc chunk kinds: {dict(doc_kinds) or 'none'}; "
+                       f"doc lines truncated in embed_text: {truncated}")
         if fallbacks:
             details.append(f"    parse-error fallbacks ({len(fallbacks)}): "
                            f"{', '.join(fallbacks[:8])}{' ...' if len(fallbacks) > 8 else ''}")

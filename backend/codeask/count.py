@@ -27,6 +27,7 @@ class RepoChunks:
     skipped: list[tuple[str, str]] = field(default_factory=list)  # filter + chunker skips
     fallbacks: list[str] = field(default_factory=list)  # parse errors -> windows
     window_reasons: Counter = field(default_factory=Counter)  # over-cap units -> windows
+    truncated_lines: int = 0  # docs: over-cap lines truncated in embed_text only
 
 
 def chunk_repo(root: Path, count_tokens, include_tests=False, include_docs=False,
@@ -39,6 +40,7 @@ def chunk_repo(root: Path, count_tokens, include_tests=False, include_docs=False
         if result.method == "fallback":
             out.fallbacks.append(f.path)
         out.window_reasons.update(result.window_reasons)
+        out.truncated_lines += result.truncated_lines
         if result.skip_reason:
             out.skipped.append((f.path, result.skip_reason))
         out.chunks.extend((f.category, c) for c in result.chunks)
@@ -100,6 +102,8 @@ def report(name: str, rc: RepoChunks) -> str:
         lines.append(f"parse-error fallbacks ({len(rc.fallbacks)}): {', '.join(rc.fallbacks)}")
     if rc.window_reasons:
         lines.append(f"units windowed (over cap, couldn't recurse): {dict(rc.window_reasons)}")
+    if rc.truncated_lines:
+        lines.append(f"doc lines over the cap, truncated in embed_text: {rc.truncated_lines}")
     excluded = dict(rc.scan.excluded)
     lines.append(f"excluded (category not requested): {excluded or 'none'}; "
                  f"ignored file types: {rc.scan.ignored}")
