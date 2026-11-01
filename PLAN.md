@@ -29,11 +29,107 @@ the 429s and recording the added wait per query.
   and record the actual waits.
 
 ## [ ] M1 Ingestion
-Clone a GitHub repo, chunk the code (by function/class where possible), embed, store.
+Clone a GitHub repo, chunk the code by syntax (functions/classes) where possible, embed, store.
+Designed in a grilling session (3 rounds, 2026-11-01) with mentor review; decisions below.
 
-**Done when:** given a public repo URL, one command clones it, chunks it, embeds it and stores
-it in Neon. Every chunk has its file path and start/end line numbers, and re-running on the
-same repo doesn't create duplicates.
+**Done when:**
+1. `python -m codeask.ingest <github-url> [--ref <sha>] [--tests] [--docs] [--yes]` clones
+   (shallow), filters, chunks (tree-sitter for Python/JS/TS, fixed windows otherwise), embeds
+   and stores in Neon. Every chunk has a path, 1-based inclusive start/end lines, kind,
+   breadcrumb and category.
+2. Re-running on the same ref makes **0 Voyage requests** and creates no duplicate rows.
+   **A body edit inside one unit changes exactly one hash** (so exactly 1 new embedding).
+3. **Interruption test (manual):** Ctrl+C mid-ingest → `search` still serves the old index →
+   a re-run resumes from the cached embeddings.
+4. `pytest` passes the test list below (the slow real-tokenizer test runs with `-m slow`).
+5. `python -m codeask.search <repo> "<question>"` prints the top 5 with distance, kind,
+   breadcrumb and path:lines. On itsdangerous, the 5 M0 sanity questions each have their
+   expected file in the top 5 (a regression check, not an eval).
+6. This file records the ingest summaries for itsdangerous and express (source only):
+   per-category chunks and tokens, chunk-size distribution (mean, median, p95 tokens),
+   fallback files, skipped files with reasons (including the "line exceeds cap" count), and the
+   measured tokens/min.
+
+### M1 task list (build order)
+1. **Skeleton:** root `pyproject.toml` (editable install, package in `backend/codeask/`, pytest
+   config), pinned `requirements.txt`, `requirements-dev.txt` (pytest). `pytest` runs from the
+   repo root.
+2. **tree-sitter smoke test:** parse one Python, JS, TS and TSX file and print the node-type
+   names; record them here. If tree-sitter-typescript 0.23.2 won't load with tree-sitter 0.26,
+   pin the newest tree-sitter that works.
+3. **File filters** + tests (skip rules, categories, per-file reasons).
+4. **Python chunker** + tests + the real-corpus sweep over the 5 cloned repos.
+5. **`count` command.** Compare with the M0 table: expect ~15–20% fewer tokens, because the
+   10-line overlap is gone.
+6. **Vertical slice on itsdangerous (Python only):** schema + store (`repos`, `chunks`,
+   `embeddings`; drop `m0_chunks`) → embedder + shared limiter → `ingest` CLI (clone with
+   `--ref`, ETA + confirm, embed with a commit per batch, transactional swap, summary) + `gc` →
+   `search`. Run it; re-run (0 requests); interruption test; sanity questions; measure
+   tokens/min.
+7. **JS/TS chunker** (named units from the step 2 node names, export wrappers, const arrow
+   functions, Express callbacks) + tests + corpus sweep.
+8. **README splitter** + tests; **fixed-window fallback** polish (other languages, parse
+   errors) + tests.
+9. **Real runs:** express (source) and a re-run of itsdangerous; record the summaries.
+10. **Record** the results here and commit.
+
+### M1 decision log
+| Decision | Why | Rejected alternative |
+|---|---|---|
+| Embedding key = `sha256(space + embed_text)`, space = `voyage-code-3:1024:document` | Keyed on exactly what is embedded: changing a flag or model re-embeds automatically, and line shifts change nothing | M0 key with repo/path/start_line (inserting one line re-embedded the rest of the file) |
+| Schema: `repos`, `chunks` (per repo), `embeddings(content_hash, space, token_count, vector)` shared across repos | Switching models needs no re-chunking; identical code shares one vector | Vector column on `chunks` |
+| Orphaned embeddings kept; removed only by `gc` and on repo deletion (unreferenced only) | Switching back to a variant costs only chunking time; ~0.8 MB per 60K-token variant | Deleting orphans on every re-ingest |
+| One active chunk set per repo; settings (including chunker and grammar versions) in `repos.settings`; M3 snapshots the settings with each result | No variant filter on every query; results stay reproducible | `variant` column with several live sets |
+| Ingest = embed first (commit per batch), then swap chunk rows + `repos` row in **one transaction** | An interrupted ingest leaves the old index live; a re-run resumes from the cache | Delete-then-insert |
+| Shallow clone; `--ref <sha>` via `git fetch --depth 1 origin <sha>`; `-c core.autocrlf=false`; Windows-safe deletion (read-only .git files) | M3 commit pinning; stable hashes | Full clone |
+| Normalize CRLF→LF and strip a BOM, in memory only; strict UTF-8, else skip with "not UTF-8" | Same hashes on Windows and Render; odd files are visible | `errors="replace"` (silent U+FFFD) |
+| tree-sitter, individual pinned grammar packages: Python, JS, TS, TSX. `.py`; `.js .jsx .mjs .cjs`; `.ts .mts .cts`; `.tsx`; `.d.ts` excluded (takes precedence over `.ts`) | Multi-language, error-tolerant, one API; prebuilt wheels for Windows + Python 3.13 | Python `ast` (Python only); tree-sitter-language-pack (~170 grammars) |
+| Parse errors: whole-file fallback to fixed windows if `root.has_error`; fallback count reported | Simple; grammar gaps become measurable | Per-unit fallback |
+| Units: every top-level node. Named units per language (Python: function/class/decorated_definition; TS/JS: function/class declarations, export wrappers, const arrow functions or function expressions, interface/type/enum) | One rule; covers Express-style top-level calls | Gap collection (functions/classes + "module" leftovers) |
+| Merge only units below the min, stop at the target, like with like (anonymous with anonymous, small named siblings together); units that share a line must merge | Fewer tiny chunks without mixing unrelated code; keeps "one chunk per line" exact | Greedy merge of anything adjacent |
+| Leading comments: only contiguous comment lines directly above a unit attach | Matches how doc comments are written | All comments since the previous unit |
+| Class over the max: header chunk (own lines + **capped** method-signature outline in `embed_text`, counted toward the cap) + method chunks | "What can X do?" matches the header | Header without an outline |
+| Function over the max: split at top-level statements; recurse into compound statements and into call arguments → callback bodies (with the call's first line as context); then line windows; **never oversize**. Each piece carries the signature | The hard cap stays strict; Express callbacks get real chunks | Oversized chunks |
+| A line over the token cap: skip the file (measured with the real tokenizer; the character rule is a cheap pre-filter); count reported. If it drops meaningful files, revisit by truncating that line in `embed_text` only | "No chunk exceeds the max" is true by construction | Cutting lines by characters (breaks citations and coverage) |
+| Budgets (Voyage tokens, measured on `embed_text`, in config): target 200–500, max 800, min 60 | Top 5 × 800 = 4K tokens fits Groq's 8K tokens/min | 300–800 / 1,200 / 80 (top 5 = 6K) |
+| `embed_text` = `File: <path>\nScope: <breadcrumb>\n\n<code>`; flags `embed_include_path` and `embed_include_scope` | Adds the context raw code lacks; M3 can ablate each part | A `Language:` line; a natural-language prefix |
+| No overlap between chunks | The coverage invariant is exact; no near-duplicates | 10-line overlap (M0) |
+| README: line scanner with fence state; split at `#`/`##` outside fences; merge to the target; paragraph → sentence fallback for over-cap sections; skip image/badge-only lines | Headings are the document's semantic boundaries; example code is never cut | Markdown grammar; fixed windows |
+| Default categories: source + root README; `--tests` and `--docs` flags; category on every chunk | Embedding is the scarce resource; M3 measures what tests and docs add | Ingest everything |
+| Skip rules: first-5-lines markers (`@generated`, `do not edit`, `auto-?generated`, `generated by`, `code generated`); `*.gen.*`, `*_pb2.py`, `*.pb.go`, `*.d.ts`, lockfiles; code with max line > ~1,500–2,000 chars or average > 200 (not markdown); `migrations/`, `alembic/versions/`, `fixtures/` (directory), `docs/conf.py`; empty files. Reasons printed per file | TableTalk inspection: one generated file, longest real line 196 chars | Skipping `components/ui/`; a smaller size cap (would drop real 32 KB modules) |
+| Pacer: shared in-process limiter with a priority/reserved-slots parameter (unused in M1); 3 requests per 60 + 5 s window; ≤ 3K tokens per batch; 3 retries | Fixes M0's 429s; ready for M2's query priority | Independent per-call retries |
+| Code: `backend/codeask/` package, `python -m` entry points, root `pyproject.toml` editable install; spike/m0.py frozen | M2 imports the same code; M0 stays reproducible | A second spike script |
+| `search` CLI in M1 | Proves an ingest retrieves, not just that rows exist | Leaving retrieval to M2 |
+
+**Limitation:** the limiter is in-process and doesn't coordinate across processes. Don't run
+CLI ingestion while the live app uses the same Voyage key (revisit in M2).
+
+### M1 tests (pytest, fake token counter unless marked)
+- **Coverage:** every non-blank line is in exactly one chunk, including units that share a line.
+- **Line numbers:** stored ranges are 1-based inclusive (tree-sitter rows are 0-based), and
+  `file_lines[start-1:end]` equals the chunk content.
+- **Cap:** no chunk exceeds the max; a file with an over-cap line is skipped.
+- **Determinism:** two runs give identical output; CRLF and LF input give identical hashes.
+- **Stability:** a body edit inside one unit changes exactly one hash; inserting lines above a
+  unit changes no other unit's hash.
+- **Fallback:** a syntax error falls back to windows; an empty or whitespace-only file gives no
+  chunks.
+- **Express:** a callback inside `app.get(...)` is recursed into and carries the call's first
+  line.
+- **Classes:** a class over the max splits into a header + methods; the outline cap holds.
+- **README:** fences are never split; headings inside fences are ignored.
+- **Filters:** one sample file per skip rule.
+- **Edge cases:** single-unit file, no trailing newline, comments-only file, `.d.ts` precedence
+  over the `.ts` mapping, the like-with-like merge rule.
+- **Real-corpus sweep:** run the chunker over the 5 cloned repos and assert coverage, the cap
+  and `file_lines[start-1:end] == content` on every file.
+- **Slow (`-m slow`):** one test with the real Voyage tokenizer.
+- Sample files live in `backend/tests/samples/` (not `fixtures/`, which our own skip rule
+  excludes).
+
+### Not in M1 (scope guard)
+Reranking, summaries, call graphs, languages beyond Python/JS/TS, the web UI, per-unit parse
+fallback, a cross-process limiter.
 
 ## [ ] M2 Basic RAG chat
 Next.js chat UI + FastAPI endpoint; answers cite files and lines.
@@ -42,12 +138,30 @@ Next.js chat UI + FastAPI endpoint; answers cite files and lines.
 answer whose citations (file + line range) point to the correct code. The backend is deployed
 to Render once, and its cold-start time is recorded here.
 
-Notes from M0:
+### M2 inputs (requirements collected in M0 and the M1 grilling)
+**Context building**
 - Number every line of the retrieved chunks with its **absolute file line number** (not 1..n per
   chunk), so citations don't depend on the model counting lines.
+- **Token-budget context packing:** fill the context up to ~3K tokens instead of a fixed k=5
+  (Groq: 8K tokens/min per model).
+- **Class header chunks:** when one is retrieved, build the method outline from its child chunk
+  rows (names and line ranges) and include it in the context, so the model sees what matched.
+- **Near-duplicates:** M0's top 5 were often all from one file. Merge adjacent chunks from the
+  same file into one context block, and consider a per-file cap. Decide in M2.
+
+**Voyage queue and pacer** (see "Capacity" under M0 results)
+- Bounded FIFO queue; respond "busy, try again" when the estimated wait exceeds ~45 s; show the
+  queue position in the UI.
+- Queries have priority over ingestion: use the limiter's reserved-slots parameter so ingestion
+  takes at most 2 of the 3 slots per window.
+- Query-embedding cache, plus pre-cached embeddings for the suggested questions on featured
+  repos.
+- The M1 limiter is in-process only. Don't run CLI ingestion while the live app uses the same
+  key, or make the limiter coordinate across processes.
+
+**Deployment**
 - Pick Render's **Ohio** region, next to Neon (US East 2), so DB round trips are milliseconds.
-- Apply the capacity design (see "Capacity" under M0 results): bounded FIFO queue for Voyage,
-  queries before ingestion, "busy, try again" past ~45 s, queue position in the UI.
+- Reuse DB connections (pooling).
 
 ## [ ] M3 Eval harness
 Question set with expected files; hit rate and MRR baseline.
@@ -58,8 +172,11 @@ correct file(s).
   full re-embed at 3 requests/min, so a 60K repo costs ~7–12 min per variant.
 - It should be a repo the model has **not memorized**, ideally one I know well (so I can write
   questions with known answers).
-- TableTalk is 454K tokens (186K source). Before considering it, inspect what inflates its
-  source tokens (likely generated or data-like files).
+- TableTalk is 454K tokens (186K source). Inspected 2026-11-01: nothing is inflated. It's 658 KB
+  of real, heavily documented code (~3.5 bytes/token), with one small generated file. The whole
+  repo is too big, but a subset could fit (e.g. `src/tabletalk/model` + `simulation` +
+  `evaluation` ≈ 145 KB ≈ 41K tokens). I know it well, and the model hasn't memorized it.
+- Each result records the `repos.settings` snapshot (chunker, grammar versions, flags).
 - The M0 sanity result (5/5, MRR 1.0) shows the naive baseline is **saturated** on
   itsdangerous with easy questions, so it can't distinguish chunking strategies. The eval needs
   harder questions (no echoed identifiers) on a less trivial repo.
@@ -203,8 +320,9 @@ Design consequences (M2 onward):
 
 ### Carry-overs (into M1 and later)
 - **Pacer margin:** add a few seconds to the 60 s window. Voyage seems to count from request
-  arrival or completion, not from our send time.
+  arrival or completion, not from our send time. → Planned in M1 (60 + 5 s).
 - **Filtering:** exclude config-like `.py` files outside the package (e.g. `docs/conf.py`).
+  → Planned in M1 (skip rules).
 - **Gemini latency (148–224 s):** network ruled out. `curl -4` and `curl -6` to
   generativelanguage.googleapis.com both finish in ~0.4 s (connect ~0.07 s, TLS ~0.24 s).
   Next suspects: hidden SDK retries on 429/503, model "thinking", or free-tier queueing.
