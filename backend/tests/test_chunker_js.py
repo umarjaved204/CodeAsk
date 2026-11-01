@@ -233,6 +233,61 @@ def test_tsx_components():
     assert [c.breadcrumb for c in result.chunks if c.kind == "function"] == ["Card", "List"]
 
 
+# ---------- JSDoc attachment (CHUNKER_VERSION 4) ----------
+def starts(text, name, settings=NO_MERGE):
+    return next(c.start_line for c in chunks_of(text, "a.js", settings).chunks
+                if c.breadcrumb == name)
+
+
+def test_jsdoc_attaches_across_one_blank_line_to_a_named_unit():
+    text = "/**\n * Proxy to the router.\n */\n\napp.route = function route(path) {\n  return 1;\n};\n"
+    assert starts(text, "app.route") == 1
+
+
+def test_jsdoc_does_not_cross_two_blank_lines():
+    text = "/**\n * Docs.\n */\n\n\nfunction f() {\n  return 1;\n}\n"
+    assert starts(text, "f") == 6
+
+
+def test_line_comment_still_needs_no_blank_line():
+    text = "// Section header\n\nfunction f() {\n  return 1;\n}\n"
+    assert starts(text, "f") == 3
+
+
+def test_jsdoc_does_not_attach_to_an_anonymous_unit():
+    text = "/**\n * Setup.\n */\n\nsetup();\n"
+    result = chunks_of(text, "a.js")
+    assert [(c.start_line, c.end_line) for c in result.chunks] == [(1, 3), (5, 5)]
+
+
+def test_file_level_jsdoc_tags_stay_standalone():
+    for tag in ("@file", "@fileoverview", "@module", "@license", "@copyright", "@typedef",
+                "@callback", "@namespace"):
+        text = f"/**\n * {tag} something\n */\nfunction f() {{\n  return 1;\n}}\n"
+        assert starts(text, "f") == 4, tag  # not attached, even with no blank line
+
+
+def test_stacked_jsdoc_blocks():
+    # Contiguous blocks attach together; the blank-line hop is only allowed once, nearest
+    # the unit, so a block above a blank line that's above another block stays separate.
+    together = "/** a */\n/** b */\n\nfunction f() {\n  return 1;\n}\n"
+    assert starts(together, "f") == 1
+    apart = "/** a */\n\n/** b */\n\nfunction f() {\n  return 1;\n}\n"
+    assert starts(apart, "f") == 3
+
+
+def test_jsdoc_flag_off_restores_the_old_rule():
+    text = "/**\n * Docs.\n */\n\nfunction f() {\n  return 1;\n}\n"
+    off = ChunkSettings(min_tokens=1, jsdoc_attach_across_blank=False)
+    assert starts(text, "f", off) == 5
+
+
+def test_python_comments_unaffected():
+    text = '"""Doc."""\n\n# comment\n\ndef f():\n    return 1\n'
+    result = chunk_file("a.py", text, fake_count, NO_MERGE)
+    assert next(c.start_line for c in result.chunks if c.breadcrumb == "f") == 5
+
+
 def test_js_syntax_error_falls_back():
     result = chunks_of("function ok() { return 1; }\nfunction broken( {\n", "x.js")
     assert result.method == "fallback"

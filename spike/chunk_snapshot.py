@@ -49,19 +49,25 @@ def main():
         path.write_text(json.dumps(rows, indent=0), encoding="utf-8")
         print(f"saved {len(rows)} chunks from {len({(r[0], r[1]) for r in rows})} code files")
         return
-    before = [tuple(r) for r in json.loads(path.read_text(encoding="utf-8"))]
-    after = [tuple(r) for r in rows]
-    if before == after:
-        print(f"identical: {len(after)} chunks")
-        return
-    removed, added = set(before) - set(after), set(after) - set(before)
-    print(f"DIFFERENT: {len(before)} before, {len(after)} after; "
-          f"{len(removed)} removed, {len(added)} added")
-    for r in sorted(removed)[:10]:
-        print("  -", r[:4])
-    for r in sorted(added)[:10]:
-        print("  +", r[:4])
-    sys.exit(1)
+    all_before = [tuple(r) for r in json.loads(path.read_text(encoding="utf-8"))]
+    all_after = [tuple(r) for r in rows]
+    differs = False
+    for group, exts in (("python", (".py",)), ("js/ts", CODE_EXT[1:])):
+        before = [r for r in all_before if r[1].endswith(exts)]
+        after = [r for r in all_after if r[1].endswith(exts)]
+        if before == after:
+            print(f"{group}: identical ({len(after)} chunks)")
+            continue
+        differs = True
+        removed, added = set(before) - set(after), set(after) - set(before)
+        files = {r[:2] for r in removed | added}
+        print(f"{group}: DIFFERENT: {len(before)} -> {len(after)} chunks; {len(removed)} removed, "
+              f"{len(added)} added, in {len(files)} files")
+        for r in sorted(removed)[:5]:
+            print("  -", r[:4])
+        for r in sorted(added)[:5]:
+            print("  +", r[:4])
+    sys.exit(1 if differs else 0)
 
 
 if __name__ == "__main__":

@@ -32,6 +32,10 @@ WINDOW_OVERLAP_LINES = 0  # M3 ablation only; > 0 breaks the "one chunk per line
 # End a full window at the last blank line in its final quarter, so windows break between
 # functions/paragraphs. M3 runs the windows control both naive (False) and polished (True).
 WINDOW_PREFER_BLANK_LINES = True
+# A /** */ doc comment attaches to the next NAMED unit across one blank line (express puts a
+# blank line between every JSDoc block and its function). `//` and Python `#` comments only
+# attach with no blank line. M3 ablates this.
+JSDOC_ATTACH_ACROSS_BLANK = True
 EMBED_INCLUDE_PATH = True
 EMBED_INCLUDE_SCOPE = True
 MAX_CONTEXT_HEADERS = 3  # enclosing header lines carried by a split piece (innermost kept)

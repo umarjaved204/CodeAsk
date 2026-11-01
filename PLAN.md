@@ -208,6 +208,22 @@ Designed in a grilling session (3 rounds, 2026-11-01) with mentor review; decisi
        explains much of the 33% of chunks under 60 tokens.
      - Express 5 moved path matching into the separate `router` package, so that code isn't
        in this repo. M3 questions must be answerable from the repo itself.
+
+   **JSDoc fix (CHUNKER_VERSION 4, decision log above), results:**
+   - Snapshot: Python **identical** (2,475 chunks); JS/TS changed in 154 files, as intended.
+   - express (source + README):
+     | | v3 | v4 |
+     |---|---|---|
+     | Chunks | 353 | 287 (−19%) |
+     | Tokens | 36,587 | 35,854 (−2%) |
+     | Median | 82 | 96 |
+     | Under 60 tokens | 117 (33%) | 66 (23%) |
+   - **Re-ingest: 71 new embeddings, 216 cached, 6 requests instead of 13.**
+   - **Spot check:** `app.route` is now one chunk (lines 246–258: JSDoc + function), still #1.
+     For M3: the combined chunk scored 0.431, versus 0.391 for the JSDoc alone in v3. Pure
+     prose sits closer to an English question, so code dilutes the match slightly. It is still
+     first and now holds the code; the `jsdoc_attach_across_blank` ablation will show whether
+     this costs rank on harder questions.
 10. **Record** the results here and commit.
 
 ### Step 2 results: tree-sitter node types (spike/ts_smoke.py, 2026-11-01)
@@ -255,6 +271,7 @@ Findings that affect the chunker:
 | Units: every top-level node. Named units per language (Python: function/class/decorated_definition; TS/JS: function/class declarations, export wrappers, const arrow functions or function expressions, interface/type/enum) | One rule; covers Express-style top-level calls | Gap collection (functions/classes + "module" leftovers) |
 | Merge only units below the min, stop at the target, like with like (anonymous with anonymous, small named siblings together); units that share a line must merge | Fewer tiny chunks without mixing unrelated code; keeps "one chunk per line" exact | Greedy merge of anything adjacent |
 | Leading comments: only contiguous comment lines directly above a unit attach | Matches how doc comments are written | All comments since the previous unit |
+| **JSDoc (step 9 → CHUNKER_VERSION 4):** a `/** */` comment attaches to the next **named** unit across **one** blank line; blocks with `@file`, `@fileoverview`, `@module`, `@license`, `@copyright`, `@typedef`, `@callback` or `@namespace` never attach; `//` and Python `#` keep the no-blank-line rule. Flag `jsdoc_attach_across_blank` (M3 ablates it) | **Observed failure:** express puts a blank line between every JSDoc block and its function, so docs and code were separate chunks across the repo ("router matching" returned `app.route`'s JSDoc #1 and the function #2, separately) | Leaving it as an M3 ablation (the baseline would start with docs and code split on every JS repo); attaching any comment across blanks (section headers would attach) |
 | Class over the max: header chunk (own lines + **capped** method-signature outline in `embed_text`, counted toward the cap) + method chunks | "What can X do?" matches the header | Header without an outline |
 | Function over the max: split at top-level statements; recurse into compound statements and into call arguments → callback bodies (with the call's first line as context); then line windows; **never oversize**. Each piece carries the signature | The hard cap stays strict; Express callbacks get real chunks | Oversized chunks |
 | A line over the token cap: skip the file (measured with the real tokenizer; the character rule is a cheap pre-filter); count reported. If it drops meaningful files, revisit by truncating that line in `embed_text` only | "No chunk exceeds the max" is true by construction | Cutting lines by characters (breaks citations and coverage) |
@@ -317,8 +334,11 @@ to Render once, and its cold-start time is recorded here.
   (Groq: 8K tokens/min per model).
 - **Class header chunks:** when one is retrieved, build the method outline from its child chunk
   rows (names and line ranges) and include it in the context, so the model sees what matched.
-- **Near-duplicates:** M0's top 5 were often all from one file. Merge adjacent chunks from the
-  same file into one context block, and consider a per-file cap. Decide in M2.
+- **Near-duplicates:** M0's top 5 were often all from one file. Consider a per-file cap.
+  Decide in M2.
+- **The context packer merges adjacent retrieved chunks from the same file** into one block
+  (with absolute line numbers), e.g. a function retrieved together with the chunk just above
+  it. Fewer seams, fewer repeated File/Scope headers, and citations stay one contiguous range.
 
 **Voyage queue and pacer** (see "Capacity" under M0 results)
 - Bounded FIFO queue; respond "busy, try again" when the estimated wait exceeds ~45 s; show the

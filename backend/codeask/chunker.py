@@ -48,7 +48,11 @@ CountTokens = Callable[[str], int]
 # results can be traced to the chunker that produced them.
 # 2: JS/TS, closing-bracket glue, sibling decorators attach.
 # 3: Markdown/reST sections, embed-only noise stripping, window polish + "(part i)" labels.
-CHUNKER_VERSION = "3"
+# 4: /** */ doc comments attach across one blank line; file-level JSDoc tags stay standalone.
+CHUNKER_VERSION = "4"
+# JSDoc blocks that describe a file or a type, not the code below them: never attached.
+JSDOC_STANDALONE_TAGS = ("@file", "@fileoverview", "@module", "@license", "@copyright",
+                         "@typedef", "@callback", "@namespace")
 
 # Tokens reserved in estimates for what the Scope line may add (merged names, "part i/n").
 NAME_ALLOWANCE = 15
@@ -201,6 +205,7 @@ class _Lang:
     compound: frozenset
     attachable: frozenset  # sibling nodes that attach to the unit below (comments, decorators)
     callback: Callable  # anonymous statement -> callback function to recurse into, or None
+    jsdoc: bool = False  # /** */ doc comments (attach across a blank line; standalone tags)
 
 
 _PY = _Lang(
@@ -222,7 +227,8 @@ def _js_lang(grammar):
                             "while_statement", "do_statement", "try_statement",
                             "switch_statement", "with_statement"}),
         attachable=frozenset({"comment", "decorator"}),
-        callback=lambda node: _js_callback(c) if (c := _js_statement_call(node)) else None)
+        callback=lambda node: _js_callback(c) if (c := _js_statement_call(node)) else None,
+        jsdoc=True)
 
 
 LANGS = {
@@ -256,6 +262,7 @@ class ChunkSettings:
     min_tokens: int = config.MIN_TOKENS
     window_overlap_lines: int = config.WINDOW_OVERLAP_LINES
     window_prefer_blank_lines: bool = config.WINDOW_PREFER_BLANK_LINES
+    jsdoc_attach_across_blank: bool = config.JSDOC_ATTACH_ACROSS_BLANK
     include_path: bool = config.EMBED_INCLUDE_PATH
     include_scope: bool = config.EMBED_INCLUDE_SCOPE
     max_context_headers: int = config.MAX_CONTEXT_HEADERS
@@ -423,6 +430,18 @@ class _FileChunker:
         row, col = node.start_point[0], node.start_point[1]
         return not self.lines[row][:col].strip()
 
+    def _attaches(self, comment, top: int, allow_blank_hop: bool) -> bool:
+        start, end, node = comment
+        if not self._own_line(node):
+            return False
+        text = _text(node) if self.lang.jsdoc and node.type == "comment" else ""
+        if text.startswith("/*") and any(tag in text for tag in JSDOC_STANDALONE_TAGS):
+            return False  # describes the file or a type, not the code below
+        if end == top - 1:
+            return True
+        return (allow_blank_hop and end == top - 2 and not self.lines[top - 1].strip()
+                and text.startswith("/**"))
+
     def _units(self, nodes) -> list[_Unit]:
         units, comments = [], []
         for node in nodes:
@@ -433,10 +452,14 @@ class _FileChunker:
             kind, name, _, header_row = self.lang.describe(node)
             unit = _Unit(start, end, node, name, kind, header_row if kind != "anon" else None)
             # Contiguous own-line comments directly above (no blank line) attach to the unit.
+            # The nearest one may instead be a /** */ doc comment one blank line above a
+            # named unit (JSDoc style); everything above it must still be contiguous.
             k, top = len(comments), start
-            while k and comments[k - 1][1] == top - 1 and self._own_line(comments[k - 1][2]):
+            hop = (self.lang.jsdoc and self.s.jsdoc_attach_across_blank and kind != "anon")
+            while k and self._attaches(comments[k - 1], top, hop):
                 k -= 1
                 top = comments[k][0]
+                hop = False
             units.extend(_Unit(cs, ce, origin="comment") for cs, ce, _ in comments[:k])
             comments = []
             unit.start = top
