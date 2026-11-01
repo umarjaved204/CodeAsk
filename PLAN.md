@@ -28,7 +28,7 @@ the 429s and recording the added wait per query.
 - **Variant:** also run 6 queries in 60 s (the limit is shared across all visitors on one key)
   and record the actual waits.
 
-## [ ] M1 Ingestion
+## [x] M1 Ingestion
 Clone a GitHub repo, chunk the code by syntax (functions/classes) where possible, embed, store.
 Designed in a grilling session (3 rounds, 2026-11-01) with mentor review; decisions below.
 
@@ -49,6 +49,20 @@ Designed in a grilling session (3 rounds, 2026-11-01) with mentor review; decisi
    per-category chunks and tokens, chunk-size distribution (mean, median, p95 tokens),
    fallback files, skipped files with reasons (including the "line exceeds cap" count), and the
    measured tokens/min.
+
+### M1 "Done when" check (2026-11-02)
+| # | Item | Evidence |
+|---|---|---|
+| 1 | Ingest command; chunk fields | Steps 6 + 9: itsdangerous, requests, express ingested; schema columns NOT NULL |
+| 2 | Re-run = 0 requests, no duplicates; body edit = 1 new embedding | Final re-ingests of itsdangerous and requests on v4: 0 new texts, 0 requests; `db` tests `test_rerun_…`, `test_body_edit_…` |
+| 3 | Manual interruption | Step 6: first ingest resumed (51 cached → 19 embedded); re-ingest left the old index searchable |
+| 4 | Tests | Final code: 159 unit tests, 6 `db` tests (real Neon, fake embedder), 1 `slow` test (real tokenizer), all green |
+| 5 | `search` + sanity | itsdangerous sanity hit@5 = 5/5, MRR@10 = 1.00 (v3; v4 leaves Python identical) |
+| 6 | Summaries recorded | Step 9 tables (per-category chunks/tokens, distribution, windowed units, skips, tokens/min). "Line exceeds token cap" skips: **0** for all three repos |
+
+Final state:
+- All three repos are stored under CHUNKER_VERSION 4.
+- `m0_chunks` dropped; `spike/m0.py` is frozen (its docstring says so).
 
 ### M1 task list (build order)
 1. ✅ **Skeleton:** root `pyproject.toml` (editable install, package in `backend/codeask/`, pytest
@@ -224,7 +238,9 @@ Designed in a grilling session (3 rounds, 2026-11-01) with mentor review; decisi
      prose sits closer to an English question, so code dilutes the match slightly. It is still
      first and now holds the code; the `jsdoc_attach_across_blank` ablation will show whether
      this costs rank on harder questions.
-10. **Record** the results here and commit.
+10. ✅ **Record** the results here and commit. "Done when" checked item by item (table above);
+    the slow test had been silently skipping since the M0 clone was deleted. Its path now
+    follows the ingest clone, and it passes.
 
 ### Step 2 results: tree-sitter node types (spike/ts_smoke.py, 2026-11-01)
 All four grammars load in tree-sitter 0.26.0 (Python and JS grammars ABI 15; TypeScript and TSX

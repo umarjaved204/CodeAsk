@@ -1,5 +1,9 @@
 """M0 spike: prove the free tiers work end to end, and measure them.
 
+FROZEN: kept as the record of how the M0 numbers in PLAN.md were measured. Its `m0_chunks`
+table was dropped in the M1 cleanup (2026-11-02), so `ingest` would recreate it and `ask` /
+`sanity` only work after a fresh `ingest`. The real pipeline is `python -m codeask.*`.
+
 Throwaway code: one file, no abstractions, no tests. Every retry is capped.
 
 Subcommands (run from the project root with the venv active):

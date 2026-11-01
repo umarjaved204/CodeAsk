@@ -11,7 +11,11 @@ from helpers import check_invariants
 from codeask.chunker import ChunkSettings, chunk_file
 from codeask.filters import decode
 
-SIGNER = Path(__file__).resolve().parents[2] / "repos/itsdangerous/src/itsdangerous/signer.py"
+REPOS = Path(__file__).resolve().parents[2] / "repos"
+# The ingest clone (repos/<owner>__<name>), or an older plain clone.
+SIGNER = next((p for p in (REPOS / "pallets__itsdangerous/src/itsdangerous/signer.py",
+                           REPOS / "itsdangerous/src/itsdangerous/signer.py") if p.exists()),
+              REPOS / "pallets__itsdangerous/src/itsdangerous/signer.py")
 
 
 @pytest.mark.slow
@@ -23,7 +27,7 @@ def test_real_tokenizer_respects_the_cap():
     if not os.environ.get("VOYAGE_API_KEY"):
         pytest.skip("VOYAGE_API_KEY not set")
     if not SIGNER.exists():
-        pytest.skip("repos/itsdangerous not cloned")
+        pytest.skip("itsdangerous not cloned (run the ingest once)")
     client = voyageai.Client(api_key=os.environ["VOYAGE_API_KEY"], max_retries=0)
 
     def count(text):

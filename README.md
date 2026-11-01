@@ -10,9 +10,10 @@ command-line retrieval check. There is no chat, LLM answer or web UI yet. Milest
 decisions and measurements are in [PLAN.md](PLAN.md).
 
 - **M0 spike:** done. Free-tier limits measured, stack confirmed.
-- **M1 ingestion:** in progress. Clone, filter, chunk by syntax (tree-sitter for Python,
+- **M1 ingestion:** done. Clone, filter, chunk by syntax (tree-sitter for Python,
   JavaScript and TypeScript; heading-based sections for Markdown and reST; line windows
   otherwise), embed with Voyage `voyage-code-3`, store in Neon Postgres + pgvector.
+- **Next, M2:** a basic RAG chat (FastAPI + Next.js) with file and line citations.
 
 ## Setup
 
