@@ -1,0 +1,5 @@
+voyageai
+groq
+google-genai
+psycopg[binary]
+python-dotenv
