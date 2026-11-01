@@ -20,6 +20,8 @@ Portfolio project. Milestones and status live in [PLAN.md](PLAN.md).
   ideally with no credit card on file. Flag anything that would need a card or could bill.
 - Secrets go in `.env` only (gitignored). Never hardcode keys or commit them.
   Keep a `.env.example` with key names and no values.
+- A secret-scan pre-commit hook lives in `.githooks/`. After any fresh clone, enable it with
+  `git config core.hooksPath .githooks`.
 
 ## Planned stack (verify free-tier limits in M0 before relying on them)
 | Layer | Choice | Notes |

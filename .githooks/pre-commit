@@ -1,0 +1,41 @@
+#!/bin/sh
+# Secret scan: blocks commits that stage keys or .env files.
+# Prints file:line only, never the matched text.
+# Emergency bypass (avoid): git commit --no-verify
+
+# Neon password, Voyage, Groq, Gemini (new and old format), Postgres URL with a password.
+patterns='npg_[A-Za-z0-9]{12,}|(^|[^A-Za-z0-9])pa-[A-Za-z0-9_-]{20,}|gsk_[A-Za-z0-9]{20,}|AQ\.[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{35}|postgres(ql)?://[^:/[:space:]]+:[^@[:space:]]+@'
+
+fail=0
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+
+while IFS= read -r f; do
+  [ -z "$f" ] && continue
+  name=$(basename "$f")
+
+  # 1. No .env files, except .env.example.
+  case "$name" in
+    .env.example) ;;
+    .env|.env.*) echo "BLOCKED: $f is an env file (secrets belong only in an untracked .env)"; fail=1; continue ;;
+  esac
+
+  # 2. .env.example must have names only, no values.
+  if [ "$name" = ".env.example" ]; then
+    for n in $(git show ":$f" | grep -nE '^[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]' | cut -d: -f1); do
+      echo "BLOCKED: $f:$n has a value (.env.example must have names only)"; fail=1
+    done
+  fi
+
+  # 3. Known key formats anywhere in the staged version of the file (binary files skipped).
+  for n in $(git show ":$f" | grep -InE "$patterns" | cut -d: -f1); do
+    echo "BLOCKED: $f:$n looks like a secret"; fail=1
+  done
+done <<EOF
+$staged
+EOF
+
+if [ "$fail" -ne 0 ]; then
+  echo "Commit rejected by .githooks/pre-commit. Unstage with: git restore --staged <file>"
+  exit 1
+fi
+exit 0
