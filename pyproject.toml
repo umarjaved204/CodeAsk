@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "codeask"
+version = "0.1.0"
+description = "Chat with a GitHub codebase; answers cite files and lines."
+# 3.12+ for shutil.rmtree(onexc=...), used to delete clones with read-only .git files on Windows.
+requires-python = ">=3.12"
+# Dependencies are pinned in requirements.txt (runtime) and requirements-dev.txt (tests),
+# so there is one source of truth for versions.
+
+[tool.setuptools.packages.find]
+where = ["backend"]
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+markers = ["slow: uses the real Voyage tokenizer (downloaded on first run)"]
+# Slow tests are skipped by default; run them with: pytest -m slow
+addopts = "-m 'not slow'"
