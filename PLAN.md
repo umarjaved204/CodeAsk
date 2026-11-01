@@ -228,6 +228,17 @@ to Render once, and its cold-start time is recorded here.
 - Pick Render's **Ohio** region, next to Neon (US East 2), so DB round trips are milliseconds.
 - Reuse DB connections (pooling).
 
+**From the M1 step 6 review**
+- **Embedding dimension:** the table is `vector(1024)`. Gemini Embedding (or a smaller Voyage
+  `output_dimension`) uses other sizes. Decide before M3: one table per dimension, or
+  `vector` without a fixed size (no index possible) or a reduced common size.
+- **A `files` table** (repo, path, content) for `read_file` and the UI. Render's disk is
+  ephemeral, so the clone can't be the source of truth after a restart.
+- **Per-repo advisory lock** (`pg_advisory_xact_lock`), so two ingests of the same repo can't
+  interleave.
+- **Repo-size limits for user-supplied URLs:** a token cap from `count`, refused before any
+  embedding, plus clone size/time limits.
+
 ## [ ] M3 Eval harness
 Question set with expected files; hit rate and MRR baseline.
 Eval repo: **small in tokens** (about **60K tokens or less** after filtering), **pinned to a

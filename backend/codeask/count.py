@@ -25,6 +25,7 @@ class RepoChunks:
     chunks: list[tuple[str, Chunk]] = field(default_factory=list)  # (category, chunk)
     methods: Counter = field(default_factory=Counter)
     skipped: list[tuple[str, str]] = field(default_factory=list)  # filter + chunker skips
+    fallbacks: list[str] = field(default_factory=list)  # parse errors -> windows
 
 
 def chunk_repo(root: Path, count_tokens, include_tests=False, include_docs=False,
@@ -34,6 +35,8 @@ def chunk_repo(root: Path, count_tokens, include_tests=False, include_docs=False
     for f in scan.files:
         result = chunk_file(f.path, f.text, count_tokens, settings)
         out.methods[result.method] += 1
+        if result.method == "fallback":
+            out.fallbacks.append(f.path)
         if result.skip_reason:
             out.skipped.append((f.path, result.skip_reason))
         out.chunks.extend((f.category, c) for c in result.chunks)
@@ -91,6 +94,8 @@ def report(name: str, rc: RepoChunks) -> str:
         lines.append(f"chunk tokens: mean {mean(sizes):.0f}, median {median(sizes):.0f}, "
                      f"p95 {p95}, max {sizes[-1]}, under {config.MIN_TOKENS}: {small}")
     lines.append(f"methods: {dict(rc.methods)}")
+    if rc.fallbacks:
+        lines.append(f"parse-error fallbacks ({len(rc.fallbacks)}): {', '.join(rc.fallbacks)}")
     excluded = dict(rc.scan.excluded)
     lines.append(f"excluded (category not requested): {excluded or 'none'}; "
                  f"ignored file types: {rc.scan.ignored}")

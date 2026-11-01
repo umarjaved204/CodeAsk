@@ -40,6 +40,9 @@ from tree_sitter import Language, Parser
 from codeask import config
 
 CountTokens = Callable[[str], int]
+# Bump when chunking output changes for the same input; recorded in repos.settings so M3
+# results can be traced to the chunker that produced them.
+CHUNKER_VERSION = "1"
 
 LANG_BY_EXT = {".py": "python"}
 _GRAMMARS = {"python": tspy.language}

@@ -1,6 +1,35 @@
 """Shared test helpers (imported by test modules; pytest puts this folder on sys.path)."""
 
 
+import hashlib
+import random
+
+
+class FakeEmbedder:
+    """Deterministic stand-in for VoyageEmbedder: same text -> same 1024-d vector, no network.
+    Records every text it embeds. fail_after=N raises KeyboardInterrupt on call N+1, which
+    simulates Ctrl+C mid-ingest."""
+
+    space = "fake:1024:document"
+
+    def __init__(self, fail_after=None):
+        self.fail_after = fail_after
+        self.calls = 0
+        self.texts = []
+
+    def embed(self, texts, input_type="document"):
+        if self.fail_after is not None and self.calls >= self.fail_after:
+            raise KeyboardInterrupt
+        self.calls += 1
+        self.texts.extend(texts)
+        return [fake_vector(t) for t in texts]
+
+
+def fake_vector(text, dim=1024):
+    rng = random.Random(hashlib.sha256(text.encode("utf-8")).digest())
+    return [rng.uniform(-1, 1) for _ in range(dim)]
+
+
 def fake_count(text: str) -> int:
     """Stand-in tokenizer: ~4 chars per token. Fast, deterministic, no download."""
     return (len(text) + 3) // 4
