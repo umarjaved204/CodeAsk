@@ -42,10 +42,28 @@ Next.js chat UI + FastAPI endpoint; answers cite files and lines.
 answer whose citations (file + line range) point to the correct code. The backend is deployed
 to Render once, and its cold-start time is recorded here.
 
+Notes from M0:
+- Number every line of the retrieved chunks with its **absolute file line number** (not 1..n per
+  chunk), so citations don't depend on the model counting lines.
+- Pick Render's **Ohio** region, next to Neon (US East 2), so DB round trips are milliseconds.
+- Apply the capacity design (see "Capacity" under M0 results): bounded FIFO queue for Voyage,
+  queries before ingestion, "busy, try again" past ~45 s, queue position in the UI.
+
 ## [ ] M3 Eval harness
 Question set with expected files; hit rate and MRR baseline.
-Eval repo: a mid-sized repo I know well, **pinned to a specific commit SHA** so results are
-reproducible. About **30 questions**, each with its known correct file(s).
+Eval repo: **small in tokens** (about **60K tokens or less** after filtering), **pinned to a
+specific commit SHA** so results are reproducible. About **30 questions**, each with its known
+correct file(s).
+- Why small: every variant (chunking strategy, tests/docs on or off, embedding model) needs a
+  full re-embed at 3 requests/min, so a 60K repo costs ~7–12 min per variant.
+- It should be a repo the model has **not memorized**, ideally one I know well (so I can write
+  questions with known answers).
+- TableTalk is 454K tokens (186K source). Before considering it, inspect what inflates its
+  source tokens (likely generated or data-like files).
+- The M0 sanity result (5/5, MRR 1.0) shows the naive baseline is **saturated** on
+  itsdangerous with easy questions, so it can't distinguish chunking strategies. The eval needs
+  harder questions (no echoed identifiers) on a less trivial repo.
+- Embedding comparison: Voyage voyage-code-3 vs **Gemini Embedding** (see the decision below).
 
 **Done when:** one command runs retrieval over the ~30-question set on the pinned repo and prints
 hit rate@k and MRR. The baseline numbers are recorded in this file.
@@ -57,6 +75,13 @@ Tools `search_code`, `read_file`, `list_dir`; LLM loops until it can answer.
 side by side on the same question set, with the results recorded here. The comparison reports
 **answer quality, hit rate, latency and LLM calls per question**. LLM calls matter because
 Groq's free tier is rate-limited, so an agent that needs 6 calls per answer has a real cost.
+
+Notes from M0:
+- The M0 tool-test results are **not a reliability rate**. qwen's 5/5 is one sample repeated
+  5 times (temperature 0, and the question names "URL-safe"). The real rate comes from running
+  the ~30 different M3 questions.
+- Agent mode runs at ~1 question/min live (Groq 8K tokens/min). Decide in M4 whether it is a
+  **live feature** or an **eval/replay feature** (pre-recorded runs shown in the UI).
 
 ## [ ] M5 Voice input
 Browser Web Speech API, speech-to-text only, into the chat box.
@@ -108,13 +133,18 @@ _Render cold start is measured in M2, when FastAPI is first deployed._
 ### Token counts after file filtering
 Tokens after chunking (overlap included), counted locally with the voyage-code-3 tokenizer.
 
-| Repo | Source tokens (files) | Tests tokens (files) | Docs tokens (files) | Total | Est. ingest at no-card limits |
-|---|---|---|---|---|---|
-| itsdangerous | 12,010 (10) | 4,281 (5) | 4,093 (9) | 20,384 | 2.0 min (source only 1.2) |
-| psf/requests | 64,932 (22) | 19,721 (13) | 31,423 (20) | 116,076 | 11.6 min (source only 6.5) |
-| pallets/flask | 98,412 (37) | 65,711 (46) | 122,914 (79) | 287,037 | 28.7 min (source only 9.8) |
-| expressjs/express | 34,124 (50) | 138,188 (92) | 4,153 (3) | 176,465 | 17.6 min (source only 3.4) |
-| umarjaved204/TableTalk | 185,846 (97) | 200,252 (78) | 67,768 (12) | 453,866 | 45.4 min (source only 18.6) |
+Ingest estimates (all / source only). **Correction:** the original estimates assumed the
+documented 10K tokens/min, which is never reached. Measured throughput was **~5K tokens/min**
+(partly due to the 429 stall). With a pacer that adds a few seconds of margin, real throughput
+is probably **~8–9K tokens/min** (3 requests × ≤3K tokens). That must be re-measured in M1.
+
+| Repo | Source tokens (files) | Tests tokens (files) | Docs tokens (files) | Total | Ingest at 5K/min (measured) | Ingest at ~8.5K/min (with margin, to verify) |
+|---|---|---|---|---|---|---|
+| itsdangerous | 12,010 (10) | 4,281 (5) | 4,093 (9) | 20,384 | 4.1 min (source 2.4) | 2.4 min (source 1.4) |
+| psf/requests | 64,932 (22) | 19,721 (13) | 31,423 (20) | 116,076 | 23.2 min (source 13.0) | 13.7 min (source 7.6) |
+| pallets/flask | 98,412 (37) | 65,711 (46) | 122,914 (79) | 287,037 | 57.4 min (source 19.7) | 33.8 min (source 11.6) |
+| expressjs/express | 34,124 (50) | 138,188 (92) | 4,153 (3) | 176,465 | 35.3 min (source 6.8) | 20.8 min (source 4.0) |
+| umarjaved204/TableTalk | 185,846 (97) | 200,252 (78) | 67,768 (12) | 453,866 | 90.8 min (source 37.2) | 53.4 min (source 21.9) |
 
 Observations: only itsdangerous fits "≤ 30K tokens" with everything included. Source-only
 filtering brings express (34K) close to it. Tests dominate express (78%) and TableTalk (44%);
@@ -130,8 +160,31 @@ source, a filter refinement for M1.
 
 **Outcome:** keep Voyage, no card. Design = pre-indexed featured repos + small on-demand repos +
 file filtering + query-embedding cache, **plus a FIFO queue in the backend for Voyage calls**
-(the 6/60 s test showed independent retries are unfair and can fail). Fallback if this proves
-too slow: Gemini Embedding 1 (100 RPM / 30K TPM / 1,000 RPD).
+(the 6/60 s test showed independent retries are unfair and can fail).
+
+**Gemini Embedding** (100 RPM / 30K TPM / 1,000 RPD) is a **candidate to compare in M3**, not
+only a fallback. Its rate limits are far more generous; the question is retrieval quality on
+code. Caveats:
+- Switching models means **re-embedding everything** (vectors from different models are not
+  comparable). The M1 schema keeps embeddings separate from chunks, so no re-chunking is needed.
+- Gemini's free tier may use prompts to train Google's models. Using it in the live app would
+  need an **explicit decision** and a **privacy note in the README**.
+
+### Capacity (what the free tiers add up to)
+The whole app is a **~2–3 questions/min demo**:
+- Voyage: 3 requests/min shared by every visitor (1 query = 1 request, unless cached).
+- Groq plain RAG: ~3K tokens per question against 8K tokens/min → ~2.5 questions/min.
+- Agent mode: ~1 question/min (tool turns resend the whole history).
+
+Design consequences (M2 onward):
+- **Bounded FIFO queue** in the backend for Voyage calls. If the estimated wait exceeds ~45 s,
+  respond "busy, try again" instead of queueing.
+- Show the **queue position** in the UI.
+- **Pre-cache embeddings for the suggested questions** on featured repos (no Voyage call needed).
+- **Queries have priority over ingestion** in the shared Voyage queue. Ingestion uses at most
+  2 of the 3 slots per window, so a visitor's question never waits behind a whole repo.
+- "Paste any repo" really means **tiny repos or featured repos**. Before starting an ingest, the
+  UI shows the estimated ingest time (from `count`).
 
 ### Other M0 decisions
 - **LLM:** `qwen/qwen3.8-27b` (tool tests 10/10 clean vs gpt-oss-120b 0/5 + 0/2). Model id in config.
@@ -139,13 +192,21 @@ too slow: Gemini Embedding 1 (100 RPM / 30K TPM / 1,000 RPD).
   tokens) is the default in M2; set `max_tokens` and ask for short answers; agent turns in M4
   must be lean.
 - **Neon:** cold start ≈ 0.5 s, a non-issue. Reuse connections (pooling) in M2. Locally, pin IPv4.
-- **M2 context format:** prefix each line of retrieved chunks with its line number, so citations
-  don't depend on the model counting lines.
+- **M2 context format:** prefix each line of retrieved chunks with its absolute file line
+  number, so citations don't depend on the model counting lines.
 
-### Fallback embedding candidates (free-tier limits as shown in dashboards)
+### Embedding candidates (free-tier limits as shown in dashboards)
 | Option | RPM | TPM | RPD | Free pool | Notes |
 |---|---|---|---|---|---|
 | Voyage voyage-code-3, no card | 3 | 10K | – | 200M tokens | Code-specific. First 9K-token request 429'd 4× (no Retry-After) |
-| Gemini Embedding 1 (AI Studio, free tier) | 100 | 30K | 1,000 | ongoing | General-purpose; free-tier data may be used by Google |
+| Gemini Embedding 1 (AI Studio, free tier) | 100 | 30K | 1,000 | ongoing | General-purpose; free-tier data may be used by Google. Compare in M3 |
 
-Notes:
+### Carry-overs (into M1 and later)
+- **Pacer margin:** add a few seconds to the 60 s window. Voyage seems to count from request
+  arrival or completion, not from our send time.
+- **Filtering:** exclude config-like `.py` files outside the package (e.g. `docs/conf.py`).
+- **Gemini latency (148–224 s):** network ruled out. `curl -4` and `curl -6` to
+  generativelanguage.googleapis.com both finish in ~0.4 s (connect ~0.07 s, TLS ~0.24 s).
+  Next suspects: hidden SDK retries on 429/503, model "thinking", or free-tier queueing.
+  Diagnose before the M3 eval: time a raw REST call, disable SDK retries, log status codes and
+  rate-limit headers, and try a fixed model id with thinking off.
