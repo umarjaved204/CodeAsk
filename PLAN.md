@@ -2,7 +2,7 @@
 
 Status key: [ ] not started · [~] in progress · [x] done
 
-## [~] M0 Spike
+## [x] M0 Spike
 One throwaway script: embed a small repo with Voyage → store in Neon pgvector → retrieve
 chunks → answer with Groq, including one tool call. No UI.
 Goal: prove every free tier works without a credit card; record rate limits and cold starts.
@@ -121,7 +121,7 @@ filtering brings express (34K) close to it. Tests dominate express (78%) and Tab
 docs dominate flask (43%). `.py` files outside the package (e.g. `docs/conf.py`) are counted as
 source, a filter refinement for M1.
 
-### Voyage decision rule, applied (proposed, awaiting my confirmation)
+### Voyage decision rule, applied (confirmed 2026-11-01)
 | Condition | Result |
 |---|---|
 | Small repo (≤ 30K tokens) ingests in ~5 min | Borderline: measured ~5K tokens/min, so 30K ≈ 6 min. A pacer with a few seconds of margin should reach ~9K tokens/min (≈ 3.5 min) |
