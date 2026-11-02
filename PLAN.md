@@ -348,7 +348,7 @@ Pre-M2 fixes (done before the spike):
   `pip install -e . --no-deps`, `tree_sitter`, `tokenizers` and `voyageai` are absent, and
   `python -m codeask.search` returned `Signer > derive_key` first (0.377; 0.378 via the SDK).
 
-### [ ] M2-0 Spike: hosting facts before design
+### [x] M2-0 Spike: hosting facts before design
 Render (free web service), running a throwaway `spike/m2/` FastAPI app on the API
 requirements:
 - card-free signup? Current free-tier terms. Reported (third-party, 2026-11-02): 512 MB RAM,
@@ -474,9 +474,13 @@ API exposes no ingestion route.
 - **The browser calls the backend directly,** with CORS locked to my origin. Long queue waits
   don't go through Vercel functions (their timeouts and invocation limits).
 - **No keep-alive pings** (Render treats them as abuse). Handle cold starts in the UI.
+- **Bandwidth:** the citation view gets the cited lines plus a little context, never whole
+  files (100 KB files x 1,000 clicks/day ≈ 3 GB/month, too close to a 5 GB cap). Answers alone
+  stay ≈ 1.5 GB/month even at the 1,000/day Groq cap.
 
 ### M2-0 results
-_Fill in during the spike._
+**Outcome (2026-11-02):** Render works for the backend (card on file, see below), Vercel for
+the frontend. Northflank was untestable (signups disabled); Koyeb was not needed.
 
 **Local run (2026-11-02, home network → Neon Ohio, not representative of Render):**
 `/search` returned `Signer > derive_key` first; Neon connect ~1.6 s warm, 7.7 s on the first
@@ -488,21 +492,22 @@ return errors as JSON from exception handlers inside the CORS layer, so the UI c
 
 | Item | Result |
 |---|---|
-| Render: signup without a card? | |
-| Render: free-tier terms checked (date, 2026 plan change, bandwidth) | |
-| Render: region / Python version | |
-| Render: cold start after 15+ min idle (browser, time to first byte) | |
-| Render: warm request time | |
-| Render: memory (RSS) at start / after a real search | |
-| Render: 60 s request from the browser | |
-| Render → Neon: connect / query time (warm Neon) | |
-| Render → Neon: first connect with Neon suspended (both wake on one request?) | |
-| Render: bandwidth allowance / what happens when over | |
-| CORS locked to the Vercel origin (other origin refused?) | |
-| Render: logs free of secrets | |
-| Vercel: signup without a card? Hobby terms | |
-| Vercel page → Render from the browser | |
-| Northflank: card asked at signup? sleeps? free limits | |
+| Render: signup without a card? | **No (2026-11-02):** GitHub signup worked, but clicking Deploy on a Free web service asked for a card. Third-party "no card" reports are out of date. **Decision:** Northflank signups were disabled, so I added a card on Render. Only usage beyond the free limits (e.g. bandwidth) can bill; keep the instance type Free, add no paid services, and keep responses small (see the bandwidth note in M2 inputs) |
+| Render: free-tier terms checked (date, 2026 plan change, bandwidth) | Checked 2026-11-02 on the Billing page (see bandwidth row). Dashboard banner: spin-down "can delay requests by 50 seconds or more" |
+| Render: region / Python version | Ohio; Python **3.13.0** via `PYTHON_VERSION` (confirmed in the build log). First deploy 54.9 s. Auto-deploy **off** (saves build minutes). URL: `https://codeask-spike.onrender.com` |
+| Render: cold start after 15+ min idle (browser, time to first byte) | **24.3 s** (20.6 min idle, `/db` from the Vercel page; Neon's share 0.66 s, so Render's wake ≈ 23 s); `/health` right after: 0.31 s. Earlier accidental run after ~35 min idle: ~18–23 s. Render's banner says "50 seconds or more"; we measured about half, twice. UX idea for the grilling: the page calls `/health` on load (a real visitor, so not a keep-alive ping) and shows "waking up the server" after a few seconds |
+| Render: warm request time | `/health` 0.38 s first byte from my PC (mostly the round trip to Ohio). `/search` 1.6 s end to end: connect 29 ms + **Voyage embed 1,223 ms** + pgvector search 76 ms |
+| Render: memory (RSS) at start / after a real search | **54 MB / 78 MB** of 512 MB. Plenty of headroom for a connection pool and an in-memory cache |
+| Render: 60 s request from the browser | **Works:** `/slow?s=60` returned 200 after 60.5 s (Chrome, localhost:3000 → Render). A second identical GET sent 8 s later took 80.8 s: Chrome's cache lock holds an identical GET up to 20 s. So `/ask` is a **POST**. `/boom` again shows "Failed to fetch" (no CORS header on the 500) |
+| Render → Neon: connect / query time (warm Neon) | fresh connect **20 ms**, `SELECT 1` 1 ms, chunk count 3 ms, vector search 76 ms (local: ~1.6 s / 825 ms) |
+| Render → Neon: first connect with Neon suspended (both wake on one request?) | Neon suspends after ~5 min idle. First connects after idle: **658 ms** and **3,210 ms** (warm: 20 ms). So the first question after a quiet spell can pay Render's wake **plus** Neon's; measured together in the cold-start test |
+| Render: bandwidth allowance / what happens when over | **Billing page (2026-11-02):** per workspace per month: 750 free instance-hours, **5 GB bandwidth** counting HTTP responses **and service-initiated traffic** (our calls to Voyage/Neon/Groq), **500 pipeline (build) minutes**, 25 services, 2 custom domains. "You will be charged for usage beyond your included limits." Auto-deploy on every push would spend build minutes: keep it off or filter paths |
+| CORS locked to the Vercel origin (other origin refused?) | **Works:** `Origin: http://localhost:3000` gets `access-control-allow-origin`, `https://evil.example` gets no CORS header. CORS only stops other *websites* reading replies; curl and scripts still get through, so abuse control is M2c's job (per-IP limits, daily cap), not CORS. Vercel origin still to add |
+| Render: logs free of secrets | Build and startup logs: **no secrets**. Render sets `WEB_CONCURRENCY=1` (one worker): the in-process Voyage limiter needs exactly one, so pin it explicitly in M2. Access logs show client IP and full URL, so questions must go in a POST body, not the query string. Render probes `HEAD /` and `GET /` (404 in the spike), so the real API should answer `/`. `/boom` traceback: file paths and code lines only, no values. Log search (24 h) for `npg_`, `postgresql://`, `VOYAGE`, `DATABASE_URL`, `pa-`: **no hits**. M2a: send the browser a generic error, never exception text (psycopg errors name host and user) |
+| Vercel: signup without a card? Hobby terms | **No card asked (2026-11-02).** GitHub signup, Hobby plan. GitHub app limited to CodeAsk. Root dir `spike/m2/web`, first deploy 21 s |
+| Vercel page → Render from the browser | **Works** from `https://codeask-pi.vercel.app`: `/health` 0.66 s, `/db` 4.5 s (Neon waking), `/search` 1.8 s (embed 1.37 s), same top result. Gotcha: Render env changes only apply with a deploy ("Save only" does nothing to the running service) |
+| CORS with the Vercel origin | `ALLOWED_ORIGINS=http://localhost:3000,https://codeask-pi.vercel.app`: both get the header, `evil.example` doesn't |
+| Northflank: card asked at signup? sleeps? free limits | **Blocked (2026-11-02):** "sign up is disabled right now" (GitHub sign-in errored first). Card question untested |
 
 ## [ ] M3 Eval harness
 Question set with expected files; hit rate and MRR baseline.
