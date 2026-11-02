@@ -27,7 +27,9 @@ Portfolio project. Milestones, decisions and measured results live in [PLAN.md](
 - Use karpathy-guidelines whenever writing or changing code (think first, keep it simple,
   surgical changes, verifiable goals).
 - Use systematic-debugging when something fails unexpectedly.
-- Use frontend-design and webapp-testing only from M2b on.
+- Use frontend-design only from M2b on (visual direction). Use web-design-guidelines and
+  vercel-react-best-practices ONLY as review passes (end of slice 3, again in slice 6): list
+  findings, I decide what to fix. Browser tests use `@playwright/test` directly.
 - Don't use test-driven-development for DB or CLI glue; tests are written where PLAN.md says.
 - If a skill tells you to run commands, still give them to me to run. The working-style rules
   above win.

@@ -538,9 +538,70 @@ code panel (escaped text, line numbers, cited range highlighted, "view on GitHub
 "unverified" citations, follow-up chips (Q8), "each question is answered on its own" note,
 `aria-live` status (Q17).
 
-**Done when:** locally I can pick a repo, ask, and click a citation that shows the right
-lines in the panel; Playwright (mocked backend) passes: ask → answer → citation click,
-unverified citation, injection render test (Q18).
+**Design first (addendum, 2026-11-03):** an excellent, distinctive design, not a generic
+AI-looking one. In this order, before any component code:
+1. **Design brief:** one /grill-me round (≤ 6 neutral questions): audience (recruiters,
+   interviewers, developers), tone, 3 reference sites I admire, light/dark default, density,
+   any brand/wordmark. The brief is written here. Product requirements come from the decision
+   log:
+   - citations as numbered chips;
+   - a code panel with line numbers and the cited range highlighted;
+   - unverified citations visibly different;
+   - a calm ungrounded state;
+   - an honest "about this demo" note (featured repos, rate-limited, pre-generated answers
+     labelled).
+2. **Direction:** with frontend-design, 2–3 distinct visual directions as short written specs,
+   each with a static HTML mock of the main screen, rendered to PNGs with Playwright (I run
+   it), read and presented. I pick; the decision and the rejected options are recorded. If
+   frontend-design alone gives generic results, say so; ui-ux-pro-max is then considered (its
+   bundled Python script reviewed first).
+3. **Design tokens:**
+   - colour (light and dark), type scale, spacing, radii and shadows, as Tailwind theme / CSS
+     variables;
+   - text contrast checked against WCAG AA with a small script;
+   - fonts via `next/font`, self-hosted (no runtime requests to font services);
+   - code in a monospace font.
+4. **State inventory:** empty, loading, waking, queued, busy, daily cap, error, ungrounded,
+   unverified citations, very long answer, long code lines, many citations, mobile. Every
+   state is designed, not only the happy path. Waking, queued, busy and daily cap are backend
+   features of slices 4 and 6: here they exist as mocks, with a provisional response shape
+   that slice 4 confirms.
+5. **Visual review loop:**
+   - A Playwright script, using the same mocks as the tests, screenshots every state at
+     390×844, 768×1024 and 1440×900, light and dark, into a gitignored
+     `frontend/design-review/`.
+   - I run it; Claude reads the PNGs, critiques them against the brief (hierarchy, spacing,
+     contrast, overflow, truncation) and fixes.
+   - 2–3 rounds, then I look and decide.
+6. **Accessibility in tests:**
+   - `@axe-core/playwright` on every state;
+   - a keyboard-only flow (ask, open a citation, close the panel);
+   - visible focus;
+   - `prefers-reduced-motion` respected;
+   - `aria-live` status messages;
+   - meaning never carried by colour alone (verified and unverified chips also differ by icon
+     and text).
+7. **Review passes:** web-design-guidelines and vercel-react-best-practices are used ONLY as
+   review passes, at the end of slice 3 and again in slice 6. They list findings; I decide
+   which to fix; only high-impact items relevant to this small app are applied.
+   web-design-guidelines fetches its rules at run time (from
+   `raw.githubusercontent.com/vercel-labs/web-interface-guidelines`).
+
+Constraints: Tailwind only, no component library, no extra UI dependencies without asking; the
+Q17 rules stand (`react-markdown` without raw HTML, no model links or images). Open design
+question for the build plan: the code panel needs the cited lines, but `/ask` returns no
+context today (`public_view()` withholds it). Q5 says send only the cited ranges, never whole
+files.
+
+**Done when:**
+- locally I can pick a repo, ask, and click a citation that shows the right lines in the
+  panel;
+- Playwright (mocked backend) passes: ask → answer → citation click, unverified citation,
+  injection render test (Q18);
+- I have approved a direction and the tokens;
+- every state in the inventory has a reviewed screenshot;
+- axe finds no serious violations;
+- the web-design-guidelines review is done and I have decided on its findings.
 
 ### [ ] Slice 4 (M2c): queue and abuse controls
 One FIFO over `/ask` paced by Groq headers + own output-token accounting (Q10), position and
