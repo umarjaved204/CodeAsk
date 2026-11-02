@@ -1,5 +1,7 @@
 # What the API server needs at runtime: query embedding (plain HTTP) + Neon.
 # No tree-sitter, no tokenizer, no voyageai SDK: chunking and token counting are ingestion jobs.
+fastapi==0.162.0
+uvicorn==0.54.0
 psycopg[binary]==3.3.6
 python-dotenv==1.2.4
 requests==2.34.2

@@ -384,7 +384,13 @@ Redeploy the spike with `/ip`; call it with and without a forged `X-Forwarded-Fo
 client can forge it (Q6b decided in the log), and whether a 120 s request survives Render's
 proxy (if not, the busy threshold drops below the proven limit).
 
-### [ ] Slice 1 (M2a): thin vertical slice, local
+### [x] Slice 1 (M2a): thin vertical slice, local
+**Done (2026-11-02):** sanity questions 5/5 with a valid citation in the expected file (model
+comparison, strict); 3 permalinks checked by hand at `672971d…` (right file and lines);
+the local page (`frontend/`, `POST /ask` on `codeask.api.app`) shows answers with citation
+chips (prompt v2: e.g. 4–5 citations, all valid); 199 tests pass; comparison and decision in
+the decision log (Q15a–e).
+
 Retrieve → simple pack with absolute line numbers → Groq → parse `[path:start-end]` →
 validate → permalinks at the stored SHA, for one featured repo (itsdangerous). Build order
 (mentor review, 2026-11-02):
