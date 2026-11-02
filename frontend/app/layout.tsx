@@ -28,6 +28,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       className={`${newsreader.variable} ${instrumentSans.variable} ${fragmentMono.variable}`}
     >
       <head>
+        {/* The one allowed exception to react/no-danger: a static constant (no user or model
+            text) that must run before first paint. A strict CSP would need its hash or a
+            nonce (PLAN.md slice 3, build step 3). */}
+        {/* eslint-disable-next-line react/no-danger -- static theme script, see above */}
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className="min-h-dvh bg-page font-ui text-text antialiased">{children}</body>

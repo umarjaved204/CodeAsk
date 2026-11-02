@@ -81,7 +81,8 @@ class GroqClient:
         return {m["id"] for m in response.json()["data"]}
 
     def chat(self, messages: list[dict], max_tokens: int = config.ANSWER_MAX_TOKENS) -> Reply:
-        body = {"model": self.model, "messages": messages, "temperature": 0,
+        body = {"model": self.model, "messages": messages,
+                "temperature": config.ANSWER_TEMPERATURE,
                 "max_completion_tokens": max_tokens,
                 **config.GROQ_MODEL_OPTIONS.get(self.model, {})}
         for attempt in range(config.GROQ_MAX_RETRIES + 1):

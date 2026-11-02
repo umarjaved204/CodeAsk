@@ -1,0 +1,140 @@
+{
+ "question": "How does it support rotating to a new secret key while old keys still work?",
+ "repo": "pallets/itsdangerous",
+ "repo_url": "https://github.com/pallets/itsdangerous",
+ "commit_sha": "672971d66a2ef9f85151e53283113f33d642dabd",
+ "generated_at": "2026-11-02T21:36:45+00:00",
+ "model": "qwen/qwen3.8-27b",
+ "prompt_version": 3,
+ "generation": {
+  "temperature": 0,
+  "max_completion_tokens": 600,
+  "model_options": {
+   "reasoning_effort": "none"
+  }
+ },
+ "packer": {
+  "retrieve_k": 15,
+  "budget": 2000,
+  "per_file_cap": null,
+  "merge_max_gap_lines": 5
+ },
+ "usage": {
+  "queue_time": 0.004338144,
+  "prompt_tokens": 2604,
+  "prompt_time": 0.184548657,
+  "completion_tokens": 382,
+  "completion_time": 0.724035314,
+  "total_tokens": 2986,
+  "total_time": 0.908583971
+ },
+ "retries_429": 0,
+ "attempt": 2,
+ "attempt_note": "Attempt 1 (2026-11-03, the slice 2 timing run, same prompt v3) was printed, not saved: 7/7 citations valid.",
+ "grade": {
+  "correct": "correct",
+  "grounded": "yes",
+  "citations_valid": "7/7 strict",
+  "by": "Umar Javed",
+  "date": "2026-11-03",
+  "note": "Every claim checked against the four supplied blocks (spot-checked the verify_signature loop, the \"oldest to newest\" comment and the secret_key property). The answer explains the mechanism fully but omits the practical rotation step (add the new key last, remove old ones later), so it is slightly incomplete. Attempts 1 and 2 differ only in minor ways, not materially (same claims; the closing paragraph is dropped and citation 5 is broader)."
+ },
+ "response": {
+  "grounded": true,
+  "answer": "The library supports key rotation by accepting an iterable of secret keys and storing them as a list ordered from oldest to newest.\n\n1.  **Key Storage**: Both `Signer` and `Serializer` accept `secret_key` as a string, bytes, or an iterable. The helper function `_make_keys_list` converts this into a `list[bytes]` stored in `self.secret_keys` [1](cite:1). The documentation explicitly states this list is ordered \"from oldest to newest\" [2](cite:2).\n\n2.  **Signing**: When signing data, the system uses the newest key. The `secret_key` property returns the last item in the list (`self.secret_keys[-1]`), which is used by default in `derive_key` [3](cite:3) [4](cite:4).\n\n3.  **Verification**: When verifying a signature, the system iterates through the keys in reverse order (newest to oldest). The `verify_signature` method loops through `reversed(self.secret_keys)`, deriving a key for each and checking if the signature matches. It returns `True` as soon as a valid key is found [5](cite:5). This allows old signatures to remain valid as long as their corresponding key is still in the list.\n\n4.  **Serializer Support**: The `Serializer` class implements the same logic, storing `secret_keys` via `_make_keys_list` and providing a `secret_key` property that returns the newest key [6](cite:6) [7](cite:7).",
+  "citations": [
+   {
+    "n": 1,
+    "path": "src/itsdangerous/signer.py",
+    "start": 67,
+    "end": 73,
+    "valid": true,
+    "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L67-L73",
+    "block": 0
+   },
+   {
+    "n": 2,
+    "path": "src/itsdangerous/signer.py",
+    "start": 138,
+    "end": 142,
+    "valid": true,
+    "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L138-L142",
+    "block": 1
+   },
+   {
+    "n": 3,
+    "path": "src/itsdangerous/signer.py",
+    "start": 175,
+    "end": 180,
+    "valid": true,
+    "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L175-L180",
+    "block": 1
+   },
+   {
+    "n": 4,
+    "path": "src/itsdangerous/signer.py",
+    "start": 195,
+    "end": 196,
+    "valid": true,
+    "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L195-L196",
+    "block": 1
+   },
+   {
+    "n": 5,
+    "path": "src/itsdangerous/signer.py",
+    "start": 227,
+    "end": 242,
+    "valid": true,
+    "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L227-L242",
+    "block": 2
+   },
+   {
+    "n": 6,
+    "path": "src/itsdangerous/serializer.py",
+    "start": 203,
+    "end": 208,
+    "valid": true,
+    "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/serializer.py#L203-L208",
+    "block": 3
+   },
+   {
+    "n": 7,
+    "path": "src/itsdangerous/serializer.py",
+    "start": 236,
+    "end": 241,
+    "valid": true,
+    "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/serializer.py#L236-L241",
+    "block": 3
+   }
+  ],
+  "blocks": [
+   {
+    "path": "src/itsdangerous/signer.py",
+    "start": 67,
+    "end": 73,
+    "content": "def _make_keys_list(\n    secret_key: str | bytes | cabc.Iterable[str] | cabc.Iterable[bytes],\n) -> list[bytes]:\n    if isinstance(secret_key, (str, bytes)):\n        return [want_bytes(secret_key)]\n\n    return [want_bytes(s) for s in secret_key]  # pyright: ignore"
+   },
+   {
+    "path": "src/itsdangerous/signer.py",
+    "start": 129,
+    "end": 213,
+    "content": "    def __init__(\n        self,\n        secret_key: str | bytes | cabc.Iterable[str] | cabc.Iterable[bytes],\n        salt: str | bytes | None = b\"itsdangerous.Signer\",\n        sep: str | bytes = b\".\",\n        key_derivation: str | None = None,\n        digest_method: t.Any | None = None,\n        algorithm: SigningAlgorithm | None = None,\n    ):\n        #: The list of secret keys to try for verifying signatures, from\n        #: oldest to newest. The newest (last) key is used for signing.\n        #:\n        #: This allows a key rotation system to keep a list of allowed\n        #: keys and remove expired ones.\n        self.secret_keys: list[bytes] = _make_keys_list(secret_key)\n        self.sep: bytes = want_bytes(sep)\n\n        if self.sep in _base64_alphabet:\n            raise ValueError(\n                \"The given separator cannot be used because it may be\"\n                \" contained in the signature itself. ASCII letters,\"\n                \" digits, and '-_=' must not be used.\"\n            )\n\n        if salt is not None:\n            salt = want_bytes(salt)\n        else:\n            salt = b\"itsdangerous.Signer\"\n\n        self.salt = salt\n\n        if key_derivation is None:\n            key_derivation = self.default_key_derivation\n\n        self.key_derivation: str = key_derivation\n\n        if digest_method is None:\n            digest_method = self.default_digest_method\n\n        self.digest_method: t.Any = digest_method\n\n        if algorithm is None:\n            algorithm = HMACAlgorithm(self.digest_method)\n\n        self.algorithm: SigningAlgorithm = algorithm\n\n    @property\n    def secret_key(self) -> bytes:\n        \"\"\"The newest (last) entry in the :attr:`secret_keys` list. This\n        is for compatibility from before key rotation support was added.\n        \"\"\"\n        return self.secret_keys[-1]\n\n    def derive_key(self, secret_key: str | bytes | None = None) -> bytes:\n        \"\"\"This method is called to derive the key. The default key\n        derivation choices can be overridden here. Key derivation is not\n        intended to be used as a security method to make a complex key\n        out of a short password. Instead you should use large random\n        secret keys.\n\n        :param secret_key: A specific secret key to derive from.\n            Defaults to the last item in :attr:`secret_keys`.\n\n        .. versionchanged:: 2.0\n            Added the ``secret_key`` parameter.\n        \"\"\"\n        if secret_key is None:\n            secret_key = self.secret_keys[-1]\n        else:\n            secret_key = want_bytes(secret_key)\n\n        if self.key_derivation == \"concat\":\n            return t.cast(bytes, self.digest_method(self.salt + secret_key).digest())\n        elif self.key_derivation == \"django-concat\":\n            return t.cast(\n                bytes, self.digest_method(self.salt + b\"signer\" + secret_key).digest()\n            )\n        elif self.key_derivation == \"hmac\":\n            mac = hmac.new(secret_key, digestmod=self.digest_method)\n            mac.update(self.salt)\n            return mac.digest()\n        elif self.key_derivation == \"none\":\n            return secret_key\n        else:\n            raise TypeError(\"Unknown key derivation method\")"
+   },
+   {
+    "path": "src/itsdangerous/signer.py",
+    "start": 227,
+    "end": 242,
+    "content": "    def verify_signature(self, value: str | bytes, sig: str | bytes) -> bool:\n        \"\"\"Verifies the signature for the given value.\"\"\"\n        try:\n            sig = base64_decode(sig)\n        except Exception:\n            return False\n\n        value = want_bytes(value)\n\n        for secret_key in reversed(self.secret_keys):\n            key = self.derive_key(secret_key)\n\n            if self.algorithm.verify_signature(key, value, sig):\n                return True\n\n        return False"
+   },
+   {
+    "path": "src/itsdangerous/serializer.py",
+    "start": 190,
+    "end": 241,
+    "content": "    def __init__(\n        self,\n        secret_key: str | bytes | cabc.Iterable[str] | cabc.Iterable[bytes],\n        salt: str | bytes | None = b\"itsdangerous\",\n        serializer: t.Any | None = None,\n        serializer_kwargs: dict[str, t.Any] | None = None,\n        signer: type[Signer] | None = None,\n        signer_kwargs: dict[str, t.Any] | None = None,\n        fallback_signers: list[\n            dict[str, t.Any] | tuple[type[Signer], dict[str, t.Any]] | type[Signer]\n        ]\n        | None = None,\n    ):\n        #: The list of secret keys to try for verifying signatures, from\n        #: oldest to newest. The newest (last) key is used for signing.\n        #:\n        #: This allows a key rotation system to keep a list of allowed\n        #: keys and remove expired ones.\n        self.secret_keys: list[bytes] = _make_keys_list(secret_key)\n\n        if salt is not None:\n            salt = want_bytes(salt)\n            # if salt is None then the signer's default is used\n\n        self.salt = salt\n\n        if serializer is None:\n            serializer = self.default_serializer\n\n        self.serializer: _PDataSerializer[_TSerialized] = serializer\n        self.is_text_serializer: bool = is_text_serializer(serializer)\n\n        if signer is None:\n            signer = self.default_signer\n\n        self.signer: type[Signer] = signer\n        self.signer_kwargs: dict[str, t.Any] = signer_kwargs or {}\n\n        if fallback_signers is None:\n            fallback_signers = list(self.default_fallback_signers)\n\n        self.fallback_signers: list[\n            dict[str, t.Any] | tuple[type[Signer], dict[str, t.Any]] | type[Signer]\n        ] = fallback_signers\n        self.serializer_kwargs: dict[str, t.Any] = serializer_kwargs or {}\n\n    @property\n    def secret_key(self) -> bytes:\n        \"\"\"The newest (last) entry in the :attr:`secret_keys` list. This\n        is for compatibility from before key rotation support was added.\n        \"\"\"\n        return self.secret_keys[-1]"
+   }
+  ],
+  "possibly_relevant": [],
+  "model": "qwen/qwen3.8-27b",
+  "prompt_version": 3
+ }
+}

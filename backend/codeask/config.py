@@ -66,6 +66,9 @@ MERGE_MAX_GAP_LINES = 5  # blank lines two same-file chunks may have between the
 OUTLINE_MAX_NAMES = 20  # member names in a class outline (Q25)
 CHARS_PER_TOKEN = 3  # for text without a stored token_count (outlines)
 POSSIBLY_RELEVANT_FILES = 3  # files suggested when an answer has no valid citation (Q23)
+# Defensive cap on the code blocks /ask sends for the panel (Q30). The 2K-token context budget
+# keeps them near 8 KB; this only guards against a future budget change (Render bandwidth).
+EVIDENCE_MAX_CHARS = 32_000
 
 # ---------- Groq (free catalogue changes: never hardcode the model elsewhere) ----------
 GROQ_MODEL = "qwen/qwen3.8-27b"  # chosen by the slice 1 comparison (PLAN.md, Q15)
@@ -81,6 +84,7 @@ GROQ_MODEL_OPTIONS = {
 # M0: qwen rejects a request outright if its possible output exceeds the 1,000 output
 # tokens/min limit, so the cap must stay well below it.
 ANSWER_MAX_TOKENS = 600
+ANSWER_TEMPERATURE = 0
 GROQ_TIMEOUT_S = 60
 GROQ_MAX_RETRIES = 2  # per request, on 429 only
 GROQ_MAX_RETRY_WAIT_S = 30  # a longer Retry-After is returned as an error, not waited out

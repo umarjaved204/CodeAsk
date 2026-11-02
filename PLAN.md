@@ -646,6 +646,49 @@ context today (`public_view()` withholds it). Settled in the brief round as Q30.
   - an honest "about this demo" note: featured repos only, rate-limited, pre-generated
     answers labelled.
 
+**State inventory (step 4, approved 2026-11-03 with the mentor's changes):**
+
+| # | State | Trigger | What it shows |
+|---|---|---|---|
+| 1 | First screen | Page load | The example answer with the sentence label "Example answer, generated <date> with <model> on commit <sha7>". Desktop: first valid citation open. Mobile: sheet closed + "Tap a citation to see the code" |
+| 2 | Empty | A repo with no example yet (requests, express until slice 5) | "Ask a question about the code in <repo>. Answers cite the lines they use." Space for suggested questions (slice 5) |
+| 3 | Loading | Question sent | The question becomes the heading; the button reads "Asking…" and is disabled. Status: "Answering. This usually takes a few seconds." with an indeterminate pulse that stops under reduced motion. Panel: "The cited code appears here." **After ~12 s:** "Still working. This demo is rate-limited, so it can take up to a minute." |
+| 4 | Waking | `/status` unreachable on load (any non-JSON response counts as waking) | 0–35 s: "Waking up the server. This takes about 30 seconds after a quiet spell." 35–90 s: "Still starting. This is taking longer than usual." Then state 9. The input stays usable; a question submitted meanwhile is sent once, automatically, when the server is up ("Your question will be sent when the server is ready.") |
+| 5 | Queued (mocked; shape confirmed in slice 4) | Queue position > 0 | "2nd in line, about 40 seconds." |
+| 6 | Busy | 503 `busy` | "The demo is at capacity. This demo runs on free tiers, so only a few questions fit per minute." A manual "Try again" with a countdown from `Retry-After`, announced at the start and at zero. No auto-retry |
+| 7 | Daily cap (mocked) | Cap reached | "Today's live questions are used up. The limit resets daily; the example answers still work." |
+| 8 | Model unavailable | 503 `model_unavailable` | "Live answers are unavailable right now. The example answers still work." |
+| 9 | Error | 500/502/504, or no response after the waking window | Server error: "The server couldn't answer (request <id>). Try again." No response: `navigator.onLine` false → "You're offline. Check your connection and try again."; otherwise "Can't reach the server." with a retry |
+| 10 | Ungrounded | `grounded: false` | Heading "No cited answer for this question". "The answer couldn't be tied to lines in <repo>, so it isn't shown. These files came closest:" then ≤ 3 files as GitHub permalinks (new tab, `rel="noopener noreferrer"`, external-link icon), then "Naming a function or file usually helps." Empty panel |
+| 11 | Unverified citation | `valid: false` | Chip in the `unverified` colour with a "?" icon and dashed underline; accessible name "Citation 3, unverified". The chip is a button that does NOT open the panel: it toggles an inline note with the claimed path and range (escaped text) |
+| 12 | Very long answer | ~600 words | The column scrolls under the sticky ask box, with a fade edge above it; the panel stays put |
+| 13 | Long code lines | Lines wider than the panel | Horizontal scroll inside the panel; line numbers stay visible (sticky left) |
+| 14 | Many citations | ~12 chips | Chips wrap in the text; the panel's citation list scrolls |
+| 15 | Mobile sheet open | Chip tapped | Bottom sheet up to ~80% height with a title and a "Close" button; Esc closes; focus stays inside while open, then returns to the chip |
+| 16 | Input limits | Typing | Counter `n / 400`, in the `unverified` colour from 380 characters; Ask disabled while empty |
+| 17 | Truncated block | A cited block too long for the panel | The first lines, then "Showing lines a–b of a–c. View the rest on GitHub" |
+| 18 | Answer typography specimen | Mock | Headings, lists, inline code, a code fence, bold, and citations inside each of them. Also the input of the injection test (Q18) |
+| 19 | Not found | 404 `not_found` (the repo stopped being featured) | "<repo> is no longer available here." The repo list is refreshed |
+
+Behaviour added with the inventory:
+- **Repo switching** resets the view, and a response still in flight for the old repo is
+  ignored (test).
+- **Submit is disabled while loading** (test: Enter does nothing).
+- **The featured-repo list ships as static data**, so the first screen works with the backend
+  down; `/repos` only refines it.
+- **A controls check:** theme toggle, repo picker, Ask button, chips, panel close (keyboard and
+  pointer).
+- **Copy rule:** don't open several messages with the same word ("Couldn't…").
+
+**Screenshots per review round:**
+- States 1, 10, 11 and 15 at every width (390, 768, 1440) and both themes.
+- All other states at 1440 light, 390 light and 1440 dark.
+- 768 also for 12 and 13.
+- Claude reads tiled contact sheets first and opens full PNGs only for flagged states.
+- Review checklist item (from grading the fixture): adjacent citation chips ("[3] [4]") need
+  visible spacing between them.
+- Axe runs on every state in both themes.
+
 **Done when:**
 - locally I can pick a repo, ask, and click a citation that shows the right lines in the
   panel;
@@ -655,7 +698,83 @@ context today (`public_view()` withholds it). Settled in the brief round as Q30.
 - I have approved a direction and the tokens;
 - every state in the inventory has a reviewed screenshot;
 - axe finds no serious violations;
-- the web-design-guidelines review is done and I have decided on its findings.
+- the web-design-guidelines review is done and I have decided on its findings;
+- the first screen works with all network requests blocked (static repo list + example);
+- no flash of the wrong theme on load;
+- in a real browser, a forced server error reaches the page as JSON with CORS headers;
+- the example fixture's grade (by me, with the date) is recorded here;
+- `next build` and lint pass, with Next 16, Tailwind and TypeScript pinned to exact versions;
+- the page has landmarks and a skip link.
+
+**Build plan (approved 2026-11-03 with the mentor's amendments; decision Q34):**
+Backend first:
+1. **Panel data (Q30):** `public_view()` adds `blocks: [{path, start, end, content}]` (raw
+   lines, no `182|` prefix): only the supplied blocks that contain a valid citation, each sent
+   once, none when ungrounded. Each citation gets `block` (an index into `blocks`; null when
+   unverified; the server already validated containment). A defensive cap on the total size
+   of `blocks`.
+2. **Example fixture:** `ask --save PATH` records the public view plus question, repo, commit,
+   model, prompt version, date, generation parameters (temperature, reasoning setting, output
+   limit), packer settings, token usage, retries and the run attempt number, and an empty
+   `grade`. **The first live run is used, no re-rolls**; a re-run is recorded with its count.
+   The fixture is **attempt 2**: attempt 1 (the slice 2 timing run, same prompt v3, 7/7 valid)
+   was printed and not saved. If the two texts differ materially, that is noted here.
+   **Done (2026-11-03):** `frontend/data/examples/pallets__itsdangerous.json` (generated
+   2026-11-02 21:36 UTC, 382 output tokens, 4 blocks, 9.6 KB public payload). **Grade, by me
+   (Umar Javed, 2026-11-03): correct; grounded yes; citations 7/7 strict.** Every claim
+   checked against the four supplied blocks; the mechanism is explained fully, but the
+   practical rotation step (add the new key last, remove old ones later) is missing, so it is
+   slightly incomplete. Attempts 1 and 2 differ only in minor ways, not materially (same
+   claims; attempt 2 drops the closing paragraph and cites all of `verify_signature`,
+   227-242, instead of the loop, 236-240). Temperature 0 did not make the two runs identical:
+   regenerated answers won't match reviewed ones word for word (matters for slice 5). The
+   label may say "checked by the author". Readable copy:
+   `eval/results/m2_example_itsdangerous_grading.md`.
+   **I grade it** (three columns: correct, grounded, citations valid; who and when). The page
+   says "checked by the author" only once the grade is filled in.
+
+Frontend:
+3. Housekeeping: `"strict": true`; gitignore `next-env.d.ts`; `react-markdown` pinned exactly
+   (no `remark-gfm`); `@axe-core/playwright`; `next` and `typescript` pinned exactly (the pair
+   that passes `next build`); `save-exact=true` in `frontend/.npmrc`; `package-lock.json` stays
+   committed. **ESLint:** `eslint` + `eslint-config-next` pinned exactly, after checking which
+   ESLint version `eslint-config-next` requires. **The theme script** keeps
+   `dangerouslySetInnerHTML` for its one static constant string, with a single documented lint
+   exception on that line; `scripts/check.ps1` fails if `dangerouslySetInnerHTML` appears
+   anywhere else. **Slice 6 note:** a strict Content-Security-Policy would need a hash or nonce
+   for that inline script.
+4. `lib/`: `types.ts` (API contract incl. `blocks`, error JSON, `/status`); `api.ts` (fetch +
+   classification: JSON error → typed; non-JSON or no response → waking/offline); `featured.ts`
+   (static repo list + the example); **two small reducers** with discriminated unions:
+   connection (`unknown | waking | up | down | offline`) and ask lifecycle
+   (`idle | loading | answered | ungrounded | busy | error`). Long answers, long lines, many
+   citations, truncation and input limits are rendering conditions or local form state, not
+   machine states.
+5. **Races:** every response carries its repo and a request counter; stale ones are dropped.
+   No `AbortController` except on unmount. After a repo switch, Ask stays disabled until the
+   old request settles ("Finishing the previous question"), because slice 4 allows one
+   in-flight question per IP.
+6. **Markdown safety:** `react-markdown` with a custom `urlTransform` that allows only
+   `cite:<digits>` (the default sanitizer would strip `cite:`); an element allowlist, with
+   disallowed elements unwrapped to their text; a `cite:n` with no matching citation renders
+   as plain text; server URLs validated (`https://github.com/` prefix) and opened with
+   `rel="noopener noreferrer"`; never `dangerouslySetInnerHTML` in components (lint rule).
+7. **Components:** header, provenance, answer, chip (verified opens the panel; unverified is a
+   button with an inline note), evidence panel (highlight + gutter bar, sticky line numbers,
+   the whole block shown and the cited range scrolled into view, instantly under reduced
+   motion; a defensive cap of ~300 lines with "View the rest on GitHub"), composer, status
+   line, ungrounded and error views. **Mobile sheet:** native `<dialog>` with `showModal()`,
+   styled as a bottom sheet (max 80dvh), background scroll locked with
+   `html:has(dialog[open]) { overflow: hidden }`; the same panel renders inline on desktop.
+8. **Tests:**
+   - Playwright with mocked `/status`, `/repos`, `/ask`: ask → answer → citation, unverified
+     note, injection, repo switch mid-request, Enter while loading, keyboard-only flow +
+     controls check, `<dialog>` (focus inside, Esc closes, focus returns to the chip), axe on
+     every state in both themes.
+   - Logic tests (Playwright's runner, no page, no new dependency): both reducers, `api.ts`
+     classification, `urlTransform` and the URL validators.
+9. **Screenshots and review:** `design/render-states.mjs` (the same mocks, the matrix above,
+   contact sheets built by Playwright), 2–3 review rounds, then the two review-skill passes.
 
 ### [ ] Slice 4 (M2c): queue and abuse controls
 One FIFO over `/ask` paced by Groq headers + own output-token accounting (Q10), position and
@@ -683,7 +802,8 @@ Prod Neon project + API role (Q7), `.env.prod` with an explicit flag and host co
 gitleaks scan → CodeAsk public → pinned release commit (Q12), ingest the featured repos and
 generate their answers in prod, new Render + Vercel services with final names, CORS to the
 Vercel origin, cold-start UX (Q14), privacy footer (Q16, R11), delete the spike services and
-rotate the keys set there, freeze `spike/m2/` (Q19).
+rotate the keys set there, freeze `spike/m2/` (Q19). Link-preview metadata (title,
+description, Open Graph image) for sharing the URL (moved here from slice 3).
 
 **Done when:**
 - the `db` test proves the API role cannot write content tables or delete;
@@ -692,7 +812,8 @@ rotate the keys set there, freeze `spike/m2/` (Q19).
   "waking up" turns ready, and time to the first answer), and the UI never shows a raw error
   during them;
 - the manual smoke checklist passes on the public URLs (ask, citation, unverified display,
-  pre-generated, busy, cap via kill switch);
+  pre-generated, busy, cap via kill switch, and the sticky ask box with the on-screen
+  keyboard open on a real phone);
 - Render's Billing page shows usage within the free limits a week after launch;
 - **before going public**, the Render card is removed (services keep running), or the
   decision log has the "card on file" exception with mitigations (build spend limit $0,
@@ -849,6 +970,8 @@ return errors as JSON from exception handlers inside the CORS layer, so the UI c
 | Q31 | **Visual direction A, "Marked copy"** (step 2, 2026-11-03; mocks in `frontend/design/directions/`, rendered by `frontend/design/render-directions.mjs`): the answer set as a typeset page (Newsreader serif; Instrument Sans for the interface; Fragment Mono for code) on cool grey-green paper with blue-black ink; citations as small bracketed footnote figures; **the active footnote and its cited lines share one highlighter yellow** (kept a true highlighter, dark ink on yellow, in dark mode too). From C: chips get a larger tap area on mobile (≥ 24 px) without looking bigger | The only direction whose memorable element is the product's own idea (claims tied to marked evidence); matches "precise, calm, quietly editorial, citations as footnotes" most directly | **B "Bracket"** (Schibsted Grotesk, verdigris, a drawn bracket in the code gutter): cohesive brand story but reads as a generic developer tool, and the gutter bracket is too subtle to carry the design. **C "Two rooms"** (Atkinson Hyperlegible, code on a bottle-green slab): clearest split and most tappable chips, but the dark rounded slab drifts to the familiar IDE look and is the least editorial |
 | Q32 | **Fonts: Newsreader without the optical-size axis** (step 3, 2026-11-03). `next/font` self-hosts, Latin subset, `display: swap`, upright only (italics synthesized): Newsreader variable weight, Instrument Sans variable weight, Fragment Mono 400. All three Latin files are preloaded, mono included (the code panel is above the fold). **Measured** (`next build`, `.next/static/media`): with `opsz` the preloaded Latin files were 128.8 + 29.2 + 14.8 = **172.8 KB**; without it 56.8 + 29.2 + 14.8 = **100.8 KB** (−72 KB, −42%). Other `.woff2` files (latin-ext, vietnamese, cyrillic-ext) are emitted but only downloaded if the page shows those characters. **Decision rule, fixed before comparing:** I screenshot the 36 px question and 18 px body with and without `opsz` at desktop and mobile widths, and keep it only if I see a difference I care about. The difference was mostly width (with `opsz`: slightly narrower and crisper, one fewer line per paragraph on mobile), not worth 72 KB on a recruiter's first visit | Payload on the first visit; the design's distinctive element is the highlighter, not optical sizing; the headline's tracking (−0.015 em) recovers some crispness for free | Keeping `opsz` (172.8 KB); static weights 400 + 500 |
 | Q33 | **Tokens approved** (step 3, 2026-11-03): semantic colour tokens in `frontend/app/tokens.css` (`page`, `panel`, `text`, `text-muted`, `rule`, `control-edge`, `citation`, `focus`, `evidence`, `on-evidence`, `evidence-bar`, `unverified`, `error`, `action`, `on-action`, `elevation-sheet`), light and dark; the fixed scale in the `@theme` block of `frontend/app/globals.css` (type 12/14/16/18/21/24/36, a 66ch measure, radii 2/6/12 by role). Tailwind **4.3.3** (`tailwindcss` and `@tailwindcss/postcss` pinned exactly; `postcss` 8.5.32); Tailwind colours read the token variables, so no `dark:` classes. Theme set before first paint by a `<head>` script (try/catch around `localStorage`, sets `color-scheme`; `suppressHydrationWarning` on `<html>`). **With the gutter bar:** cited lines get a left border in `evidence-bar` (a border survives forced-colors mode; a background doesn't). **Contrast** (`node design/check-contrast.mjs`, every pair passes in both themes): text pairs ≥ 4.5:1 (lowest: `text-muted` on `panel`, 5.22 in light); UI parts ≥ 3:1 (lowest: the dark `evidence-bar` 3.06 against both the panel and the highlighter, so re-run the check after any change to the dark `panel` or `evidence`); for information, the light highlighter vs the panel is 1.12:1, which is why the bar, bold line numbers and the header text also mark the cited range | WCAG AA without exceptions; semantic names let the design change without touching components | Raw colour names; a background-only highlight |
+| Q34 | **Slice 3 build plan** (2026-11-03, mentor amendments; full plan under slice 3): `blocks` as a separate list with a `block` index on each citation and a payload cap; a fixture from the first live run, graded by me; two small reducers (connection, ask lifecycle) instead of one machine for 19 states; stale responses dropped by repo + request counter, Ask held until an old request settles; `urlTransform` allowing only `cite:<digits>`; native `<dialog>` for the mobile sheet; the whole block shown, scrolled to the cited range (cap ~300 lines); logic tests on Playwright's runner | Smallest design that covers every state honestly; one in-flight question per IP (slice 4); no new UI dependencies | One reducer for all states; a hand-built focus trap; truncating blocks over 60 lines; `AbortController` on repo switch |
+| Q35 | **TypeScript 6.0.3, not 7** (slice 3 build step 3, 2026-11-03). Lint failed on TypeScript 7.0.2 with "typescript-eslint does not support TS 7.0" (`eslint-config-next` 16.4.4 pulls in `typescript-eslint` 8.72.1, which supports TypeScript ≥ 4.8.4 < 6.1; support for ≥ 7.1 is tracked upstream). Exact pins now: `next` 16.4.4, `typescript` 6.0.3, `tailwindcss` / `@tailwindcss/postcss` 4.3.3, `eslint` 9.39.5, `eslint-config-next` 16.4.4, `react-markdown` 10.1.0, `@axe-core/playwright` 4.14.0, `@playwright/test` 1.64.1; `save-exact=true` in `frontend/.npmrc`. `next build` passes in strict mode and lint is clean. `npm audit --omit=dev`: **0 vulnerabilities** in what ships; 16 moderate ones are all in dev tooling. npm marks ESLint 9.39.5 as no longer supported: revisit ESLint 10 (and TypeScript 7) in slice 6, once `eslint-config-next`'s plugins and `typescript-eslint` support them. Also: the dev server writes `.next/dev/types`, which `next build` type-checks, so delete `.next` after removing a route | TypeScript 7 arrived by accident in slice 1; its main gain (compile speed) barely matters here, and lint with TypeScript rules is a Done-when item | Running a TypeScript 6 copy side by side for lint only; dropping the TypeScript lint rules |
 
 ### M2 model comparison (slice 1, 2026-11-02)
 pallets/itsdangerous, 8 questions (`eval/m2_models.json`, Q8 unanswerable), one Voyage request,
