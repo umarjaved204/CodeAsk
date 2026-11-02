@@ -490,10 +490,21 @@ vectors):**
 - **2,500 is worse than 2,000:** greedy skip-and-continue packing isn't monotone in the budget.
   At 2,500 the Signer class header (`signer.py:76-127`, ~870 with its 37-line docstring) fits
   and pushes `derive_key` out. By Q20, the budget stays 2,000.
-- **Pending (my decision):** the per-file cap (Q11). Options: no cap (the simplest variant that
-  packs every retrieved required chunk), cap 5 (same result here), soft cap 3 (fails the
-  regression check). Q11's cap targeted M0's near-duplicates from overlapping windows, which
-  M1 removed.
+- **Real comparison** (`eval/m2_pack_compare.py`, the real `pack()` with merging and outlines;
+  12 required / 9 supporting chunks):
+
+  | Budget | Variant | Required packed | Missing required | Supporting | Mean estimate | Mean blocks |
+  |---|---|---|---|---|---|---|
+  | 2,000 | hard cap 3 | 8/12 | Q5 verify_signature; Q6 verify_signature, derive_key; Q7 BadSignature | 7/9 | 1,892 | 6.0 |
+  | 2,000 | soft cap 3 | 8/12 | same as hard cap 3 | 7/9 | 1,939 | 6.1 |
+  | 2,000 | cap 5 | 10/12 | Q6 derive_key; Q7 BadSignature | 8/9 | 1,953 | 5.5 |
+  | 2,000 | **no cap** | **11/12** | Q6 derive_key (not retrieved) | 8/9 | 1,949 | 5.1 |
+  | 2,500 | hard cap 3 | 7/12 | Q5 both; Q6 both; Q7 BadSignature | 8/9 | 2,270 | 6.8 |
+  | 2,500 | soft cap 3 | 8/12 | Q5 both; Q6 derive_key; Q7 BadSignature | 8/9 | 2,418 | 6.8 |
+  | 2,500 | cap 5 | 9/12 | Q5 derive_key; Q6 derive_key; Q7 BadSignature | 9/9 | 2,425 | 6.6 |
+  | 2,500 | no cap | 9/12 | Q5 derive_key; Q6 derive_key; Q7 BadSignature | 9/9 | 2,416 | 6.2 |
+
+  Decision: Q28.
 
 ### [ ] Slice 3 (M2b): frontend
 Install frontend-design + `@playwright/test`. Repo picker (featured), question box (≤ 400
@@ -692,6 +703,7 @@ return errors as JSON from exception handlers inside the CORS layer, so the UI c
 | Q25 | **Class outlines: names only in M2**, in a separate uncitable `<outline-TAG>` element; prompt v3 adds "cite only lines shown in file blocks". Line ranges return in M4 with `read_file` | Ranges in an outline invite citations of lines the model never saw (unverified) | Names + ranges (M2 inputs); signature lines as numbered blocks |
 | Q26 | **DB connections:** one connection per request via a small context manager; no `psycopg_pool` in M2. Revisit if the measured connect time per request is consistently above ~100 ms | Neon's pooled endpoint (PgBouncer) is already a pool; Render → Neon connect measured ~20 ms (M2-0); no new dependency; no open question about whether an idle open connection blocks Neon's scale to zero | An app-side `psycopg_pool` (the original "pooling" item) |
 | Q27 | **Expected chunks** (`eval/m2_expected.json`, ranges from `672971d…`): drafted by Claude from the source before the slice 2 candidates were printed; **confirmed by me after I had seen the printed candidates**, with edits: Q7 adds `exc.py:22-33` BadSignature as required (the slice 1 grading treated omitting `payload`/message as partial, so the set must include where `payload` is defined); Q1 adds the Signer class header (`default_key_derivation`) as supporting. A range counts as packed when every **non-blank** line of it lies inside the packed blocks after merging. Committed before the packer experiment; later changes are amendments with a reason | The variant rule (Q20) needs a target fixed before the variants are compared | Choosing expected chunks after seeing packing results |
+| Q28 | **Packer default: no per-file cap, budget 2,000 (provisional).** Overrides Q11's cap. `PER_FILE_CAP` stays a parameter (default `None`) for the M3 ablation. **Evidence is one small repo** (itsdangerous, 8 questions, 12 required chunks): in slice 5, re-run `eval/m2_pack_compare.py` on requests and express using the pre-registered expected chunks of their suggested questions; if the result flips, revisit the cap (per repo or in M3). Q6 `derive_key` not being in the top 15 is an M3 retrieval finding. **Why 2,500 packs fewer than 2,000:** greedy skip-and-continue packing is not monotone in the budget. In Q5 at 2,000 the Signer class header (`signer.py:76-127`, ~870 with its 37-line docstring) doesn't fit and is skipped, leaving room for `derive_key` and `verify_signature`; at 2,500 it fits and `derive_key` no longer does. Only a stop-at-first-misfit greedy is monotone, and it would lose both at 2,000. So there is no "more budget never removes a chunk" test; a test pins the skip behaviour instead | Only no cap at 2,000 packs every retrieved required chunk (11/12); it's also the simplest variant (Q20 rule). M1 chunks don't overlap, so the near-duplicates the cap targeted (M0) are gone; on a small repo the answer genuinely sits in one file and a cap pushes weaker other-file chunks in | Hard cap 3 (fails the Q5 regression check); soft cap 3 (same); cap 5; budget 2,500 |
 
 ### M2 model comparison (slice 1, 2026-11-02)
 pallets/itsdangerous, 8 questions (`eval/m2_models.json`, Q8 unanswerable), one Voyage request,

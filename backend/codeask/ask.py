@@ -15,29 +15,35 @@ import time
 from dataclasses import asdict
 
 from codeask import config
-from codeask.answer import PROMPT_VERSION, build_messages, estimate_tokens, pack, rewrite
+from codeask.answer import PROMPT_VERSION, build_messages, pack, possibly_relevant, rewrite
 
 
 def ask(store, llm, repo: dict, question: str, vector: list[float]) -> dict:
     t0 = time.perf_counter()
     rows = store.search(repo["slug"], repo["settings"]["space"], vector, config.RETRIEVE_K)
-    blocks = pack(rows)
+    file_rows = store.file_chunks(repo["slug"], list(dict.fromkeys(r["path"] for r in rows)))
+    packed = pack(rows, file_rows)
+    blocks = packed.blocks
     t1 = time.perf_counter()
-    reply = llm.chat(build_messages(question, blocks, tag=secrets.token_hex(8)))
+    reply = llm.chat(build_messages(question, blocks, secrets.token_hex(8), packed.outlines))
     markdown, citations, stats = rewrite(reply.text, blocks, repo["url"], repo["commit_sha"])
-    packed = {(b.path, b.start) for b in blocks}
+    grounded = stats["valid"] > 0  # Q3/Q9: no valid citation = couldn't ground it
     return {
-        "answer": markdown,
+        "grounded": grounded,
+        "possibly_relevant": [] if grounded else possibly_relevant(
+            rows, repo["url"], repo["commit_sha"]),
+        "answer": markdown,  # kept even when ungrounded, for eval; public_view() withholds it
         "raw_answer": reply.text,  # for offline re-scoring; never sent to the browser
         "citations": [asdict(c) for c in citations],
         "stats": stats,
         "blocks": [f"{b.path}:{b.start}-{b.end}" for b in blocks],
         # The exact context the model saw, so answers can be graded for groundedness later.
         "context": [asdict(b) for b in blocks],
+        "outlines": [asdict(o) for o in packed.outlines],
+        "dropped": packed.dropped,  # retrieved but not packed, with the reason (M3)
         # Voyage-token estimate of the context only; compare with usage.prompt_tokens
         # (Groq's tokenizer, plus system prompt and question) to calibrate the packer.
-        "context_estimate": sum(estimate_tokens(r) for r in rows
-                                if (r["path"], r["start_line"]) in packed),
+        "context_estimate": packed.estimate,
         "model": reply.model,
         "prompt_version": PROMPT_VERSION,
         "usage": reply.usage,
@@ -46,6 +52,18 @@ def ask(store, llm, repo: dict, question: str, vector: list[float]) -> dict:
         "timings_s": {"retrieve": round(t1 - t0, 2), "llm": reply.latency_s},
         "retries": reply.retries,
     }
+
+
+def public_view(result: dict) -> dict:
+    """What the browser gets: no raw answer, context, usage or rate-limit headers. An
+    ungrounded answer's text and citations are withheld (Q23); the UI shows "couldn't ground
+    this in the code" plus the possibly relevant files."""
+    grounded = result["grounded"]
+    return {"grounded": grounded,
+            "answer": result["answer"] if grounded else None,
+            "citations": result["citations"] if grounded else [],
+            "possibly_relevant": result["possibly_relevant"],
+            "model": result["model"], "prompt_version": result["prompt_version"]}
 
 
 def main():
@@ -73,6 +91,10 @@ def main():
     embed_s = time.perf_counter() - t0
     result = ask(store, GroqClient(args.model), repo, args.question, vector)
 
+    if not result["grounded"]:
+        print("NOT GROUNDED (no valid citation): the API withholds this text. Possibly relevant: "
+              + ", ".join(f"{f['path']}:{f['start']}-{f['end']}"
+                          for f in result["possibly_relevant"]))
     print(result["answer"], "\n")
     for c in result["citations"]:
         mark = "ok        " if c["valid"] else "UNVERIFIED"

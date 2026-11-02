@@ -176,3 +176,15 @@ def test_gc_and_delete_repo_never_remove_referenced_embeddings(store, tmp_path):
     ingest(store, root_b, rerun, slug="test/b")
     assert rerun.calls == 0  # every embedding b uses survived
     assert store.delete_repo("test/missing") == (False, 0)
+
+
+# ---------- packer metadata ----------
+def test_file_chunks_lists_only_the_given_files_of_that_repo_in_line_order(store, tmp_path):
+    ingest(store, write_repo(tmp_path / "a"), FakeEmbedder(), slug="test/a")
+    ingest(store, write_repo(tmp_path / "b"), FakeEmbedder(), slug="test/b")
+    rows = store.file_chunks("test/a", ["a.py", "missing.py"])
+    assert [(r["path"], r["name"]) for r in rows] == [
+        ("a.py", "alpha"), ("a.py", "beta"), ("a.py", "gamma")]
+    assert [r["start_line"] for r in rows] == sorted(r["start_line"] for r in rows)
+    assert set(rows[0]) == {"path", "start_line", "end_line", "kind", "name", "breadcrumb",
+                            "token_count"}  # metadata only: no content, no vector

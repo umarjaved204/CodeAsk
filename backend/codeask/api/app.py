@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from codeask.ask import ask as run_pipeline
+from codeask.ask import public_view
 from codeask.embedder import VoyageEmbedder
 from codeask.llm import GroqClient
 from codeask.store import Store, connect
@@ -49,5 +50,4 @@ def ask(body: AskRequest):
         result = run_pipeline(store, llm, repo, body.question, vector)
     finally:
         store.conn.close()
-    # Only what the browser needs: no raw answer, usage or rate-limit headers.
-    return {key: result[key] for key in ("answer", "citations", "model", "prompt_version")}
+    return public_view(result)

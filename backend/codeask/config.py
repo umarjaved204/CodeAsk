@@ -51,10 +51,21 @@ MAX_NAMES_IN_SCOPE = 5  # merged chunk "a, b, c, d, e +2 more"
 # output), so ~2K of context keeps ~3 questions/min. Slice 2 calibrates this against
 # usage.prompt_tokens.
 CONTEXT_BUDGET_TOKENS = 2_000
+# usage.prompt_tokens minus the context estimate was a near-constant +458..+652 in slice 1
+# (system prompt, file tags, question): for capacity math and logs only, not the budget.
+PROMPT_OVERHEAD_TOKENS = 700
 # token_count measures embed_text, but the LLM sees every line with its absolute number
 # ("182| "), which costs ~3 extra tokens per line.
 LINE_NUMBER_TOKENS = 3
-RETRIEVE_K = 8  # candidates for the slice 1 packer (12-15 once slice 2 adds the per-file cap)
+RETRIEVE_K = 15
+# Chunks per file, counted before merging. None = no cap: the slice 2 comparison (PLAN.md Q28)
+# found caps of 3-5 push weaker other-file chunks in. Provisional (one small repo); kept as a
+# parameter for the M3 ablation.
+PER_FILE_CAP: int | None = None
+MERGE_MAX_GAP_LINES = 5  # blank lines two same-file chunks may have between them (Q21)
+OUTLINE_MAX_NAMES = 20  # member names in a class outline (Q25)
+CHARS_PER_TOKEN = 3  # for text without a stored token_count (outlines)
+POSSIBLY_RELEVANT_FILES = 3  # files suggested when an answer has no valid citation (Q23)
 
 # ---------- Groq (free catalogue changes: never hardcode the model elsewhere) ----------
 GROQ_MODEL = "qwen/qwen3.8-27b"  # chosen by the slice 1 comparison (PLAN.md, Q15)

@@ -1,10 +1,12 @@
 """M2 slice 2: save the top-K retrieval candidates for the comparison questions.
 
 Run: python eval/m2_candidates.py pallets/itsdangerous eval/m2_models.json
+     python eval/m2_candidates.py --add-file-chunks eval/results/m2_candidates_<date>.json
 
 All questions are embedded in ONE Voyage request. The query vectors are saved too, so later
 steps (a larger K, file_chunks) re-query the DB without another Voyage call. The packer
 variants (PLAN.md Q20) and the Q5 regression test then run offline from this file.
+--add-file-chunks adds the metadata of every chunk in the candidate files (DB only, no Voyage).
 """
 
 from __future__ import annotations
@@ -22,11 +24,25 @@ K = 15
 OUT = Path(__file__).parent / "results"
 
 
+def add_file_chunks(path: Path):
+    data = json.loads(path.read_text(encoding="utf-8"))
+    paths = sorted({r["path"] for q in data["questions"] for r in q["candidates"]})
+    rows = Store(connect()).file_chunks(data["repo"], paths)
+    data["file_chunks"] = rows
+    path.write_text(json.dumps(data, indent=1), encoding="utf-8")
+    print(f"added {len(rows)} chunk rows from {len(paths)} files to {path}")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("slug")
-    parser.add_argument("questions", type=Path)
+    parser.add_argument("--add-file-chunks", type=Path, metavar="CANDIDATES_JSON")
+    parser.add_argument("slug", nargs="?")
+    parser.add_argument("questions", type=Path, nargs="?")
     args = parser.parse_args()
+    if args.add_file_chunks:
+        return add_file_chunks(args.add_file_chunks)
+    if not args.slug or not args.questions:
+        parser.error("give SLUG QUESTIONS, or --add-file-chunks CANDIDATES_JSON")
 
     items = json.loads(args.questions.read_text(encoding="utf-8"))
     store = Store(connect())

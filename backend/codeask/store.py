@@ -171,6 +171,21 @@ class Store:
                 "distance")
         return [dict(zip(keys, row)) for row in rows]
 
+    def file_chunks(self, slug: str, paths: list[str]) -> list[dict]:
+        """Metadata of every chunk in these files (no content, no vectors), in file and line
+        order. The packer uses it to see which lines between two retrieved chunks belong to
+        no chunk (blank, so the two can merge) and to list a class's members."""
+        with self.conn.transaction():
+            rows = self.conn.execute(self._q("""
+                SELECT c.path, c.start_line, c.end_line, c.kind, c.name, c.breadcrumb,
+                       c.token_count
+                FROM {s}.chunks c
+                JOIN {s}.repos r ON r.id = c.repo_id
+                WHERE r.slug = %s AND c.path = ANY(%s::text[])
+                ORDER BY c.path, c.start_line"""), (slug, paths)).fetchall()
+        keys = ("path", "start_line", "end_line", "kind", "name", "breadcrumb", "token_count")
+        return [dict(zip(keys, row)) for row in rows]
+
     # ---------- cleanup ----------
     def gc(self, include_recent: bool = False, recent_hours: int = 24) -> int:
         """Delete embeddings no chunk references. Recent ones are kept by default: they may

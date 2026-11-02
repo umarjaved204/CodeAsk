@@ -9518,5 +9518,646 @@
     }
    ]
   }
+ ],
+ "file_chunks": [
+  {
+   "path": "README.md",
+   "start_line": 1,
+   "end_line": 13,
+   "kind": "section",
+   "name": "ItsDangerous",
+   "breadcrumb": "ItsDangerous",
+   "token_count": 90
+  },
+  {
+   "path": "README.md",
+   "start_line": 16,
+   "end_line": 32,
+   "kind": "section",
+   "name": "A Simple Example",
+   "breadcrumb": "ItsDangerous > A Simple Example",
+   "token_count": 158
+  },
+  {
+   "path": "README.md",
+   "start_line": 35,
+   "end_line": 50,
+   "kind": "merged",
+   "name": "Donate, Contributing",
+   "breadcrumb": "ItsDangerous > Donate, Contributing",
+   "token_count": 107
+  },
+  {
+   "path": "src/itsdangerous/__init__.py",
+   "start_line": 1,
+   "end_line": 17,
+   "kind": "module",
+   "name": "",
+   "breadcrumb": "<module>",
+   "token_count": 213
+  },
+  {
+   "path": "src/itsdangerous/_json.py",
+   "start_line": 1,
+   "end_line": 4,
+   "kind": "module",
+   "name": "",
+   "breadcrumb": "<module>",
+   "token_count": 33
+  },
+  {
+   "path": "src/itsdangerous/_json.py",
+   "start_line": 7,
+   "end_line": 18,
+   "kind": "class",
+   "name": "_CompactJSON",
+   "breadcrumb": "_CompactJSON",
+   "token_count": 109
+  },
+  {
+   "path": "src/itsdangerous/encoding.py",
+   "start_line": 1,
+   "end_line": 8,
+   "kind": "module",
+   "name": "",
+   "breadcrumb": "<module>",
+   "token_count": 45
+  },
+  {
+   "path": "src/itsdangerous/encoding.py",
+   "start_line": 11,
+   "end_line": 17,
+   "kind": "function",
+   "name": "want_bytes",
+   "breadcrumb": "want_bytes",
+   "token_count": 66
+  },
+  {
+   "path": "src/itsdangerous/encoding.py",
+   "start_line": 20,
+   "end_line": 25,
+   "kind": "function",
+   "name": "base64_encode",
+   "breadcrumb": "base64_encode",
+   "token_count": 84
+  },
+  {
+   "path": "src/itsdangerous/encoding.py",
+   "start_line": 28,
+   "end_line": 38,
+   "kind": "function",
+   "name": "base64_decode",
+   "breadcrumb": "base64_decode",
+   "token_count": 126
+  },
+  {
+   "path": "src/itsdangerous/encoding.py",
+   "start_line": 41,
+   "end_line": 46,
+   "kind": "module",
+   "name": "",
+   "breadcrumb": "<module>",
+   "token_count": 95
+  },
+  {
+   "path": "src/itsdangerous/encoding.py",
+   "start_line": 49,
+   "end_line": 54,
+   "kind": "merged",
+   "name": "int_to_bytes, bytes_to_int",
+   "breadcrumb": "int_to_bytes, bytes_to_int",
+   "token_count": 84
+  },
+  {
+   "path": "src/itsdangerous/exc.py",
+   "start_line": 1,
+   "end_line": 4,
+   "kind": "module",
+   "name": "",
+   "breadcrumb": "<module>",
+   "token_count": 32
+  },
+  {
+   "path": "src/itsdangerous/exc.py",
+   "start_line": 7,
+   "end_line": 19,
+   "kind": "class",
+   "name": "BadData",
+   "breadcrumb": "BadData",
+   "token_count": 99
+  },
+  {
+   "path": "src/itsdangerous/exc.py",
+   "start_line": 22,
+   "end_line": 33,
+   "kind": "class",
+   "name": "BadSignature",
+   "breadcrumb": "BadSignature",
+   "token_count": 122
+  },
+  {
+   "path": "src/itsdangerous/exc.py",
+   "start_line": 36,
+   "end_line": 57,
+   "kind": "class",
+   "name": "BadTimeSignature",
+   "breadcrumb": "BadTimeSignature",
+   "token_count": 186
+  },
+  {
+   "path": "src/itsdangerous/exc.py",
+   "start_line": 60,
+   "end_line": 63,
+   "kind": "class",
+   "name": "SignatureExpired",
+   "breadcrumb": "SignatureExpired",
+   "token_count": 55
+  },
+  {
+   "path": "src/itsdangerous/exc.py",
+   "start_line": 66,
+   "end_line": 89,
+   "kind": "class",
+   "name": "BadHeader",
+   "breadcrumb": "BadHeader",
+   "token_count": 190
+  },
+  {
+   "path": "src/itsdangerous/exc.py",
+   "start_line": 92,
+   "end_line": 106,
+   "kind": "class",
+   "name": "BadPayload",
+   "breadcrumb": "BadPayload",
+   "token_count": 158
+  },
+  {
+   "path": "src/itsdangerous/serializer.py",
+   "start_line": 1,
+   "end_line": 11,
+   "kind": "module",
+   "name": "",
+   "breadcrumb": "<module>",
+   "token_count": 77
+  },
+  {
+   "path": "src/itsdangerous/serializer.py",
+   "start_line": 13,
+   "end_line": 21,
+   "kind": "module",
+   "name": "",
+   "breadcrumb": "<module>",
+   "token_count": 124
+  },
+  {
+   "path": "src/itsdangerous/serializer.py",
+   "start_line": 24,
+   "end_line": 29,
+   "kind": "class",
+   "name": "_PDataSerializer",
+   "breadcrumb": "_PDataSerializer",
+   "token_count": 105
+  },
+  {
+   "path": "src/itsdangerous/serializer.py",
+   "start_line": 32,
+   "end_line": 37,
+   "kind": "function",
+   "name": "is_text_serializer",
+   "breadcrumb": "is_text_serializer",
+   "token_count": 81
+  },
+  {
+   "path": "src/itsdangerous/serializer.py",
+   "start_line": 40,
+   "end_line": 80,
+   "kind": "class_header",
+   "name": "",
+   "breadcrumb": "Serializer (part 1/2)",
+   "token_count": 612
+  },
+  {
+   "path": "src/itsdangerous/serializer.py",
+   "start_line": 82,
+   "end_line": 104,
+   "kind": "part",
+   "name": "",
+   "breadcrumb": "Serializer (part 2/2)",
+   "token_count": 277
+  },
+  {
+   "path": "src/itsdangerous/serializer.py",
+   "start_line": 106,
+   "end_line": 120,
+   "kind": "function",
+   "name": "__init__",
+   "breadcrumb": "Serializer > __init__",
+   "token_count": 200
+  },
+  {
+   "path": "src/itsdangerous/serializer.py",
+   "start_line": 122,
+   "end_line": 136,
+   "kind": "function",
+   "name": "__init__",
+   "breadcrumb": "Serializer > __init__",
+   "token_count": 187
+  },
+  {
+   "path": "src/itsdangerous/serializer.py",
+   "start_line": 138,
+   "end_line": 153,
+   "kind": "function",
+   "name": "__init__",
+   "breadcrumb": "Serializer > __init__",
+   "token_count": 195
+  },
+  {
+   "path": "src/itsdangerous/serializer.py",
+   "start_line": 155,
+   "end_line": 171,
+   "kind": "function",
+   "name": "__init__",
+   "breadcrumb": "Serializer > __init__",
+   "token_count": 207
+  },
+  {
+   "path": "src/itsdangerous/serializer.py",
+   "start_line": 173,
+   "end_line": 188,
+   "kind": "function",
+   "name": "__init__",
+   "breadcrumb": "Serializer > __init__",
+   "token_count": 182
+  },
+  {
+   "path": "src/itsdangerous/serializer.py",
+   "start_line": 190,
+   "end_line": 234,
+   "kind": "function",
+   "name": "__init__",
+   "breadcrumb": "Serializer > __init__",
+   "token_count": 443
+  },
+  {
+   "path": "src/itsdangerous/serializer.py",
+   "start_line": 236,
+   "end_line": 241,
+   "kind": "function",
+   "name": "secret_key",
+   "breadcrumb": "Serializer > secret_key",
+   "token_count": 82
+  },
+  {
+   "path": "src/itsdangerous/serializer.py",
+   "start_line": 243,
+   "end_line": 269,
+   "kind": "function",
+   "name": "load_payload",
+   "breadcrumb": "Serializer > load_payload",
+   "token_count": 244
+  },
+  {
+   "path": "src/itsdangerous/serializer.py",
+   "start_line": 271,
+   "end_line": 276,
+   "kind": "function",
+   "name": "dump_payload",
+   "breadcrumb": "Serializer > dump_payload",
+   "token_count": 92
+  },
+  {
+   "path": "src/itsdangerous/serializer.py",
+   "start_line": 278,
+   "end_line": 285,
+   "kind": "function",
+   "name": "make_signer",
+   "breadcrumb": "Serializer > make_signer",
+   "token_count": 113
+  },
+  {
+   "path": "src/itsdangerous/serializer.py",
+   "start_line": 287,
+   "end_line": 307,
+   "kind": "function",
+   "name": "iter_unsigners",
+   "breadcrumb": "Serializer > iter_unsigners",
+   "token_count": 195
+  },
+  {
+   "path": "src/itsdangerous/serializer.py",
+   "start_line": 309,
+   "end_line": 320,
+   "kind": "function",
+   "name": "dumps",
+   "breadcrumb": "Serializer > dumps",
+   "token_count": 149
+  },
+  {
+   "path": "src/itsdangerous/serializer.py",
+   "start_line": 322,
+   "end_line": 326,
+   "kind": "function",
+   "name": "dump",
+   "breadcrumb": "Serializer > dump",
+   "token_count": 98
+  },
+  {
+   "path": "src/itsdangerous/serializer.py",
+   "start_line": 328,
+   "end_line": 343,
+   "kind": "function",
+   "name": "loads",
+   "breadcrumb": "Serializer > loads",
+   "token_count": 152
+  },
+  {
+   "path": "src/itsdangerous/serializer.py",
+   "start_line": 345,
+   "end_line": 347,
+   "kind": "function",
+   "name": "load",
+   "breadcrumb": "Serializer > load",
+   "token_count": 75
+  },
+  {
+   "path": "src/itsdangerous/serializer.py",
+   "start_line": 349,
+   "end_line": 365,
+   "kind": "function",
+   "name": "loads_unsafe",
+   "breadcrumb": "Serializer > loads_unsafe",
+   "token_count": 197
+  },
+  {
+   "path": "src/itsdangerous/serializer.py",
+   "start_line": 367,
+   "end_line": 395,
+   "kind": "function",
+   "name": "_loads_unsafe_impl",
+   "breadcrumb": "Serializer > _loads_unsafe_impl",
+   "token_count": 218
+  },
+  {
+   "path": "src/itsdangerous/serializer.py",
+   "start_line": 397,
+   "end_line": 404,
+   "kind": "function",
+   "name": "load_unsafe",
+   "breadcrumb": "Serializer > load_unsafe",
+   "token_count": 106
+  },
+  {
+   "path": "src/itsdangerous/signer.py",
+   "start_line": 1,
+   "end_line": 12,
+   "kind": "module",
+   "name": "",
+   "breadcrumb": "<module>",
+   "token_count": 84
+  },
+  {
+   "path": "src/itsdangerous/signer.py",
+   "start_line": 15,
+   "end_line": 28,
+   "kind": "class",
+   "name": "SigningAlgorithm",
+   "breadcrumb": "SigningAlgorithm",
+   "token_count": 126
+  },
+  {
+   "path": "src/itsdangerous/signer.py",
+   "start_line": 31,
+   "end_line": 37,
+   "kind": "class",
+   "name": "NoneAlgorithm",
+   "breadcrumb": "NoneAlgorithm",
+   "token_count": 66
+  },
+  {
+   "path": "src/itsdangerous/signer.py",
+   "start_line": 40,
+   "end_line": 45,
+   "kind": "function",
+   "name": "_lazy_sha1",
+   "breadcrumb": "_lazy_sha1",
+   "token_count": 91
+  },
+  {
+   "path": "src/itsdangerous/signer.py",
+   "start_line": 48,
+   "end_line": 64,
+   "kind": "class",
+   "name": "HMACAlgorithm",
+   "breadcrumb": "HMACAlgorithm",
+   "token_count": 165
+  },
+  {
+   "path": "src/itsdangerous/signer.py",
+   "start_line": 67,
+   "end_line": 73,
+   "kind": "function",
+   "name": "_make_keys_list",
+   "breadcrumb": "_make_keys_list",
+   "token_count": 90
+  },
+  {
+   "path": "src/itsdangerous/signer.py",
+   "start_line": 76,
+   "end_line": 127,
+   "kind": "class_header",
+   "name": "Signer",
+   "breadcrumb": "Signer",
+   "token_count": 714
+  },
+  {
+   "path": "src/itsdangerous/signer.py",
+   "start_line": 129,
+   "end_line": 173,
+   "kind": "function",
+   "name": "__init__",
+   "breadcrumb": "Signer > __init__",
+   "token_count": 372
+  },
+  {
+   "path": "src/itsdangerous/signer.py",
+   "start_line": 175,
+   "end_line": 180,
+   "kind": "function",
+   "name": "secret_key",
+   "breadcrumb": "Signer > secret_key",
+   "token_count": 79
+  },
+  {
+   "path": "src/itsdangerous/signer.py",
+   "start_line": 182,
+   "end_line": 213,
+   "kind": "function",
+   "name": "derive_key",
+   "breadcrumb": "Signer > derive_key",
+   "token_count": 314
+  },
+  {
+   "path": "src/itsdangerous/signer.py",
+   "start_line": 215,
+   "end_line": 225,
+   "kind": "merged",
+   "name": "get_signature, sign",
+   "breadcrumb": "Signer > get_signature, sign",
+   "token_count": 126
+  },
+  {
+   "path": "src/itsdangerous/signer.py",
+   "start_line": 227,
+   "end_line": 242,
+   "kind": "function",
+   "name": "verify_signature",
+   "breadcrumb": "Signer > verify_signature",
+   "token_count": 122
+  },
+  {
+   "path": "src/itsdangerous/signer.py",
+   "start_line": 244,
+   "end_line": 256,
+   "kind": "function",
+   "name": "unsign",
+   "breadcrumb": "Signer > unsign",
+   "token_count": 131
+  },
+  {
+   "path": "src/itsdangerous/signer.py",
+   "start_line": 258,
+   "end_line": 266,
+   "kind": "function",
+   "name": "validate",
+   "breadcrumb": "Signer > validate",
+   "token_count": 86
+  },
+  {
+   "path": "src/itsdangerous/timed.py",
+   "start_line": 1,
+   "end_line": 19,
+   "kind": "module",
+   "name": "",
+   "breadcrumb": "<module>",
+   "token_count": 133
+  },
+  {
+   "path": "src/itsdangerous/timed.py",
+   "start_line": 22,
+   "end_line": 27,
+   "kind": "class_header",
+   "name": "TimestampSigner",
+   "breadcrumb": "TimestampSigner",
+   "token_count": 175
+  },
+  {
+   "path": "src/itsdangerous/timed.py",
+   "start_line": 29,
+   "end_line": 33,
+   "kind": "function",
+   "name": "get_timestamp",
+   "breadcrumb": "TimestampSigner > get_timestamp",
+   "token_count": 61
+  },
+  {
+   "path": "src/itsdangerous/timed.py",
+   "start_line": 35,
+   "end_line": 43,
+   "kind": "function",
+   "name": "timestamp_to_datetime",
+   "breadcrumb": "TimestampSigner > timestamp_to_datetime",
+   "token_count": 120
+  },
+  {
+   "path": "src/itsdangerous/timed.py",
+   "start_line": 45,
+   "end_line": 51,
+   "kind": "function",
+   "name": "sign",
+   "breadcrumb": "TimestampSigner > sign",
+   "token_count": 103
+  },
+  {
+   "path": "src/itsdangerous/timed.py",
+   "start_line": 53,
+   "end_line": 54,
+   "kind": "block",
+   "name": "",
+   "breadcrumb": "TimestampSigner",
+   "token_count": 47
+  },
+  {
+   "path": "src/itsdangerous/timed.py",
+   "start_line": 56,
+   "end_line": 70,
+   "kind": "merged",
+   "name": "unsign, unsign",
+   "breadcrumb": "TimestampSigner > unsign, unsign",
+   "token_count": 144
+  },
+  {
+   "path": "src/itsdangerous/timed.py",
+   "start_line": 72,
+   "end_line": 158,
+   "kind": "function",
+   "name": "unsign",
+   "breadcrumb": "TimestampSigner > unsign",
+   "token_count": 702
+  },
+  {
+   "path": "src/itsdangerous/timed.py",
+   "start_line": 160,
+   "end_line": 167,
+   "kind": "function",
+   "name": "validate",
+   "breadcrumb": "TimestampSigner > validate",
+   "token_count": 102
+  },
+  {
+   "path": "src/itsdangerous/timed.py",
+   "start_line": 170,
+   "end_line": 228,
+   "kind": "class",
+   "name": "TimedSerializer",
+   "breadcrumb": "TimedSerializer",
+   "token_count": 505
+  },
+  {
+   "path": "src/itsdangerous/url_safe.py",
+   "start_line": 1,
+   "end_line": 12,
+   "kind": "module",
+   "name": "",
+   "breadcrumb": "<module>",
+   "token_count": 87
+  },
+  {
+   "path": "src/itsdangerous/url_safe.py",
+   "start_line": 15,
+   "end_line": 69,
+   "kind": "class",
+   "name": "URLSafeSerializerMixin",
+   "breadcrumb": "URLSafeSerializerMixin",
+   "token_count": 375
+  },
+  {
+   "path": "src/itsdangerous/url_safe.py",
+   "start_line": 72,
+   "end_line": 76,
+   "kind": "class",
+   "name": "URLSafeSerializer",
+   "breadcrumb": "URLSafeSerializer",
+   "token_count": 81
+  },
+  {
+   "path": "src/itsdangerous/url_safe.py",
+   "start_line": 79,
+   "end_line": 83,
+   "kind": "class",
+   "name": "URLSafeTimedSerializer",
+   "breadcrumb": "URLSafeTimedSerializer",
+   "token_count": 89
+  }
  ]
 }

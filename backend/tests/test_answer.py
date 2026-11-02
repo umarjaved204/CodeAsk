@@ -3,8 +3,8 @@ import unicodedata
 
 import pytest
 
-from codeask.answer import (Block, build_messages, estimate_tokens, number_lines, pack,
-                            permalink, rewrite)
+from codeask.answer import (Block, Outline, build_messages, estimate_tokens, number_lines,
+                            pack, permalink, rewrite, text_tokens)
 
 REPO, SHA = "https://github.com/pallets/itsdangerous", "abc123"
 SIGNER = Block("src/signer.py", 10, 20, "\n".join(f"line {i}" for i in range(10, 21)))
@@ -21,9 +21,10 @@ def test_number_lines_uses_absolute_line_numbers_and_splits_on_newline_only():
     assert number_lines("def f():\n    return 1\f", 182) == "182| def f():\n183|     return 1\f"
 
 
-def row(path, start, end, tokens):
+def row(path, start, end, tokens, kind="function", breadcrumb="f"):
     return {"path": path, "start_line": start, "end_line": end, "token_count": tokens,
-            "content": "\n".join("x" for _ in range(start, end + 1))}
+            "kind": kind, "breadcrumb": breadcrumb,
+            "content": "\n".join(f"{path}:{i}" for i in range(start, end + 1))}
 
 
 def test_estimate_adds_the_line_number_prefixes():
@@ -32,9 +33,96 @@ def test_estimate_adds_the_line_number_prefixes():
 
 def test_pack_takes_chunks_by_rank_skips_what_does_not_fit_and_stays_in_budget():
     rows = [row("a.py", 1, 10, 400), row("b.py", 1, 10, 900), row("c.py", 1, 10, 200)]
-    blocks = pack(rows, budget=1000)
-    assert [b.path for b in blocks] == ["a.py", "c.py"]  # b would exceed 1000 (430 + 930)
-    assert sum(estimate_tokens(r) for r in rows if r["path"] in ("a.py", "c.py")) <= 1000
+    packed = pack(rows, rows, budget=1000)
+    assert [b.path for b in packed.blocks] == ["a.py", "c.py"]  # b would exceed 1000
+    assert packed.estimate == 430 + 230 <= 1000
+    assert packed.dropped == [("b.py:1-10", "budget")]
+
+
+def test_a_bigger_budget_can_let_a_big_chunk_crowd_out_a_smaller_one():
+    """Skip-and-continue greedy is not monotone in the budget (PLAN.md Q28): at 1,000 the big
+    rank-2 chunk is skipped and rank 3 fits; at 1,500 rank 2 fits and rank 3 no longer does."""
+    rows = [row("a.py", 1, 10, 470), row("b.py", 1, 10, 870), row("c.py", 1, 10, 370)]
+    assert [b.path for b in pack(rows, rows, budget=1_000).blocks] == ["a.py", "c.py"]
+    assert [b.path for b in pack(rows, rows, budget=1_500).blocks] == ["a.py", "b.py"]
+
+
+def test_merging_joins_same_file_chunks_across_blank_lines_into_one_contiguous_block():
+    a, b = row("a.py", 1, 4, 50), row("a.py", 6, 9, 50)  # line 5 is in no chunk: blank
+    (block,) = pack([b, a], [a, b], budget=1000).blocks
+    assert (block.start, block.end) == (1, 9)
+    lines = block.content.split("\n")
+    assert len(lines) == 9 and lines[4] == "" and lines[0] == "a.py:1" and lines[5] == "a.py:6"
+
+
+def test_merged_gap_lines_count_against_the_budget():
+    a, b = row("a.py", 1, 4, 50), row("a.py", 8, 11, 50)  # 3 blank lines between
+    exact = estimate_tokens(a) + estimate_tokens(b) + 3 * 3
+    assert len(pack([a, b], [a, b], budget=exact).blocks) == 1
+    assert pack([a, b], [a, b], budget=exact - 1).dropped == [("a.py:8-11", "budget")]
+
+
+def test_no_merge_across_another_chunk_or_a_gap_over_the_max():
+    a, c, b = row("a.py", 1, 4, 50), row("a.py", 5, 5, 10), row("a.py", 6, 9, 50)
+    assert len(pack([a, b], [a, c, b], budget=1000).blocks) == 2  # c sits in the gap
+    far = row("a.py", 11, 12, 10)  # 6 blank lines after line 4 > MERGE_MAX_GAP_LINES
+    assert len(pack([a, far], [a, far], budget=1000).blocks) == 2
+
+
+def test_cap_is_counted_per_chunk_before_merging():
+    rows = [row("a.py", 1, 2, 10), row("a.py", 3, 4, 10), row("a.py", 5, 6, 10)]
+    packed = pack(rows, rows, budget=1000, cap=2)
+    assert [(b.start, b.end) for b in packed.blocks] == [(1, 4)]  # one merged block...
+    assert packed.dropped == [("a.py:5-6", "cap")]  # ...but still two chunks of the cap
+
+
+def test_soft_cap_fills_only_leftover_budget_after_every_other_candidate():
+    rows = [row("a.py", 1, 2, 100), row("a.py", 10, 11, 100), row("b.py", 1, 2, 100),
+            row("c.py", 1, 2, 100)]
+    hard = pack(rows, rows, budget=1000, cap=1)
+    soft = pack(rows, rows, budget=1000, cap=1, soft_cap=True)
+    tight = pack(rows, rows, budget=3 * 106, cap=1, soft_cap=True)
+    assert hard.dropped == [("a.py:10-11", "cap")]
+    assert len(soft.blocks) == 4 and soft.dropped == []
+    assert [b.path for b in tight.blocks] == ["a.py", "b.py", "c.py"]  # b and c went first
+    assert tight.dropped == [("a.py:10-11", "cap")]
+
+
+def test_blocks_are_grouped_by_file_in_best_rank_order_then_line_order():
+    rows = [row("b.py", 20, 21, 10), row("a.py", 1, 2, 10), row("b.py", 1, 2, 10)]
+    blocks = pack(rows, rows, budget=1000, cap=None).blocks
+    assert [(b.path, b.start) for b in blocks] == [("b.py", 1), ("b.py", 20), ("a.py", 1)]
+
+
+def test_class_header_gets_an_outline_of_direct_member_names_only():
+    header = row("s.py", 1, 5, 50, kind="class_header", breadcrumb="Signer (part 1/2)")
+    members = [row("s.py", 7, 9, 30, breadcrumb="Signer > sign"),
+               row("s.py", 11, 13, 30, breadcrumb="Signer > unsign, validate"),
+               row("s.py", 15, 30, 30, breadcrumb="Signer > verify (part 1/2)"),
+               row("s.py", 31, 40, 30, breadcrumb="Signer > verify (part 2/2)"),
+               row("s.py", 41, 45, 30, breadcrumb="Signer > Inner > method"),
+               row("s.py", 50, 55, 30, breadcrumb="Signerish > other")]
+    packed = pack([header], [header, *members], budget=1000)
+    (outline,) = packed.outlines
+    assert outline.name == "Signer"
+    assert outline.members == ("sign", "unsign, validate", "verify")
+    assert outline.render() == "Members of Signer: sign, unsign, validate, verify"
+    assert packed.estimate == estimate_tokens(header) + text_tokens(outline.render())
+    assert pack([members[0]], [header, *members], budget=1000).outlines == []  # no header
+
+
+def test_outline_lists_at_most_the_configured_names():
+    names = tuple(f"m{i}" for i in range(25))
+    assert Outline("s.py", "S", names).render().endswith("m19 +5 more")
+
+
+def test_outline_follows_its_files_last_block_and_has_no_line_numbers():
+    outline = Outline("src/signer.py", "Signer", ("verify_signature",))
+    user = build_messages("q", [SIGNER, BLOCKS[2], TIMED], "f00d", [outline])[1]["content"]
+    o = user.index("<outline-f00d")
+    assert user.rindex("</file-f00d>", 0, o) > user.index('lines="21-25"')  # after signer's
+    assert o < user.index("src/timed.py")
+    assert "Members of Signer: verify_signature\n</outline-f00d>" in user
 
 
 def test_prompt_wraps_each_block_in_the_per_request_tag_with_numbered_lines():
