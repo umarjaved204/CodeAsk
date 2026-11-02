@@ -432,20 +432,68 @@ tokens (`usage.prompt_tokens`), to calibrate the packer in slice 2.
   tokens, rate-limit headers) is in the decision log, with the default model chosen by the
   rule.
 
-### [ ] Slice 2 (M2a): backend complete
+### [~] Slice 2 (M2a): backend complete
 Full packer (Q11: budget on the numbered display, 12–15 candidates, per-file cap, merging,
 class outlines), grounding rules (Q3, Q9: "couldn't ground", "possibly relevant", unverified
-citations), prompt with delimited context (Q4), prompt version in config, featured-repos
-endpoint, `/status`, connection pooling, JSON errors inside the CORS layer (M2-0 finding),
-generic error text only, startup model check (Q15; no model fallback, Q15c), one worker (R10), request-id logs
-without question text or IPs (Q16), Render's `HEAD /` answered.
+citations), prompt version recorded with every answer (`PROMPT_VERSION` stays in `answer.py`
+next to the text it versions; delimited context (Q4) was done in slice 1), featured-repos
+endpoint, `/status`, one DB connection per request (Q26, no app-side pool), JSON errors inside the CORS layer (M2-0 finding),
+generic error text only, model check (Q15, Q24; no model fallback, Q15c), one worker (R10),
+request-id logs without question text or IPs (Q16), Render's `HEAD /` answered.
+Decisions from the plan review: Q20–Q26 below.
 
-**Done when:** pytest for packer (budget never exceeded on the numbered display, cap counted
-before merging, merged ranges contiguous) and grounding cases passes; **regression check:**
-for comparison Q5 (key rotation), the packed context includes `verify_signature` (slice 1's
-context lacked it, so both models speculated); `/boom`-style errors
-reach the browser as JSON with CORS headers; `scripts/check.ps1` runs all offline tests and I
-paste a green run.
+Build order (mentor review, 2026-11-03):
+1. **Capture** (`eval/m2_candidates.py`, one Voyage request): top-15 candidates and the query
+   vectors for the 8 comparison questions, so every later experiment and test is offline.
+2. `store.file_chunks(slug, paths)`: metadata of every chunk in the candidate files (no
+   content, no vectors), for gap checks and outlines; added to the capture file (DB only).
+3. **Expected chunks** per question, written from the source before any packer variant is
+   compared.
+4. Packer (`answer.py`, pure) + the offline **variant comparison** on all 8 questions (Q20).
+5. Grounding response (Q23).
+6. `llm.available_models()`; `api/app.py` as `create_app(db, embedder, llm)`, run with
+   `uvicorn --factory ... --workers 1 --no-access-log`: errors (Q22), model check (Q24),
+   routes `GET/HEAD /`, `/status`, `/repos`, featured-only `/ask`.
+7. `scripts/check.ps1`; regression test; one live end-to-end timing run.
+
+**Done when:**
+- pytest for the packer (budget never exceeded on the numbered display, cap counted before
+  merging, merged ranges contiguous, no merge across a chunk or a gap over the max) and the
+  grounding cases passes;
+- **regression check:** for comparison Q5 (key rotation), the packed context includes
+  `verify_signature` (slice 1's context lacked it, so both models speculated). If it isn't in
+  the top 15, that is recorded as an M3 retrieval finding and the test checks the packer's
+  behaviour on synthetic candidates instead (Q20);
+- `/boom`-style errors reach the browser as JSON with CORS headers; busy responses carry
+  `Retry-After`; a 422 never echoes or logs the question;
+- slug normalization can't bypass the featured-only check (case, whitespace, `.git`, trailing
+  slash); a question over 400 chars gets 422;
+- one end-to-end timing run (Voyage, Groq, total) is recorded here;
+- `scripts/check.ps1` runs all offline tests and I paste a green run.
+
+**Capture results (2026-11-03, `eval/results/m2_candidates_2026-11-03.json`, top 15 + query
+vectors):**
+- Q5: `verify_signature` ranks **9th**; five signer.py chunks rank above it. `derive_key` is 6th.
+- **Q6: `derive_key` is not in the top 15** (M3 retrieval finding, Q20).
+- Rough simulation (cost = `token_count` + 3/line; no merging or outlines), required chunks
+  missing per variant:
+
+  | Variant | Budget 2,000 | Budget 2,500 |
+  |---|---|---|
+  | Hard cap 3 | Q5 verify_signature; Q6 verify_signature, derive_key; Q7 BadSignature | + Q5 derive_key |
+  | Soft cap 3 | Q5 verify_signature; Q6 verify_signature, derive_key | Q5 both; Q6 derive_key; Q7 BadSignature |
+  | Cap 4 | Q5 verify_signature; Q6 derive_key | + Q5 derive_key, Q7 BadSignature |
+  | Cap 5, or no cap | Q6 derive_key only | + Q5 derive_key, Q7 BadSignature |
+
+- **The Q5 rule (cap drops it → soft cap) doesn't rescue it:** the soft cap fills leftover
+  budget with lower-ranked other-file chunks before the deferred ones get a turn.
+- **2,500 is worse than 2,000:** greedy skip-and-continue packing isn't monotone in the budget.
+  At 2,500 the Signer class header (`signer.py:76-127`, ~870 with its 37-line docstring) fits
+  and pushes `derive_key` out. By Q20, the budget stays 2,000.
+- **Pending (my decision):** the per-file cap (Q11). Options: no cap (the simplest variant that
+  packs every retrieved required chunk), cap 5 (same result here), soft cap 3 (fails the
+  regression check). Q11's cap targeted M0's near-duplicates from overlapping windows, which
+  M1 removed.
 
 ### [ ] Slice 3 (M2b): frontend
 Install frontend-design + `@playwright/test`. Repo picker (featured), question box (≤ 400
@@ -465,9 +513,10 @@ with a salted hash (Q6, Q16), length limit, daily cap row in Postgres, daily out
 aggregates, kill switch. Measure how often questions repeat; build in-memory live caches
 only if they are common (R3).
 
-**Done when:** pytest with a fake clock shows a burst of N > capacity gets queue positions or
-"busy" and never an error or a 429 to the client; the daily cap and kill switch return the
-friendly messages; Playwright passes the busy and cap flows.
+**Done when:** pytest with a fake clock shows a burst beyond capacity gets queue positions or
+"busy", never an unexplained error; per-IP and daily-cap refusals are deliberate and return
+friendly messages (per-IP is a 429); the kill switch returns its friendly message; Playwright
+passes the busy and cap flows.
 
 ### [ ] Slice 5 (M2d): pre-generated answers
 Table + CLI to generate answers for my chosen questions through the live pipeline (Q13), a
@@ -524,7 +573,8 @@ rotate the keys set there, freeze `spike/m2/` (Q19).
 
 **Deployment**
 - Pick Render's **Ohio** region, next to Neon (US East 2), so DB round trips are milliseconds.
-- Reuse DB connections (pooling).
+- DB connections: one per request through Neon's pooled endpoint, no app-side pool in M2
+  (Q26).
 
 **From the M1 step 6 review**
 - **Embedding dimension:** the table is `vector(1024)`. Gemini Embedding (or a smaller Voyage
@@ -629,6 +679,19 @@ return errors as JSON from exception handlers inside the CORS layer, so the UI c
 | Q17 | **Frontend stack:** Next.js + TypeScript, Tailwind only (frontend-design skill for the look), plain React state, one types file for the API. `react-markdown` without raw HTML; model-supplied links and images blocked (only the server creates citation links). Code panel: escaped plain text with line numbers and the cited range highlighted; no syntax highlighting in M2. Status messages in an `aria-live` region. No secrets in `NEXT_PUBLIC_` variables. Tests with the official `@playwright/test`; keep only one of webapp-testing / playwright skill | Few moving parts; safe rendering by construction | shadcn/ui; Shiki; a state library |
 | Q18 | **Tests:** backend pytest with fakes for parser, validator, packer, queue (fake clock) and limits, plus one `db` test proving the API role cannot write content tables or delete. Frontend Playwright against a mocked backend: ask → answer → citation click shows the right lines; invalid citation shown as "unverified"; cold start with a delayed `/status` and the question sent once up; busy and cap messages; pre-generated answers with the backend down; injection render (`<script>`, `<img onerror>`, markdown link and image in an answer: nothing executes or renders). Real end to end = a manual smoke checklist in slice 6. `scripts/check.ps1` runs all offline tests; I run it and paste the output | Pure functions with fakes need no network; the mocked backend makes UI states reproducible | Live API calls in tests |
 | Q19 | **Layout and spike services:** `backend/codeask/api/` and `frontend/` with separate deploy roots. New Render and Vercel services with the final names; the spike services are deleted after the results are recorded, and any key set there is rotated. `spike/m2/` stays as a frozen record with a one-line README, checked for secrets, and added to CLAUDE.md's frozen-files line | Clean names and settings for the real app; the spike stays as evidence | Reusing the spike services |
+
+**Slice 2 plan review (2026-11-03, mentor):**
+
+| # | Decision | Why | Rejected alternative |
+|---|---|---|---|
+| Q20 | **Packer variants compared offline, not tuned to Q5:** on all 8 comparison questions, from saved candidates and expected chunks written beforehand: hard cap 3 vs **soft cap** (capped-out candidates deferred, filling only leftover budget in rank order), budget 2,000 vs 2,500. The simplest variant that includes all expected chunks wins; 2,500 only if it shows a recall gain. Q5 rule: not in the top 15 → M3 retrieval finding, synthetic regression test; dropped by the cap → soft cap; dropped by the budget → consider 2,500 | Slice 1's Q5 context had signer.py 3 times by rank 5, so a hard cap of 3 could exclude `verify_signature` regardless of budget; one question is not a basis for tuning | Choosing cap/budget from Q5 alone |
+| Q21 | **Merge rule:** two same-file blocks merge when no chunk of that file lies in the gap (by the coverage invariant, the gap is blank lines) **and** the gap is ≤ ~5 lines | Chunks exclude blank separator lines (`175-180` and `182-213` have line 181 between), so `end + 1 == start` would almost never fire | Strict adjacency; any blank gap |
+| Q22 | **Errors:** a catch-all middleware registered first (innermost), CORS after (outermost); JSON `{error, message, request_id}`, never exception text. Groq 429 → 503 "busy" + `Retry-After`; upstream 5xx → 502; timeouts → 504; per-IP limits (slice 4) → 429; the 422 handler never echoes or logs pydantic's `input` (it holds the question) | Starlette's `exception_handler(Exception)` runs outside CORS (the M2-0 `/boom` finding) | `app.exception_handler(Exception)` |
+| Q23 | **Grounding response:** zero valid citations → `grounded: false`, no answer text sent (kept in `raw_answer` for eval); `possibly_relevant` = top 3 distinct files by candidate rank (dropped candidates included), labelled as a retrieval suggestion | Q3: an answer without a valid citation is not shown as an answer | Showing the ungrounded text; packed blocks only |
+| Q24 | **Model check:** at startup and again with a TTL (≥ 10 min); degraded (no crash) when Groq's list lacks the model or Groq reports it missing; `/ask` then returns 503 "live answers unavailable" | A crash would restart-loop on Render; Preview models can vanish mid-run (R13) | Startup-only check; crashing |
+| Q25 | **Class outlines: names only in M2**, in a separate uncitable `<outline-TAG>` element; prompt v3 adds "cite only lines shown in file blocks". Line ranges return in M4 with `read_file` | Ranges in an outline invite citations of lines the model never saw (unverified) | Names + ranges (M2 inputs); signature lines as numbered blocks |
+| Q26 | **DB connections:** one connection per request via a small context manager; no `psycopg_pool` in M2. Revisit if the measured connect time per request is consistently above ~100 ms | Neon's pooled endpoint (PgBouncer) is already a pool; Render → Neon connect measured ~20 ms (M2-0); no new dependency; no open question about whether an idle open connection blocks Neon's scale to zero | An app-side `psycopg_pool` (the original "pooling" item) |
+| Q27 | **Expected chunks** (`eval/m2_expected.json`, ranges from `672971d…`): drafted by Claude from the source before the slice 2 candidates were printed; **confirmed by me after I had seen the printed candidates**, with edits: Q7 adds `exc.py:22-33` BadSignature as required (the slice 1 grading treated omitting `payload`/message as partial, so the set must include where `payload` is defined); Q1 adds the Signer class header (`default_key_derivation`) as supporting. A range counts as packed when every **non-blank** line of it lies inside the packed blocks after merging. Committed before the packer experiment; later changes are amendments with a reason | The variant rule (Q20) needs a target fixed before the variants are compared | Choosing expected chunks after seeing packing results |
 
 ### M2 model comparison (slice 1, 2026-11-02)
 pallets/itsdangerous, 8 questions (`eval/m2_models.json`, Q8 unanswerable), one Voyage request,
@@ -856,7 +919,7 @@ Design consequences (M2 onward):
 - **Groq budget:** 8K input + 1K output tokens/min per model → plain RAG (no tool turn, ~3K
   tokens) is the default in M2; set `max_tokens` and ask for short answers; agent turns in M4
   must be lean.
-- **Neon:** cold start ≈ 0.5 s, a non-issue. Reuse connections (pooling) in M2. Locally, pin IPv4.
+- **Neon:** cold start ≈ 0.5 s, a non-issue. Reuse connections in M2 (superseded: one connection per request, Q26). Locally, pin IPv4.
 - **M2 context format:** prefix each line of retrieved chunks with its absolute file line
   number, so citations don't depend on the model counting lines.
 

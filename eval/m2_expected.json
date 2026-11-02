@@ -1,0 +1,16 @@
+{
+ "repo": "pallets/itsdangerous",
+ "commit_sha": "672971d66a2ef9f85151e53283113f33d642dabd",
+ "about": "Expected chunks for the 8 M2 comparison questions (eval/m2_models.json). Ranges are taken from the source at commit_sha: whole functions/classes (decorators included), 1-based inclusive. Drafted by Claude from the source on 2026-11-03 before the slice 2 candidates were printed; confirmed by the developer on 2026-11-03 AFTER seeing the printed candidates, with edits (PLAN.md Q27). 'required' = an answer can't be complete and grounded without it; 'supporting' = helpful, not used by the variant rule. Covers: an expected range counts as packed when every NON-BLANK line of it lies inside the packed blocks after merging. Later changes are amendments, each with a reason, in 'amendments'.",
+ "amendments": [],
+ "questions": [
+  {"q": 1, "required": [{"path": "src/itsdangerous/signer.py", "start": 182, "end": 213, "name": "Signer > derive_key"}], "supporting": [{"path": "src/itsdangerous/signer.py", "start": 76, "end": 127, "name": "Signer (class header, default_key_derivation)"}]},
+  {"q": 2, "required": [{"path": "src/itsdangerous/timed.py", "start": 72, "end": 158, "name": "TimestampSigner > unsign"}], "supporting": [{"path": "src/itsdangerous/timed.py", "start": 185, "end": 220, "name": "TimedSerializer > loads"}]},
+  {"q": 3, "required": [{"path": "src/itsdangerous/url_safe.py", "start": 55, "end": 69, "name": "URLSafeSerializerMixin > dump_payload"}], "supporting": [{"path": "src/itsdangerous/url_safe.py", "start": 23, "end": 53, "name": "URLSafeSerializerMixin > load_payload"}]},
+  {"q": 4, "required": [{"path": "src/itsdangerous/encoding.py", "start": 28, "end": 38, "name": "base64_decode"}], "supporting": []},
+  {"q": 5, "required": [{"path": "src/itsdangerous/signer.py", "start": 227, "end": 242, "name": "Signer > verify_signature"}, {"path": "src/itsdangerous/signer.py", "start": 182, "end": 213, "name": "Signer > derive_key"}], "supporting": [{"path": "src/itsdangerous/signer.py", "start": 129, "end": 173, "name": "Signer > __init__"}, {"path": "src/itsdangerous/signer.py", "start": 175, "end": 180, "name": "Signer > secret_key"}, {"path": "src/itsdangerous/signer.py", "start": 67, "end": 73, "name": "_make_keys_list"}, {"path": "src/itsdangerous/serializer.py", "start": 190, "end": 234, "name": "Serializer > __init__"}]},
+  {"q": 6, "required": [{"path": "src/itsdangerous/signer.py", "start": 244, "end": 256, "name": "Signer > unsign"}, {"path": "src/itsdangerous/signer.py", "start": 227, "end": 242, "name": "Signer > verify_signature"}, {"path": "src/itsdangerous/signer.py", "start": 182, "end": 213, "name": "Signer > derive_key"}], "supporting": [{"path": "src/itsdangerous/serializer.py", "start": 328, "end": 343, "name": "Serializer > loads"}]},
+  {"q": 7, "required": [{"path": "src/itsdangerous/exc.py", "start": 60, "end": 63, "name": "SignatureExpired"}, {"path": "src/itsdangerous/exc.py", "start": 36, "end": 57, "name": "BadTimeSignature"}, {"path": "src/itsdangerous/exc.py", "start": 22, "end": 33, "name": "BadSignature"}], "supporting": [{"path": "src/itsdangerous/timed.py", "start": 72, "end": 158, "name": "TimestampSigner > unsign"}]},
+  {"q": 8, "unanswerable": true, "required": [], "supporting": []}
+ ]
+}
