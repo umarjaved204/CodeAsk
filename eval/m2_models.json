@@ -1,0 +1,18 @@
+[
+  {"question": "How is the signing key derived from the secret key?",
+   "expected": ["src/itsdangerous/signer.py"]},
+  {"question": "How does it check that a timestamped signature hasn't expired (max_age)?",
+   "expected": ["src/itsdangerous/timed.py"]},
+  {"question": "How does the URL-safe serializer compress the payload?",
+   "expected": ["src/itsdangerous/url_safe.py"]},
+  {"question": "How does base64 decoding handle missing padding and errors?",
+   "expected": ["src/itsdangerous/encoding.py"]},
+  {"question": "How does it support rotating to a new secret key while old keys still work?",
+   "expected": ["src/itsdangerous/serializer.py", "src/itsdangerous/signer.py"]},
+  {"question": "What happens when a value signed with one salt is unsigned with a different salt?",
+   "expected": ["src/itsdangerous/signer.py", "src/itsdangerous/serializer.py"]},
+  {"question": "Which exception is raised when a timed signature is too old, and what does it carry?",
+   "expected": ["src/itsdangerous/exc.py", "src/itsdangerous/timed.py"]},
+  {"question": "How does itsdangerous encrypt the payload with AES?",
+   "expected": [], "unanswerable": true}
+]

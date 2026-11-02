@@ -1,0 +1,1157 @@
+[
+  {
+    "q": 1,
+    "model": "qwen/qwen3.8-27b",
+    "question": "How is the signing key derived from the secret key?",
+    "answer": "The signing key is derived in `derive_key` [1](cite:1). It first selects the secret key: if none is passed, it uses the last entry in `secret_keys` (the newest key); otherwise it converts the provided key to bytes [2](cite:2).\n\nThen it applies one of four methods based on `self.key_derivation`:\n\n- **`concat`**: hashes `salt + secret_key` with the digest method [3](cite:3).\n- **`django-concat`** (the default, set by `default_key_derivation` [4](cite:4)): hashes `salt + b\"signer\" + secret_key` [5](cite:5).\n- **`hmac`**: creates an HMAC using the secret key as the key and the salt as the message, then returns the digest [6](cite:6).\n- **`none`**: returns the secret key unchanged [7](cite:7).\n\nAny other value raises `TypeError` [8](cite:8).\n\nThe `key_derivation` parameter defaults to `default_key_derivation` (`\"django-concat\"`) if not supplied [9](cite:9). The docstring notes key derivation is not intended as a security method for turning short passwords into complex keys; large random secret keys should be used [10](cite:10).",
+    "citations": [
+      {
+        "n": 1,
+        "path": "src/itsdangerous/signer.py",
+        "start": 182,
+        "end": 213,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L182-L213"
+      },
+      {
+        "n": 2,
+        "path": "src/itsdangerous/signer.py",
+        "start": 195,
+        "end": 198,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L195-L198"
+      },
+      {
+        "n": 3,
+        "path": "src/itsdangerous/signer.py",
+        "start": 200,
+        "end": 201,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L200-L201"
+      },
+      {
+        "n": 4,
+        "path": "src/itsdangerous/signer.py",
+        "start": 127,
+        "end": 127,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L127"
+      },
+      {
+        "n": 5,
+        "path": "src/itsdangerous/signer.py",
+        "start": 202,
+        "end": 205,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L202-L205"
+      },
+      {
+        "n": 6,
+        "path": "src/itsdangerous/signer.py",
+        "start": 206,
+        "end": 209,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L206-L209"
+      },
+      {
+        "n": 7,
+        "path": "src/itsdangerous/signer.py",
+        "start": 210,
+        "end": 211,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L210-L211"
+      },
+      {
+        "n": 8,
+        "path": "src/itsdangerous/signer.py",
+        "start": 212,
+        "end": 213,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L212-L213"
+      },
+      {
+        "n": 9,
+        "path": "src/itsdangerous/signer.py",
+        "start": 160,
+        "end": 163,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L160-L163"
+      },
+      {
+        "n": 10,
+        "path": "src/itsdangerous/signer.py",
+        "start": 183,
+        "end": 187,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L183-L187"
+      }
+    ],
+    "stats": {
+      "markers": 10,
+      "attempted": 10,
+      "valid": 10,
+      "unverified": 0
+    },
+    "blocks": [
+      "src/itsdangerous/signer.py:182-213",
+      "src/itsdangerous/signer.py:175-180",
+      "src/itsdangerous/signer.py:76-127",
+      "src/itsdangerous/signer.py:129-173",
+      "src/itsdangerous/serializer.py:236-241"
+    ],
+    "context_estimate": 1984,
+    "usage": {
+      "queue_time": 0.004257976,
+      "prompt_tokens": 2442,
+      "prompt_time": 0.173563978,
+      "completion_tokens": 393,
+      "completion_time": 0.763553693,
+      "total_tokens": 2835,
+      "total_time": 0.937117671
+    },
+    "headers": {
+      "x-ratelimit-limit-requests": "1000",
+      "x-ratelimit-remaining-requests": "998",
+      "x-ratelimit-reset-requests": "2m52.8s",
+      "x-ratelimit-limit-tokens": "8000",
+      "x-ratelimit-remaining-tokens": "5208",
+      "x-ratelimit-reset-tokens": "20.939s"
+    },
+    "reasoning_chars": 0,
+    "timings_s": {
+      "retrieve": 0.73,
+      "llm": 1.37
+    },
+    "retries": 0,
+    "expected_hit": true
+  },
+  {
+    "q": 1,
+    "model": "openai/gpt-oss-120b",
+    "question": "How is the signing key derived from the secret key?",
+    "answer": "The signing key is produced by the **`derive_key`** method of `Signer`.  \n\n1. If no `secret_key` argument is given, the method uses the newest secret key (`self.secret_keys[-1]`) otherwise it converts the provided key to bytes (`want_bytes`)\u3010src/itsdangerous/signer.py:195-199\u3011.  \n\n2. The actual derivation depends on the `key_derivation` setting:  \n\n   * **`concat`** \u2013 returns the digest of the salt concatenated with the secret key\u3010src/itsdangerous/signer.py:200-202\u3011.  \n   * **`django-concat`** \u2013 returns the digest of the salt, the literal bytes `b\"signer\"`, and the secret key\u3010src/itsdangerous/signer.py:202-205\u3011.  \n   * **`hmac`** \u2013 creates an HMAC object with the secret key as the key, updates it with the salt, and returns the HMAC digest\u3010src/itsdangerous/signer.py:206-209\u3011.  \n   * **`none`** \u2013 returns the secret key unchanged\u3010src/itsdangerous/signer.py:210-211\u3011.  \n\nIf an unknown `key_derivation` value is supplied, a `TypeError` is raised\u3010src/itsdangerous/signer.py:212-213\u3011.  \n\nThus, the signing key is derived by applying one of these algorithms (default is `\"django-concat\"` as defined in the class) to the secret key and the configured salt.",
+    "citations": [],
+    "stats": {
+      "markers": 0,
+      "attempted": 0,
+      "valid": 0,
+      "unverified": 0
+    },
+    "blocks": [
+      "src/itsdangerous/signer.py:182-213",
+      "src/itsdangerous/signer.py:175-180",
+      "src/itsdangerous/signer.py:76-127",
+      "src/itsdangerous/signer.py:129-173",
+      "src/itsdangerous/serializer.py:236-241"
+    ],
+    "context_estimate": 1984,
+    "usage": {
+      "queue_time": 0.310281669,
+      "prompt_tokens": 2067,
+      "prompt_time": 0.108319104,
+      "completion_tokens": 349,
+      "completion_time": 0.729552853,
+      "total_tokens": 2416,
+      "total_time": 0.837871957,
+      "completion_tokens_details": {
+        "reasoning_tokens": 16
+      }
+    },
+    "headers": {
+      "x-ratelimit-limit-requests": "1000",
+      "x-ratelimit-remaining-requests": "999",
+      "x-ratelimit-reset-requests": "1m26.4s",
+      "x-ratelimit-limit-tokens": "8000",
+      "x-ratelimit-remaining-tokens": "5333",
+      "x-ratelimit-reset-tokens": "20.002s"
+    },
+    "reasoning_chars": 0,
+    "timings_s": {
+      "retrieve": 0.76,
+      "llm": 1.52
+    },
+    "retries": 0,
+    "expected_hit": false
+  },
+  {
+    "q": 2,
+    "model": "qwen/qwen3.8-27b",
+    "question": "How does it check that a timestamped signature hasn't expired (max_age)?",
+    "answer": "The expiration check happens in `TimestampSigner.unsign` after the signature is successfully verified and the timestamp is parsed.\n\n1.  **Calculate Age**: It computes the age of the signature by subtracting the signed timestamp (`ts_int`) from the current timestamp (`self.get_timestamp()`).\n    *   [1](cite:1)\n\n2.  **Compare to `max_age`**: If `max_age` is provided, it checks if the calculated `age` is greater than `max_age`.\n    *   [2](cite:2)\n\n3.  **Raise Exception**: If the signature is too old (`age > max_age`), it raises a `SignatureExpired` exception with a message indicating the age exceeded the limit. It also handles the edge case where the age is negative (clock skew/future timestamp) by raising `SignatureExpired` as well.\n    *   [3](cite:3)\n\nThe `TimedSerializer.loads` method forwards the `max_age` argument to the signer's `unsign` method, allowing the serializer to enforce expiration limits during deserialization.\n*   [4](cite:4)",
+    "citations": [
+      {
+        "n": 1,
+        "path": "src/itsdangerous/timed.py",
+        "start": 139,
+        "end": 139,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/timed.py#L139"
+      },
+      {
+        "n": 2,
+        "path": "src/itsdangerous/timed.py",
+        "start": 138,
+        "end": 141,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/timed.py#L138-L141"
+      },
+      {
+        "n": 3,
+        "path": "src/itsdangerous/timed.py",
+        "start": 142,
+        "end": 153,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/timed.py#L142-L153"
+      },
+      {
+        "n": 4,
+        "path": "src/itsdangerous/timed.py",
+        "start": 204,
+        "end": 206,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/timed.py#L204-L206"
+      }
+    ],
+    "stats": {
+      "markers": 4,
+      "attempted": 4,
+      "valid": 4,
+      "unverified": 0
+    },
+    "blocks": [
+      "src/itsdangerous/timed.py:72-158",
+      "src/itsdangerous/timed.py:160-167",
+      "src/itsdangerous/timed.py:170-228",
+      "src/itsdangerous/timed.py:22-27"
+    ],
+    "context_estimate": 1964,
+    "usage": {
+      "queue_time": 0.004431102,
+      "prompt_tokens": 2463,
+      "prompt_time": 0.176095981,
+      "completion_tokens": 281,
+      "completion_time": 0.566526964,
+      "total_tokens": 2744,
+      "total_time": 0.742622945
+    },
+    "headers": {
+      "x-ratelimit-limit-requests": "1000",
+      "x-ratelimit-remaining-requests": "997",
+      "x-ratelimit-reset-requests": "4m19.2s",
+      "x-ratelimit-limit-tokens": "8000",
+      "x-ratelimit-remaining-tokens": "4937",
+      "x-ratelimit-reset-tokens": "22.972s"
+    },
+    "reasoning_chars": 0,
+    "timings_s": {
+      "retrieve": 0.75,
+      "llm": 1.17
+    },
+    "retries": 0,
+    "expected_hit": true
+  },
+  {
+    "q": 2,
+    "model": "openai/gpt-oss-120b",
+    "question": "How does it check that a timestamped signature hasn't expired (max_age)?",
+    "answer": "The check is performed inside **`TimestampSigner.unsign`**.\n\n1. After extracting the integer timestamp (`ts_int`) from the signed value, the method looks at the optional `max_age` argument.  \n2. If `max_age` is provided, it computes the age of the signature as the difference between the current timestamp (`self.get_timestamp()`) and the stored timestamp (`ts_int`)\u3010src/itsdangerous/timed.py:138-140\u3011.  \n3. It then compares this age to `max_age`:  \n\n   * If the age is **greater** than `max_age`, a `SignatureExpired` exception is raised with a message indicating the signature is too old\u3010src/itsdangerous/timed.py:141-144\u3011.  \n   * If the age is **negative** (the timestamp is in the future), it also raises `SignatureExpired` because the signature appears to be from the future\u3010src/itsdangerous/timed.py:148-152\u3011.\n\nThus, the expiration check consists of calculating `age = current_time - stored_time` and raising `SignatureExpired` when `age` is outside the allowed range (`age > max_age` or `age < 0`).",
+    "citations": [],
+    "stats": {
+      "markers": 0,
+      "attempted": 0,
+      "valid": 0,
+      "unverified": 0
+    },
+    "blocks": [
+      "src/itsdangerous/timed.py:72-158",
+      "src/itsdangerous/timed.py:160-167",
+      "src/itsdangerous/timed.py:170-228",
+      "src/itsdangerous/timed.py:22-27"
+    ],
+    "context_estimate": 1964,
+    "usage": {
+      "queue_time": 0.312859003,
+      "prompt_tokens": 2054,
+      "prompt_time": 0.124736027,
+      "completion_tokens": 311,
+      "completion_time": 0.648687848,
+      "total_tokens": 2365,
+      "total_time": 0.773423875,
+      "completion_tokens_details": {
+        "reasoning_tokens": 52
+      }
+    },
+    "headers": {
+      "x-ratelimit-limit-requests": "1000",
+      "x-ratelimit-remaining-requests": "998",
+      "x-ratelimit-reset-requests": "2m52.8s",
+      "x-ratelimit-limit-tokens": "8000",
+      "x-ratelimit-remaining-tokens": "5597",
+      "x-ratelimit-reset-tokens": "18.022s"
+    },
+    "reasoning_chars": 0,
+    "timings_s": {
+      "retrieve": 0.75,
+      "llm": 1.5
+    },
+    "retries": 0,
+    "expected_hit": false
+  },
+  {
+    "q": 3,
+    "model": "qwen/qwen3.8-27b",
+    "question": "How does the URL-safe serializer compress the payload?",
+    "answer": "The URL-safe serializer compresses the payload using **zlib** compression, applied conditionally in `dump_payload` [1](cite:1):\n\n1. It first serializes the object to JSON via `super().dump_payload(obj)` [2](cite:2).\n2. It compresses that JSON with `zlib.compress(json)` [3](cite:3).\n3. It only uses the compressed version if it is shorter than the original minus one byte: `if len(compressed) < (len(json) - 1)` [4](cite:4). The `-1` accounts for the `b\".\"` prefix added to mark compressed payloads.\n4. If compressed, it prepends a `b\".\"` byte to the base64-encoded result [5](cite:5).\n\nOn load, `load_payload` detects compression by checking `payload.startswith(b\".\")` [6](cite:6), strips the byte, base64 decodes, then decompresses with `zlib.decompress` [7](cite:7).\n\nThe base64 encoding uses a URL-safe alphabet consisting of ASCII letters, digits, `-`, `_`, and `=` [8](cite:8).\n\nThis mixin is used by both `URLSafeSerializer` [9](cite:9) and `URLSafeTimedSerializer` [10](cite:10).",
+    "citations": [
+      {
+        "n": 1,
+        "path": "src/itsdangerous/url_safe.py",
+        "start": 55,
+        "end": 69,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/url_safe.py#L55-L69"
+      },
+      {
+        "n": 2,
+        "path": "src/itsdangerous/url_safe.py",
+        "start": 56,
+        "end": 56,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/url_safe.py#L56"
+      },
+      {
+        "n": 3,
+        "path": "src/itsdangerous/url_safe.py",
+        "start": 58,
+        "end": 58,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/url_safe.py#L58"
+      },
+      {
+        "n": 4,
+        "path": "src/itsdangerous/url_safe.py",
+        "start": 60,
+        "end": 62,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/url_safe.py#L60-L62"
+      },
+      {
+        "n": 5,
+        "path": "src/itsdangerous/url_safe.py",
+        "start": 66,
+        "end": 67,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/url_safe.py#L66-L67"
+      },
+      {
+        "n": 6,
+        "path": "src/itsdangerous/url_safepy",
+        "start": 32,
+        "end": 34,
+        "valid": false,
+        "url": null
+      },
+      {
+        "n": 7,
+        "path": "src/itsdangerous/url_safe.py",
+        "start": 44,
+        "end": 51,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/url_safe.py#L44-L51"
+      },
+      {
+        "n": 8,
+        "path": "src/itsdangerous/encoding.py",
+        "start": 41,
+        "end": 42,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/encoding.py#L41-L42"
+      },
+      {
+        "n": 9,
+        "path": "src/itsdangerous/url_safe.py",
+        "start": 72,
+        "end": 76,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/url_safe.py#L72-L76"
+      },
+      {
+        "n": 10,
+        "path": "src/itsdangerous/url_safe.py",
+        "start": 79,
+        "end": 83,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/url_safe.py#L79-L83"
+      }
+    ],
+    "stats": {
+      "markers": 10,
+      "attempted": 10,
+      "valid": 9,
+      "unverified": 1
+    },
+    "blocks": [
+      "src/itsdangerous/url_safe.py:15-69",
+      "src/itsdangerous/url_safe.py:1-12",
+      "src/itsdangerous/url_safe.py:72-76",
+      "src/itsdangerous/serializer.py:271-276",
+      "src/itsdangerous/url_safe.py:79-83",
+      "src/itsdangerous/encoding.py:41-46",
+      "src/itsdangerous/serializer.py:1-11",
+      "src/itsdangerous/__init__.py:1-17"
+    ],
+    "context_estimate": 1460,
+    "usage": {
+      "queue_time": 0.004141531,
+      "prompt_tokens": 2008,
+      "prompt_time": 0.13799666,
+      "completion_tokens": 372,
+      "completion_time": 0.747681592,
+      "total_tokens": 2380,
+      "total_time": 0.885678252
+    },
+    "headers": {
+      "x-ratelimit-limit-requests": "1000",
+      "x-ratelimit-remaining-requests": "996",
+      "x-ratelimit-reset-requests": "5m45.6s",
+      "x-ratelimit-limit-tokens": "8000",
+      "x-ratelimit-remaining-tokens": "5599",
+      "x-ratelimit-reset-tokens": "18.007s"
+    },
+    "reasoning_chars": 0,
+    "timings_s": {
+      "retrieve": 0.79,
+      "llm": 1.69
+    },
+    "retries": 0,
+    "expected_hit": true
+  },
+  {
+    "q": 3,
+    "model": "openai/gpt-oss-120b",
+    "question": "How does the URL-safe serializer compress the payload?",
+    "answer": "The URL\u2011safe serializer mixes in **URLSafeSerializerMixin**, which overrides the normal `dump_payload` method.\n\n1. It first obtains the JSON bytes from the parent serializer (`super().dump_payload(obj)`)\u3010src/itsdangerous/url_safe.py:55-57\u3011.  \n2. It compresses those bytes with **zlib.compress** and stores the result in `compressed`\u3010src/itsdangerous/url_safe.py:58\u3011.  \n3. It compares the length of the compressed data with the original JSON length minus one; if the compressed version is at least one byte smaller, it replaces the JSON payload with the compressed data and sets `is_compressed = True`\u3010src/itsdangerous/url_safe.py:60-63\u3011.  \n4. The (possibly compressed) payload is then base64\u2011url\u2011encoded (`base64_encode`)\u3010src/itsdangerous/url_safe.py:64\u3011.  \n5. If compression was applied, a leading dot (`b\".\"`) is prepended to the encoded bytes to signal that the payload must be decompressed on load\u3010src/itsdangerous/url_safe.py:66-68\u3011.\n\nDuring loading, `load_payload` checks for this leading dot, strips it, and if present runs `zlib.decompress` after base64\u2011decoding\u3010src/itsdangerous/url_safe.py:30-35\u3011\u3010src/itsdangerous/url_safe.py:44-51\u3011. Thus the serializer compresses the payload with zlib only when it reduces the size, and marks it with a leading \u201c.\u201d for later decompression.",
+    "citations": [],
+    "stats": {
+      "markers": 0,
+      "attempted": 0,
+      "valid": 0,
+      "unverified": 0
+    },
+    "blocks": [
+      "src/itsdangerous/url_safe.py:15-69",
+      "src/itsdangerous/url_safe.py:1-12",
+      "src/itsdangerous/url_safe.py:72-76",
+      "src/itsdangerous/serializer.py:271-276",
+      "src/itsdangerous/url_safe.py:79-83",
+      "src/itsdangerous/encoding.py:41-46",
+      "src/itsdangerous/serializer.py:1-11",
+      "src/itsdangerous/__init__.py:1-17"
+    ],
+    "context_estimate": 1460,
+    "usage": {
+      "queue_time": 0.376056161,
+      "prompt_tokens": 1764,
+      "prompt_time": 0.082615533,
+      "completion_tokens": 361,
+      "completion_time": 0.7600213,
+      "total_tokens": 2125,
+      "total_time": 0.842636833,
+      "completion_tokens_details": {
+        "reasoning_tokens": 23
+      }
+    },
+    "headers": {
+      "x-ratelimit-limit-requests": "1000",
+      "x-ratelimit-remaining-requests": "997",
+      "x-ratelimit-reset-requests": "4m19.2s",
+      "x-ratelimit-limit-tokens": "8000",
+      "x-ratelimit-remaining-tokens": "5636",
+      "x-ratelimit-reset-tokens": "17.73s"
+    },
+    "reasoning_chars": 0,
+    "timings_s": {
+      "retrieve": 0.8,
+      "llm": 1.64
+    },
+    "retries": 0,
+    "expected_hit": false
+  },
+  {
+    "q": 4,
+    "model": "qwen/qwen3.8-27b",
+    "question": "How does base64 decoding handle missing padding and errors?",
+    "answer": "Based on the provided files, `base64_decode` handles missing padding and errors as follows:\n\n1.  **Missing Padding:** The function first converts the input to bytes using `want_bytes` with ASCII encoding and ignoring errors. It then manually adds the necessary padding characters (`=`) to ensure the string length is a multiple of 4 before decoding [1](cite:1).\n2.  **Errors:** The actual decoding is performed using `base64.urlsafe_b64decode`. If this operation raises a `TypeError` or `ValueError`, the function catches the exception and raises a `BadData` exception with the message \"Invalid base64-encoded data\" [2](cite:2).\n\nThe `BadData` exception is imported from `.exc` [3](cite:3).",
+    "citations": [
+      {
+        "n": 1,
+        "path": "src/itsdangerous/encoding.py",
+        "start": 32,
+        "end": 33,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/encoding.py#L32-L33"
+      },
+      {
+        "n": 2,
+        "path": "src/itsdangerous/encoding.py",
+        "start": 35,
+        "end": 38,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/encoding.py#L35-L38"
+      },
+      {
+        "n": 3,
+        "path": "src/itsdangerous/encoding.py",
+        "start": 8,
+        "end": 8,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/encoding.py#L8"
+      }
+    ],
+    "stats": {
+      "markers": 3,
+      "attempted": 3,
+      "valid": 3,
+      "unverified": 0
+    },
+    "blocks": [
+      "src/itsdangerous/encoding.py:28-38",
+      "src/itsdangerous/encoding.py:1-8",
+      "src/itsdangerous/encoding.py:41-46",
+      "src/itsdangerous/encoding.py:20-25",
+      "src/itsdangerous/url_safe.py:1-12",
+      "src/itsdangerous/signer.py:1-12",
+      "src/itsdangerous/encoding.py:49-54",
+      "src/itsdangerous/encoding.py:11-17"
+    ],
+    "context_estimate": 875,
+    "usage": {
+      "queue_time": 0.290145578,
+      "prompt_tokens": 1368,
+      "prompt_time": 0.249964167,
+      "completion_tokens": 191,
+      "completion_time": 0.589117324,
+      "total_tokens": 1559,
+      "total_time": 0.839081491
+    },
+    "headers": {
+      "x-ratelimit-limit-requests": "1000",
+      "x-ratelimit-remaining-requests": "995",
+      "x-ratelimit-reset-requests": "7m12s",
+      "x-ratelimit-limit-tokens": "8000",
+      "x-ratelimit-remaining-tokens": "6233",
+      "x-ratelimit-reset-tokens": "13.252s"
+    },
+    "reasoning_chars": 0,
+    "timings_s": {
+      "retrieve": 0.77,
+      "llm": 1.74
+    },
+    "retries": 0,
+    "expected_hit": true
+  },
+  {
+    "q": 4,
+    "model": "openai/gpt-oss-120b",
+    "question": "How does base64 decoding handle missing padding and errors?",
+    "answer": "`base64_decode` first ensures the input is a bytes object, then adds any missing \u201c=\u201d padding so the length is a multiple of\u202f4, and finally calls the standard library decoder. If the underlying `base64.urlsafe_b64decode` raises a `TypeError` or `ValueError` (e.g., because the data is not valid base64), the function catches the exception and re\u2011raises it as a `BadData` error.\n\n* The padding is added with `string += b\"=\" * (-len(string) % 4)`\u202f[encoding.py:32\u201134].\n* The actual decode is performed by `base64.urlsafe_b64decode(string)`\u202f[1](cite:1).\n* Errors are caught with `except (TypeError, ValueError) as e:` and re\u2011raised as `BadData(\"Invalid base64-encoded data\")`\u202f[encoding.py:36\u201138].",
+    "citations": [
+      {
+        "n": 1,
+        "path": "encoding.py",
+        "start": 36,
+        "end": 36,
+        "valid": false,
+        "url": null
+      }
+    ],
+    "stats": {
+      "markers": 1,
+      "attempted": 3,
+      "valid": 0,
+      "unverified": 1
+    },
+    "blocks": [
+      "src/itsdangerous/encoding.py:28-38",
+      "src/itsdangerous/encoding.py:1-8",
+      "src/itsdangerous/encoding.py:41-46",
+      "src/itsdangerous/encoding.py:20-25",
+      "src/itsdangerous/url_safe.py:1-12",
+      "src/itsdangerous/signer.py:1-12",
+      "src/itsdangerous/encoding.py:49-54",
+      "src/itsdangerous/encoding.py:11-17"
+    ],
+    "context_estimate": 875,
+    "usage": {
+      "queue_time": 0.246075461,
+      "prompt_tokens": 1219,
+      "prompt_time": 0.066386621,
+      "completion_tokens": 230,
+      "completion_time": 0.483673749,
+      "total_tokens": 1449,
+      "total_time": 0.55006037,
+      "completion_tokens_details": {
+        "reasoning_tokens": 31
+      }
+    },
+    "headers": {
+      "x-ratelimit-limit-requests": "1000",
+      "x-ratelimit-remaining-requests": "996",
+      "x-ratelimit-reset-requests": "5m45.6s",
+      "x-ratelimit-limit-tokens": "8000",
+      "x-ratelimit-remaining-tokens": "6432",
+      "x-ratelimit-reset-tokens": "11.76s"
+    },
+    "reasoning_chars": 0,
+    "timings_s": {
+      "retrieve": 1.34,
+      "llm": 1.18
+    },
+    "retries": 0,
+    "expected_hit": false
+  },
+  {
+    "q": 5,
+    "model": "qwen/qwen3.8-27b",
+    "question": "How does it support rotating to a new secret key while old keys still work?",
+    "answer": "It supports key rotation by storing multiple keys in a list and using different keys for signing versus verification.\n\n**Storage**\nBoth `Signer` and `Serializer` accept a single key or an iterable of keys. The helper `_make_keys_list` normalizes the input into a `list[bytes]` [1](cite:1). This list is stored as `self.secret_keys` in both classes [src/itsdangerous/signer.py:138-143, src/itsdangerous/serializer.py:203-208]. The docstring states the list is ordered \"from oldest to newest\" and that \"the newest (last) key is used for signing\" [2](cite:2).\n\n**Signing**\nWhen deriving the key for a new signature, `derive_key` defaults to `self.secret_keys[-1]` (the newest key) if no specific key is passed [3](cite:3). The `secret_key` property also returns `self.secret_keys[-1]` for backward compatibility [src/itsdangerous/signer.py:175-180, src/itsdangerous/serializer.py:236-241].\n\n**Verification**\nThe provided files do not show the verification loop that iterates over all `secret_keys` to find a match. However, the design implies that verification tries each key in the list (typically from newest to oldest or all of them) so that tokens signed with older keys remain valid until those keys are removed from the list. The docstring explicitly notes this allows \"a key rotation system to keep a list of allowed keys and remove expired ones\" [4](cite:4).\n\n**Summary**\nTo rotate keys, you append the new key to the end of the `secret_keys` list. New signatures use the last key, while old signatures can still be verified because the older keys remain in the list. You can remove old keys once you no longer need to verify tokens signed with them.",
+    "citations": [
+      {
+        "n": 1,
+        "path": "src/itsdangerous/signer.py",
+        "start": 67,
+        "end": 73,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L67-L73"
+      },
+      {
+        "n": 2,
+        "path": "src/itsdangerous/signer.py",
+        "start": 138,
+        "end": 142,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L138-L142"
+      },
+      {
+        "n": 3,
+        "path": "src/itsdangerous/signer.py",
+        "start": 195,
+        "end": 196,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L195-L196"
+      },
+      {
+        "n": 4,
+        "path": "src/itsdangerous/signer.py",
+        "start": 141,
+        "end": 142,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L141-L142"
+      }
+    ],
+    "stats": {
+      "markers": 4,
+      "attempted": 6,
+      "valid": 4,
+      "unverified": 0
+    },
+    "blocks": [
+      "src/itsdangerous/signer.py:175-180",
+      "src/itsdangerous/serializer.py:236-241",
+      "src/itsdangerous/signer.py:129-173",
+      "src/itsdangerous/serializer.py:190-234",
+      "src/itsdangerous/signer.py:182-213",
+      "src/itsdangerous/signer.py:67-73"
+    ],
+    "context_estimate": 1803,
+    "usage": {
+      "queue_time": 0.004167128,
+      "prompt_tokens": 2455,
+      "prompt_time": 0.174417636,
+      "completion_tokens": 462,
+      "completion_time": 0.938428528,
+      "total_tokens": 2917,
+      "total_time": 1.112846164
+    },
+    "headers": {
+      "x-ratelimit-limit-requests": "1000",
+      "x-ratelimit-remaining-requests": "994",
+      "x-ratelimit-reset-requests": "8m38.4s",
+      "x-ratelimit-limit-tokens": "8000",
+      "x-ratelimit-remaining-tokens": "5264",
+      "x-ratelimit-reset-tokens": "20.52s"
+    },
+    "reasoning_chars": 0,
+    "timings_s": {
+      "retrieve": 1.25,
+      "llm": 1.55
+    },
+    "retries": 0,
+    "expected_hit": true
+  },
+  {
+    "q": 5,
+    "model": "openai/gpt-oss-120b",
+    "question": "How does it support rotating to a new secret key while old keys still work?",
+    "answer": "The classes keep **all allowed keys in a list** and always use the newest one for creating new signatures while still accepting any of the older keys when verifying.\n\n* In both `Signer` and `Serializer` the constructor builds a list of keys from the supplied `secret_key` argument:  \n\n  * `self.secret_keys: list[bytes] = _make_keys_list(secret_key)`\u202f[signer.py:138\u2011144] and  \n  * `self.secret_keys: list[bytes] = _make_keys_list(secret_key)`\u202f[serializer.py:203\u2011209].\n\n* The doc\u2011string comments explain the ordering:  \n\n  * \u201cThe list of secret keys to try for verifying signatures, from oldest to newest. The newest (last) key is used for signing.\u201d\u202f[signer.py:138\u2011143] and the same comment in `serializer.py`\u202f[serializer.py:203\u2011207].\n\n* The `secret_key` property returns the **last entry** (the newest key):  \n\n  * `return self.secret_keys[-1]`\u202f[signer.py:177\u2011180] and  \n  * `return self.secret_keys[-1]`\u202f[serializer.py:236\u2011241].\n\n* When deriving a key for signing, if no explicit `secret_key` is passed, the method falls back to the last key in the list:  \n\n  * `if secret_key is None: secret_key = self.secret_keys[-1]`\u202f[signer.py:195\u2011197].\n\nThus, to rotate keys you supply a list of keys (old ones first, new one last). The system will sign with the newest key but will still verify signatures created with any of the older keys because verification iterates over `self.secret_keys`. This design enables seamless key rotation while maintaining compatibility with existing signatures.",
+    "citations": [],
+    "stats": {
+      "markers": 0,
+      "attempted": 7,
+      "valid": 0,
+      "unverified": 0
+    },
+    "blocks": [
+      "src/itsdangerous/signer.py:175-180",
+      "src/itsdangerous/serializer.py:236-241",
+      "src/itsdangerous/signer.py:129-173",
+      "src/itsdangerous/serializer.py:190-234",
+      "src/itsdangerous/signer.py:182-213",
+      "src/itsdangerous/signer.py:67-73"
+    ],
+    "context_estimate": 1803,
+    "usage": {
+      "queue_time": 0.376134698,
+      "prompt_tokens": 2052,
+      "prompt_time": 0.10180173,
+      "completion_tokens": 423,
+      "completion_time": 0.881047762,
+      "total_tokens": 2475,
+      "total_time": 0.982849492,
+      "completion_tokens_details": {
+        "reasoning_tokens": 42
+      }
+    },
+    "headers": {
+      "x-ratelimit-limit-requests": "1000",
+      "x-ratelimit-remaining-requests": "995",
+      "x-ratelimit-reset-requests": "7m12s",
+      "x-ratelimit-limit-tokens": "8000",
+      "x-ratelimit-remaining-tokens": "5348",
+      "x-ratelimit-reset-tokens": "19.89s"
+    },
+    "reasoning_chars": 0,
+    "timings_s": {
+      "retrieve": 1.12,
+      "llm": 2.05
+    },
+    "retries": 0,
+    "expected_hit": false
+  },
+  {
+    "q": 6,
+    "model": "qwen/qwen3.8-27b",
+    "question": "What happens when a value signed with one salt is unsigned with a different salt?",
+    "answer": "When a value signed with one salt is unsigned with a different salt, the signature verification fails and a `BadSignature` exception is raised.\n\nHere's the flow:\n\n1. **Key derivation differs**: The `Signer` derives its signing key from both the `secret_key` and `salt` (via `key_derivation`, defaulting to `django-concat`) [src/itsdangerous/signer.py:87-93, 122-127]. A different salt produces a different derived key.\n\n2. **Signature mismatch**: In `verify_signature`, the derived key is used to check the HMAC signature against the value [1](cite:1). Since the key differs from the one used during signing, `self.algorithm.verify_signature(key, value, sig)` returns `False` for all secret keys, and the method returns `False` [2](cite:2).\n\n3. **Exception raised**: Back in `unsign`, because `verify_signature` returns `False`, the method raises `BadSignature(f\"Signature {sig!r} does not match\", payload=value)` [3](cite:3).\n\n4. **Serializer level**: If using `Serializer.loads`, it iterates over unsigners and catches `BadSignature` [4](cite:4). If no signer succeeds, it re-raises the last `BadSignature` [5](cite:5).\n\nIn short: different salt \u2192 different derived key \u2192 signature check fails \u2192 `BadSignature` is raised.",
+    "citations": [
+      {
+        "n": 1,
+        "path": "src/itsdangerous/signer.py",
+        "start": 236,
+        "end": 240,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L236-L240"
+      },
+      {
+        "n": 2,
+        "path": "src/itsdangerous/signer.py",
+        "start": 242,
+        "end": 242,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L242"
+      },
+      {
+        "n": 3,
+        "path": "src/itsdangerous/signer.py",
+        "start": 253,
+        "end": 256,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L253-L256"
+      },
+      {
+        "n": 4,
+        "path": "src/itsdangerous/serializer.py",
+        "start": 337,
+        "end": 341,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/serializer.py#L337-L341"
+      },
+      {
+        "n": 5,
+        "path": "src/itsdangerous/serializer.py",
+        "start": 343,
+        "end": 343,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/serializer.py#L343"
+      }
+    ],
+    "stats": {
+      "markers": 5,
+      "attempted": 6,
+      "valid": 5,
+      "unverified": 0
+    },
+    "blocks": [
+      "src/itsdangerous/signer.py:244-256",
+      "src/itsdangerous/signer.py:76-127",
+      "src/itsdangerous/serializer.py:328-343",
+      "src/itsdangerous/signer.py:258-266",
+      "src/itsdangerous/signer.py:227-242",
+      "src/itsdangerous/serializer.py:349-365",
+      "src/itsdangerous/serializer.py:309-320"
+    ],
+    "context_estimate": 1956,
+    "usage": {
+      "queue_time": 0.005097697,
+      "prompt_tokens": 2480,
+      "prompt_time": 0.182069611,
+      "completion_tokens": 363,
+      "completion_time": 0.702156379,
+      "total_tokens": 2843,
+      "total_time": 0.88422599
+    },
+    "headers": {
+      "x-ratelimit-limit-requests": "1000",
+      "x-ratelimit-remaining-requests": "993",
+      "x-ratelimit-reset-requests": "10m4.8s",
+      "x-ratelimit-limit-tokens": "8000",
+      "x-ratelimit-remaining-tokens": "5058",
+      "x-ratelimit-reset-tokens": "22.065s"
+    },
+    "reasoning_chars": 0,
+    "timings_s": {
+      "retrieve": 0.75,
+      "llm": 1.3
+    },
+    "retries": 0,
+    "expected_hit": true
+  },
+  {
+    "q": 6,
+    "model": "openai/gpt-oss-120b",
+    "question": "What happens when a value signed with one salt is unsigned with a different salt?",
+    "answer": "When the signed data is verified with a **different salt**, the signature check fails and a `BadSignature` exception is raised.\n\n* `Signer.unsign()` splits the value and calls `verify_signature()`. If the verification returns `False` it raises `BadSignature`\u202f[src/itsdangerous/signer.py:251\u2011256].\n* `verify_signature()` tries to decode the signature and then checks it against each secret key. Because the salt used to create the signer is different, the derived signing key is different, so the check returns `False`\u202f[src/itsdangerous/signer.py:227\u2011242].\n* The `Serializer.loads()` method catches `BadSignature` from each signer and finally re\u2011raises the last one if none succeed\u202f[src/itsdangerous/serializer.py:337\u2011343].\n\nThus, unsigned with a different salt results in a `BadSignature` error.",
+    "citations": [],
+    "stats": {
+      "markers": 0,
+      "attempted": 3,
+      "valid": 0,
+      "unverified": 0
+    },
+    "blocks": [
+      "src/itsdangerous/signer.py:244-256",
+      "src/itsdangerous/signer.py:76-127",
+      "src/itsdangerous/serializer.py:328-343",
+      "src/itsdangerous/signer.py:258-266",
+      "src/itsdangerous/signer.py:227-242",
+      "src/itsdangerous/serializer.py:349-365",
+      "src/itsdangerous/serializer.py:309-320"
+    ],
+    "context_estimate": 1956,
+    "usage": {
+      "queue_time": 0.957373917,
+      "prompt_tokens": 2111,
+      "prompt_time": 0.300450573,
+      "completion_tokens": 309,
+      "completion_time": 0.641765245,
+      "total_tokens": 2420,
+      "total_time": 0.942215818,
+      "completion_tokens_details": {
+        "reasoning_tokens": 114
+      }
+    },
+    "headers": {
+      "x-ratelimit-limit-requests": "1000",
+      "x-ratelimit-remaining-requests": "994",
+      "x-ratelimit-reset-requests": "8m38.4s",
+      "x-ratelimit-limit-tokens": "8000",
+      "x-ratelimit-remaining-tokens": "5466",
+      "x-ratelimit-reset-tokens": "19.005s"
+    },
+    "reasoning_chars": 0,
+    "timings_s": {
+      "retrieve": 0.77,
+      "llm": 2.32
+    },
+    "retries": 0,
+    "expected_hit": false
+  },
+  {
+    "q": 7,
+    "model": "qwen/qwen3.8-27b",
+    "question": "Which exception is raised when a timed signature is too old, and what does it carry?",
+    "answer": "When a timed signature is older than the allowed `max_age`, the `SignatureExpired` exception is raised.\n\n- **Class hierarchy:** `SignatureExpired` is a subclass of `BadTimeSignature`, which is itself a subclass of `BadSignature` [src/itsdangerous/exc.py:60-63, 36-39].\n- **What it carries:** Because it inherits from `BadTimeSignature`, it carries:\n  - `message` and `payload` (inherited from `BadSignature` via `super().__init__`) [1](cite:1).\n  - `date_signed`: a timezone-aware `datetime` (or `None`) indicating when the signature was created, useful for telling users how long a link has been stale [2](cite:2).\n\n**Where it is raised:**\n- `TimestampSigner.unsign` raises `SignatureExpired` when the signature is expired [3](cite:3).\n- `TimedSerializer.loads` propagates `SignatureExpired` without trying the next signer [4](cite:4).\n- `TimestampSigner.validate` catches `BadSignature` (which includes `SignatureExpired`) and returns `False` [5](cite:5).",
+    "citations": [
+      {
+        "n": 1,
+        "path": "src/itsdangerous/exc.py",
+        "start": 41,
+        "end": 47,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/exc.py#L41-L47"
+      },
+      {
+        "n": 2,
+        "path": "src/itsdangerous/exc.py",
+        "start": 49,
+        "end": 57,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/exc.py#L49-L57"
+      },
+      {
+        "n": 3,
+        "path": "src/itsdangerous/timed.py",
+        "start": 22,
+        "end": 27,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/timed.py#L22-L27"
+      },
+      {
+        "n": 4,
+        "path": "src/itsdangerous/timed.py",
+        "start": 213,
+        "end": 216,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/timed.py#L213-L216"
+      },
+      {
+        "n": 5,
+        "path": "src/itsdangerous/timed.py",
+        "start": 160,
+        "end": 167,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/timed.py#L160-L167"
+      }
+    ],
+    "stats": {
+      "markers": 5,
+      "attempted": 6,
+      "valid": 5,
+      "unverified": 0
+    },
+    "blocks": [
+      "src/itsdangerous/exc.py:60-63",
+      "src/itsdangerous/exc.py:36-57",
+      "src/itsdangerous/timed.py:170-228",
+      "src/itsdangerous/timed.py:22-27",
+      "src/itsdangerous/timed.py:53-54",
+      "src/itsdangerous/timed.py:1-19",
+      "src/itsdangerous/timed.py:160-167"
+    ],
+    "context_estimate": 1563,
+    "usage": {
+      "queue_time": 0.004256268,
+      "prompt_tokens": 2061,
+      "prompt_time": 0.1413059,
+      "completion_tokens": 309,
+      "completion_time": 0.587963207,
+      "total_tokens": 2370,
+      "total_time": 0.729269107
+    },
+    "headers": {
+      "x-ratelimit-limit-requests": "1000",
+      "x-ratelimit-remaining-requests": "992",
+      "x-ratelimit-reset-requests": "11m31.2s",
+      "x-ratelimit-limit-tokens": "8000",
+      "x-ratelimit-remaining-tokens": "5546",
+      "x-ratelimit-reset-tokens": "18.405s"
+    },
+    "reasoning_chars": 0,
+    "timings_s": {
+      "retrieve": 0.79,
+      "llm": 1.65
+    },
+    "retries": 0,
+    "expected_hit": true
+  },
+  {
+    "q": 7,
+    "model": "openai/gpt-oss-120b",
+    "question": "Which exception is raised when a timed signature is too old, and what does it carry?",
+    "answer": "The timed serializer raises **`SignatureExpired`** when a timestamped signature is older than the allowed `max_age`.  \n\n* `SignatureExpired` is defined as a subclass of `BadTimeSignature`\u202f[src/itsdangerous/exc.py:60\u201163].  \n* `BadTimeSignature` (its parent) stores the time the signature was created in the attribute `date_signed`\u202f[src/itsdangerous/exc.py:36\u201157].  \n\nThus, when a timed signature is too old, a `SignatureExpired` exception is raised and it carries the `date_signed` datetime indicating when the signature was originally generated.",
+    "citations": [],
+    "stats": {
+      "markers": 0,
+      "attempted": 2,
+      "valid": 0,
+      "unverified": 0
+    },
+    "blocks": [
+      "src/itsdangerous/exc.py:60-63",
+      "src/itsdangerous/exc.py:36-57",
+      "src/itsdangerous/timed.py:170-228",
+      "src/itsdangerous/timed.py:22-27",
+      "src/itsdangerous/timed.py:53-54",
+      "src/itsdangerous/timed.py:1-19",
+      "src/itsdangerous/timed.py:160-167"
+    ],
+    "context_estimate": 1563,
+    "usage": {
+      "queue_time": 0.37624655,
+      "prompt_tokens": 1767,
+      "prompt_time": 0.078954131,
+      "completion_tokens": 167,
+      "completion_time": 0.347735724,
+      "total_tokens": 1934,
+      "total_time": 0.426689855,
+      "completion_tokens_details": {
+        "reasoning_tokens": 26
+      }
+    },
+    "headers": {
+      "x-ratelimit-limit-requests": "1000",
+      "x-ratelimit-remaining-requests": "993",
+      "x-ratelimit-reset-requests": "10m4.8s",
+      "x-ratelimit-limit-tokens": "8000",
+      "x-ratelimit-remaining-tokens": "5872",
+      "x-ratelimit-reset-tokens": "15.96s"
+    },
+    "reasoning_chars": 0,
+    "timings_s": {
+      "retrieve": 0.79,
+      "llm": 1.66
+    },
+    "retries": 0,
+    "expected_hit": false
+  },
+  {
+    "q": 8,
+    "model": "qwen/qwen3.8-27b",
+    "question": "How does itsdangerous encrypt the payload with AES?",
+    "answer": "The provided files do not contain any AES encryption logic. ItsDangerous does not encrypt payloads; it cryptographically **signs** them to ensure integrity, as stated in the README: \"Data is cryptographically signed to ensure that a token has not been tampered with\" [1](cite:1).\n\nThe payload handling shown in the code involves serialization and encoding, not encryption:\n\n1.  **Serialization**: The `dump_payload` method serializes the object and converts it to bytes using `want_bytes` [2](cite:2).\n2.  **Deserialization**: The `load_payload` method deserializes the bytes, decoding from UTF-8 if the serializer is text-based [3](cite:3).\n3.  **Encoding**: The `encoding` module provides `base64_encode` and `base64_decode` functions, which are used for encoding the signed data, not for encryption [4](cite:4).\n4.  **Signing**: The `signer` module imports `hmac` and `hashlib`, indicating that HMAC-based signing is used to verify the payload's authenticity [5](cite:5).\n\nThere is no mention of AES, `cryptography`, or any encryption algorithm in the provided file contents.",
+    "citations": [
+      {
+        "n": 1,
+        "path": "README.md",
+        "start": 8,
+        "end": 9,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/README.md#L8-L9"
+      },
+      {
+        "n": 2,
+        "path": "src/itsdangerous/serializer.py",
+        "start": 271,
+        "end": 276,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/serializer.py#L271-L276"
+      },
+      {
+        "n": 3,
+        "path": "src/itsdangerous/serializer.py",
+        "start": 243,
+        "end": 269,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/serializer.py#L243-L269"
+      },
+      {
+        "n": 4,
+        "path": "src/itsdangerous/encoding.py",
+        "start": 1,
+        "end": 8,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/encoding.py#L1-L8"
+      },
+      {
+        "n": 5,
+        "path": "src/itsdangerous/signer.py",
+        "start": 1,
+        "end": 12,
+        "valid": true,
+        "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L1-L12"
+      }
+    ],
+    "stats": {
+      "markers": 5,
+      "attempted": 5,
+      "valid": 5,
+      "unverified": 0
+    },
+    "blocks": [
+      "src/itsdangerous/serializer.py:1-11",
+      "src/itsdangerous/url_safe.py:1-12",
+      "src/itsdangerous/__init__.py:1-17",
+      "src/itsdangerous/serializer.py:271-276",
+      "src/itsdangerous/encoding.py:1-8",
+      "src/itsdangerous/signer.py:1-12",
+      "README.md:1-13",
+      "src/itsdangerous/serializer.py:243-269"
+    ],
+    "context_estimate": 1250,
+    "usage": {
+      "queue_time": 0.003953985,
+      "prompt_tokens": 1781,
+      "prompt_time": 0.135048552,
+      "completion_tokens": 301,
+      "completion_time": 0.571386346,
+      "total_tokens": 2082,
+      "total_time": 0.706434898
+    },
+    "headers": {
+      "x-ratelimit-limit-requests": "1000",
+      "x-ratelimit-remaining-requests": "991",
+      "x-ratelimit-reset-requests": "12m57.599s",
+      "x-ratelimit-limit-tokens": "8000",
+      "x-ratelimit-remaining-tokens": "5757",
+      "x-ratelimit-reset-tokens": "16.822s"
+    },
+    "reasoning_chars": 0,
+    "timings_s": {
+      "retrieve": 0.76,
+      "llm": 1.16
+    },
+    "retries": 0,
+    "expected_hit": null
+  },
+  {
+    "q": 8,
+    "model": "openai/gpt-oss-120b",
+    "question": "How does itsdangerous encrypt the payload with AES?",
+    "answer": "The repository does not contain any implementation that encrypts a payload with AES. All of the source files shown relate to signing, base\u201164 encoding, JSON (or other) serialization, and optional timestamp handling, but none import or use an AES cipher or any symmetric\u2011encryption library. Therefore, itsdangerous does not encrypt payloads with AES in the provided code.",
+    "citations": [],
+    "stats": {
+      "markers": 0,
+      "attempted": 0,
+      "valid": 0,
+      "unverified": 0
+    },
+    "blocks": [
+      "src/itsdangerous/serializer.py:1-11",
+      "src/itsdangerous/url_safe.py:1-12",
+      "src/itsdangerous/__init__.py:1-17",
+      "src/itsdangerous/serializer.py:271-276",
+      "src/itsdangerous/encoding.py:1-8",
+      "src/itsdangerous/signer.py:1-12",
+      "README.md:1-13",
+      "src/itsdangerous/serializer.py:243-269"
+    ],
+    "context_estimate": 1250,
+    "usage": {
+      "queue_time": 0.376475545,
+      "prompt_tokens": 1625,
+      "prompt_time": 0.087825675,
+      "completion_tokens": 112,
+      "completion_time": 0.232101208,
+      "total_tokens": 1737,
+      "total_time": 0.319926883,
+      "completion_tokens_details": {
+        "reasoning_tokens": 28
+      }
+    },
+    "headers": {
+      "x-ratelimit-limit-requests": "1000",
+      "x-ratelimit-remaining-requests": "992",
+      "x-ratelimit-reset-requests": "11m31.2s",
+      "x-ratelimit-limit-tokens": "8000",
+      "x-ratelimit-remaining-tokens": "5952",
+      "x-ratelimit-reset-tokens": "15.36s"
+    },
+    "reasoning_chars": 0,
+    "timings_s": {
+      "retrieve": 0.76,
+      "llm": 1.08
+    },
+    "retries": 0,
+    "expected_hit": null
+  }
+]

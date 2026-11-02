@@ -45,3 +45,31 @@ MAX_CONTEXT_HEADERS = 3  # enclosing header lines carried by a split piece (inne
 MAX_HEADER_LINE_CHARS = 200
 OUTLINE_MAX_TOKENS = 120  # method outline in a class header chunk
 MAX_NAMES_IN_SCOPE = 5  # merged chunk "a, b, c, d, e +2 more"
+
+# ---------- Answering (M2) ----------
+# Context the LLM sees, in Voyage tokens. Groq allows ~8K tokens/min per model (prompt +
+# output), so ~2K of context keeps ~3 questions/min. Slice 2 calibrates this against
+# usage.prompt_tokens.
+CONTEXT_BUDGET_TOKENS = 2_000
+# token_count measures embed_text, but the LLM sees every line with its absolute number
+# ("182| "), which costs ~3 extra tokens per line.
+LINE_NUMBER_TOKENS = 3
+RETRIEVE_K = 8  # candidates for the slice 1 packer (12-15 once slice 2 adds the per-file cap)
+
+# ---------- Groq (free catalogue changes: never hardcode the model elsewhere) ----------
+GROQ_MODEL = "qwen/qwen3.8-27b"  # chosen by the slice 1 comparison (PLAN.md, Q15)
+# No model fallback: gpt-oss-120b missed the fallback rule (lenient citation validity 69% of
+# qwen's; short paths). When qwen fails, the demo shows pre-generated answers and a notice.
+GROQ_FALLBACK_MODEL = None
+# Per-model request options (Groq docs, 2026-11-02): qwen can switch reasoning off; gpt-oss
+# can't (low is the minimum) and returns its reasoning in a separate field unless told not to.
+GROQ_MODEL_OPTIONS = {
+    "qwen/qwen3.8-27b": {"reasoning_effort": "none"},
+    "openai/gpt-oss-120b": {"reasoning_effort": "low", "include_reasoning": False},
+}
+# M0: qwen rejects a request outright if its possible output exceeds the 1,000 output
+# tokens/min limit, so the cap must stay well below it.
+ANSWER_MAX_TOKENS = 600
+GROQ_TIMEOUT_S = 60
+GROQ_MAX_RETRIES = 2  # per request, on 429 only
+GROQ_MAX_RETRY_WAIT_S = 30  # a longer Retry-After is returned as an error, not waited out

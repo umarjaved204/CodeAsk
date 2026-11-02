@@ -385,30 +385,59 @@ client can forge it (Q6b decided in the log), and whether a 120 s request surviv
 proxy (if not, the busy threshold drops below the proven limit).
 
 ### [ ] Slice 1 (M2a): thin vertical slice, local
-`POST /ask` for one featured repo (itsdangerous) → retrieve → simple pack with absolute line
-numbers → Groq → parse `[path:start-end]` → validate → permalinks at the stored SHA. A bare
-`frontend/` page (TypeScript) that sends a question and shows the answer with permalink
-citations. Then the model comparison (Q15) on this pipeline.
+Retrieve → simple pack with absolute line numbers → Groq → parse `[path:start-end]` →
+validate → permalinks at the stored SHA, for one featured repo (itsdangerous). Build order
+(mentor review, 2026-11-02):
+1. `backend/codeask/answer.py` (pure): numbering, packer (estimate `token_count` + ~3
+   tokens/line, with a safety margin), prompt with **an unguessable per-request tag** in the
+   `<file>` delimiters, citation parser, validator, rewrite to server-made `[n](cite:n)` links,
+   permalinks. Tests in `test_answer.py`.
+2. `backend/codeask/llm.py`: Groq over plain HTTP: timeouts, 429 with `Retry-After`, output
+   limit and temperature set explicitly, raw rate-limit headers logged, `Authorization` never
+   logged. Citations parsed only from the final answer text, never from reasoning text;
+   `usage` is the truth for reasoning tokens (check Groq's per-model reasoning options).
+3. CLI `python -m codeask.ask <repo> "<question>"`.
+4. **Model comparison** (Q15), reusing the CLI pipeline. Don't over-tune the prompt on these
+   questions.
+5. `POST /ask` in `backend/codeask/api/app.py`.
+6. Bare `frontend/` page (TypeScript): plain text, `cite:` links replaced by chips.
+
+**`/ask` response:** one markdown string plus a citations list. The server rewrites each
+marker into `[n](cite:n)`, strips links, images and `cite:` links the model wrote itself, and
+builds permalinks only from validated block metadata (path segments URL-encoded). The frontend
+renders `cite:` links as chips and drops every other link. `[path:a]` = one line; validation
+stays strict (wholly inside one supplied block); unparseable markers stay plain text.
+
+**Comparison rules, fixed before running it:** quality rubric per answer = correct / partial
+/ wrong (judged by me). Decision rule: the higher valid-citation rate wins, provided its output
+tokens per answer allow ≥ 2 questions/min (1,000 output tokens/min); ties go to qwen. The table
+also records format compliance (share of markers that parse) and estimated vs actual prompt
+tokens (`usage.prompt_tokens`), to calibrate the packer in slice 2.
 
 **Done when:**
-- locally, a question typed in the browser returns an answer with ≥ 1 validated citation that
-  opens the right lines on GitHub;
-- pytest covers the citation parser and validator (valid, wrong path, partly outside, fake
-  marker from repo text) and passes;
-- the qwen vs gpt-oss-120b table (5–8 questions: quality, valid citations, output and
-  reasoning tokens, latency, headers) is recorded in the decision log, and the default model
-  is chosen from it.
+- for each of the 5 sanity questions, at least one valid citation overlaps the expected file,
+  and I've checked 3 permalinks by hand at the pinned SHA;
+- a question typed in the local browser page returns an answer with citation chips;
+- pytest covers the parser and validator and passes: valid, wrong path, partly outside, fake
+  marker from repo text, `<think>` content, reversed or zero ranges, a range spanning two
+  blocks, leading `./` or `/` in paths, model-written `cite:` links, links and images;
+- the qwen vs gpt-oss-120b table (questions above + one unanswerable: rubric, valid-citation
+  rate, format compliance, output and reasoning tokens, latency, estimated vs actual prompt
+  tokens, rate-limit headers) is in the decision log, with the default model chosen by the
+  rule.
 
 ### [ ] Slice 2 (M2a): backend complete
 Full packer (Q11: budget on the numbered display, 12–15 candidates, per-file cap, merging,
 class outlines), grounding rules (Q3, Q9: "couldn't ground", "possibly relevant", unverified
 citations), prompt with delimited context (Q4), prompt version in config, featured-repos
 endpoint, `/status`, connection pooling, JSON errors inside the CORS layer (M2-0 finding),
-generic error text only, model check + fallback id (Q15), one worker (R10), request-id logs
+generic error text only, startup model check (Q15; no model fallback, Q15c), one worker (R10), request-id logs
 without question text or IPs (Q16), Render's `HEAD /` answered.
 
 **Done when:** pytest for packer (budget never exceeded on the numbered display, cap counted
-before merging, merged ranges contiguous) and grounding cases passes; `/boom`-style errors
+before merging, merged ranges contiguous) and grounding cases passes; **regression check:**
+for comparison Q5 (key rotation), the packed context includes `verify_signature` (slice 1's
+context lacked it, so both models speculated); `/boom`-style errors
 reach the browser as JSON with CORS headers; `scripts/check.ps1` runs all offline tests and I
 paste a green run.
 
@@ -585,10 +614,54 @@ return errors as JSON from exception handlers inside the CORS layer, so the UI c
 | Q13 | **Pre-generated answers:** ~5–8 questions per repo, chosen by me, answered by the live pipeline, each answer and its citations reviewed by me. Stored with commit SHA, prompt version, model id and date; labelled "pre-generated on <date> with <model>"; shown only if the SHA matches the repo's current one (re-ingest ⇒ regenerate). Generation counts against the daily cap, serving doesn't | Instant, free answers that are honestly labelled | LLM-written questions; serving stale answers |
 | Q14 | **Cold-start UX:** the page polls `/status` on load (retry every 2–3 s for ~60–90 s, since a waking server can fail without CORS headers), shows "server waking up", never locks the input, and sends a submitted question once the server is up. Pre-generated answers ship as **static JSON written by a local export script and committed** (Vercel never gets DB credentials) | Visitors can read and type during the ~24 s wake | Locking the input; a Vercel build-time DB export |
 | Q15 | **Model:** compare qwen3.8-27b and gpt-oss-120b in slice 1 on a fixed set of 5–8 questions (sanity set + a few more, one unanswerable): answer quality, citation validity, output and reasoning tokens, latency, rate-limit headers; check whether reasoning can be lowered or hidden. qwen stays default until the data says otherwise; result recorded here. Startup check that the configured model exists; a fallback model id in config | M0 only tested tool calls; M2 needs plain cited answers. Groq's free catalogue changes | Assuming qwen; a second model as overflow (later idea) |
+| Q15a | **Result (slice 1, 2026-11-02): qwen3.8-27b is the default** (`reasoning_effort: none`). By the rule fixed before the run (higher valid-citation rate wins if output tokens allow ≥ 2 questions/min; ties to qwen): strict validity qwen 45/46 (98%) vs gpt-oss 0/1; qwen averages 334 output tokens (~3 questions/min). The decision stands on the strict numbers alone. Table and grades: "M2 model comparison" below | gpt-oss cited in its own formats (`【…】`, U+2011, short paths), so its citations couldn't be verified even where its content was right | gpt-oss-120b as default |
+| Q15b | **Lenient citation notation** (added **after** seeing the results): `【…】`, U+2011 hyphen, several citations in one bracket (a bare range keeps the previous path), each validated on its own. Only patterns observed in the stored answers; paths stay exact. Strict and lenient rates are both reported | Accepts the observed notation without loosening validation | Accepting short paths; accepting every dash variant |
+| Q15c | **No model fallback.** Rule fixed before re-scoring: gpt-oss is the fallback only if its lenient validity is ≥ ~80% of qwen's with no new failure modes. Result: 21/31 (68%) = 69% of qwen's 98%, plus a new failure mode (all 10 unverified citations are short paths). When qwen fails, the demo serves pre-generated answers plus a notice; `GROQ_FALLBACK_MODEL = None` | Under "zero valid citations ⇒ couldn't ground", a fallback whose citations don't verify is useless | gpt-oss-120b as fallback |
+| Q15d | **A valid citation proves location, not truth.** Validation shows the cited lines were in the supplied context, not that they support the claim (qwen's Q3 `=` claim cites real lines yet misleads). Claims are graded by hand (rubric + "grounded?"); later (M3) a judge model can check support | Keeps "valid-citation rate" from being read as an accuracy score | Treating validity as correctness |
+| Q15e | **Prompt v2** (`PROMPT_VERSION`, recorded with every answer): cite per group of related claims, at most ~5 citations, copy the full path from the file tag | qwen cited up to 10 times per answer; gpt-oss shortened paths | Re-tuning the prompt on the comparison questions |
 | Q16 | **Visitor data:** per-IP limits use in-memory counters keyed by a hash of the IP with a random per-process salt, never persisted. The global daily cap is one Postgres row per day; Groq's 429s stay the ground truth. **No question text stored.** Only aggregate outcomes per day (answered, ungrounded, busy, unverified-citation rate, tokens, latency). App logs: request id, status, durations, outcome; never question text or IPs. Footer + README: questions go to third-party APIs (Groq, Voyage), nothing stored beyond counters (wording after checking their data terms) | Visitor questions have no known correct files, so they're useless as M3 eval data; storing less means less to protect | Storing raw IPs or questions |
 | Q17 | **Frontend stack:** Next.js + TypeScript, Tailwind only (frontend-design skill for the look), plain React state, one types file for the API. `react-markdown` without raw HTML; model-supplied links and images blocked (only the server creates citation links). Code panel: escaped plain text with line numbers and the cited range highlighted; no syntax highlighting in M2. Status messages in an `aria-live` region. No secrets in `NEXT_PUBLIC_` variables. Tests with the official `@playwright/test`; keep only one of webapp-testing / playwright skill | Few moving parts; safe rendering by construction | shadcn/ui; Shiki; a state library |
 | Q18 | **Tests:** backend pytest with fakes for parser, validator, packer, queue (fake clock) and limits, plus one `db` test proving the API role cannot write content tables or delete. Frontend Playwright against a mocked backend: ask → answer → citation click shows the right lines; invalid citation shown as "unverified"; cold start with a delayed `/status` and the question sent once up; busy and cap messages; pre-generated answers with the backend down; injection render (`<script>`, `<img onerror>`, markdown link and image in an answer: nothing executes or renders). Real end to end = a manual smoke checklist in slice 6. `scripts/check.ps1` runs all offline tests; I run it and paste the output | Pure functions with fakes need no network; the mocked backend makes UI states reproducible | Live API calls in tests |
 | Q19 | **Layout and spike services:** `backend/codeask/api/` and `frontend/` with separate deploy roots. New Render and Vercel services with the final names; the spike services are deleted after the results are recorded, and any key set there is rotated. `spike/m2/` stays as a frozen record with a one-line README, checked for secrets, and added to CLAUDE.md's frozen-files line | Clean names and settings for the real app; the spike stays as evidence | Reusing the spike services |
+
+### M2 model comparison (slice 1, 2026-11-02)
+pallets/itsdangerous, 8 questions (`eval/m2_models.json`, Q8 unanswerable), one Voyage request,
+models alternating 35 s apart. Raw data and answers: `eval/results/m2_models_2026-11-02*`;
+re-scored offline with `eval/m2_rescore.py`.
+
+| | qwen3.8-27b (reasoning off) | gpt-oss-120b (reasoning low) |
+|---|---|---|
+| Valid / cited, strict | **45/46 (98%)** | 0/1 |
+| Valid / cited, lenient (Q15b) | 53/54 (98%) | 21/31 (68%) |
+| Parsed / attempted brackets, strict → lenient | 46/50 → 50/50 | 1/31 → 31/31 |
+| Expected file hit (7 answerable), strict / lenient | 7/7 / 7/7 | 0/7 / 5/7 |
+| Unverified causes (lenient) | 1 path typo (`url_safepy`) | 10 short paths |
+| Output tokens per answer, mean (range) | 334 (191–462) | 283 (112–423) |
+| Reasoning tokens (`usage.completion_tokens_details`) | none reported | 16–114 |
+| LLM latency | 1.2–1.7 s | 1.1–2.3 s |
+| `prompt_tokens` minus packer estimate (system prompt + question + tokenizer gap) | +458 to +652 (estimate 875–1,984) | +83 to +375 |
+| Rate-limit headers | 1,000 RPD, **8,000 TPM** | 1,000 RPD, 8,000 TPM |
+| Quality rubric (correct / partial / wrong, by me) | **6 / 2 / 0** (partial: Q3, Q5) | **6 / 2 / 0** (partial: Q5, Q7) |
+| Grounded? (every claim supported by the supplied context; true but unsupported claims count against) | 7 yes, Q5 partly (speculation, labelled as such) | 7 yes, **Q5 no** (states the verification loop as fact; it wasn't in the context) |
+
+Per question (grades by me; "grounded?" proposed by Claude from my notes, to confirm):
+
+| Q | qwen | gpt-oss | Notes |
+|---|---|---|---|
+| 1 key derivation | correct · yes | correct · yes | gpt-oss's citations didn't parse (strict) |
+| 2 max_age | correct · yes | correct · yes | |
+| 3 compression | partial · yes | correct · yes | qwen: "alphabet includes `=`" is literally `_base64_alphabet` at encoding.py:41-42 (cited, valid), but `base64_encode` strips padding (line 25); off-topic either way |
+| 4 base64 padding | correct · yes | correct · yes | gpt-oss cites short paths, so unverified |
+| 5 key rotation | partial · partly | partial · **no** | qwen says the verification loop isn't in the context, then speculates; gpt-oss states it as fact. The context lacked `verify_signature` (slice 2 regression check) |
+| 6 wrong salt | correct · yes | correct · yes | |
+| 7 exception | correct · yes | partial · yes | gpt-oss omits `payload` and the message |
+| 8 unanswerable | correct · yes | correct · yes | both say it's not in the files |
+
+**Decision rule applied (2026-11-02):** quality ties (6/2/0 each). Valid-citation rate:
+strict 98% vs 0%, lenient 98% vs 68%: **qwen wins under both**; both models stay under 500
+output tokens per answer. Default: qwen3.8-27b (Q15a). The comparison used prompt v1; v2
+(cite per group of claims, ≤ ~5 citations, full path from the file tag) came afterwards and
+is not re-tuned on these questions.
 
 ### Not in M2 (scope guard)
 - Hosted ingestion of user-supplied URLs (see Q1b).
@@ -602,7 +675,8 @@ return errors as JSON from exception handlers inside the CORS layer, so the UI c
 | R2 | `/ask` stays open for queue wait + processing (~65–70 s at a 60 s busy threshold); only 60 s was proven | **Settled in slice 0:** 120 s requests return 200, so the ~60 s busy threshold stands |
 | R3 | **Caches vs "no question text stored" (Q16):** a persisted cache keyed by the normalized question would store visitor questions | **Resolved (2026-11-02):** live caches in memory only; persisted entries only for my own suggested questions. No live answer or embedding cache is built in M2 unless slice 4 measurements show repeated questions are common |
 | R4 | qwen's reasoning tokens may count against 1,000 output tokens/min and lengthen answers | Slice 1 model comparison |
-| R5 | Groq's free catalogue changes; the configured model can disappear | Startup model check + fallback id (Q15) |
+| R5 | Groq's free catalogue changes; the configured model can disappear | Startup model check (Q15); no model fallback (Q15c), so pre-generated answers + a notice |
+| R13 | **qwen3.8-27b is a Groq "Preview" model** ("should not be used in production"); it may change or disappear. Same risk for M4's tool calls | Not a reason to change the default. Mitigations: pre-generated answers as graceful degradation; model id in config + startup check; when choosing any future fallback, check Groq's production vs preview lists; the re-runnable comparison (`eval/m2_compare.py` + `m2_rescore.py`): switch default, re-run, regenerate pre-generated answers (each records model id and date); README says "tested with qwen3.8-27b (Groq Preview) as of Nov 2026"; M4 agent mode stays an eval/replay feature |
 | R6 | Neon prod storage is 0.5 or 1 GB (sources conflict); compute 100 CU-h/month per project; Neon wake adds 0.7–3.2 s to a cold request | Check the prod project's dashboard in slice 6 |
 | R7 | Card on file at Render (docs: optional; in practice asked at my first deploy). With a card, overage **bills** instead of suspending: bandwidth beyond 5 GB at $0.15/GB with **no spend cap** (HTTP responses, service-initiated traffic, DB responses leaving Render); build minutes beyond 500 (cappable: Workspace Settings → Build Pipeline → spend limit); custom domains beyond 2 at $0.25/month. Email alerts near and over limits (not configurable). 750 instance-hours are shared by all services in the workspace | Try removing the card; if it must stay: decision-log exception, build spend limit $0, auto-deploy off, low-limit virtual card, delete spike services. **If a card isn't acceptable: Northflank free Sandbox is the fallback** (retry signup; untested because signups were disabled on 2026-11-02), then Koyeb |
 | R8 | One Voyage key for local ingestion and the live app; the limiter is in-process, so a local prod ingest can collide with live queries | Ingest into prod only when the demo is idle, or with reserved slots |
@@ -655,6 +729,8 @@ Notes from M0:
   the ~30 different M3 questions.
 - Agent mode runs at ~1 question/min live (Groq 8K tokens/min). Decide in M4 whether it is a
   **live feature** or an **eval/replay feature** (pre-recorded runs shown in the UI).
+- **M2 note (R13):** the tool-calling model (qwen3.8-27b) is a Groq Preview model and may
+  change or disappear, so agent mode stays an **eval/replay feature**.
 
 ## [ ] M5 Voice input
 Browser Web Speech API, speech-to-text only, into the chat box.

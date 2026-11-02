@@ -160,14 +160,15 @@ class Store:
         with self.conn.transaction():
             rows = self.conn.execute(self._q("""
                 SELECT c.path, c.start_line, c.end_line, c.kind, c.breadcrumb, c.content,
-                       e.vector <=> %s::vector AS distance
+                       c.token_count, e.vector <=> %s::vector AS distance
                 FROM {s}.chunks c
                 JOIN {s}.repos r ON r.id = c.repo_id
                 JOIN {s}.embeddings e ON e.content_hash = c.content_hash AND e.space = %s
                 WHERE r.slug = %s
                 ORDER BY distance
                 LIMIT %s"""), (vector_literal(vector), space, slug, k)).fetchall()
-        keys = ("path", "start_line", "end_line", "kind", "breadcrumb", "content", "distance")
+        keys = ("path", "start_line", "end_line", "kind", "breadcrumb", "content", "token_count",
+                "distance")
         return [dict(zip(keys, row)) for row in rows]
 
     # ---------- cleanup ----------

@@ -18,6 +18,7 @@ decisions and measurements are in [PLAN.md](PLAN.md).
   JavaScript and TypeScript; heading-based sections for Markdown and reST; line windows
   otherwise), embed with Voyage `voyage-code-3`, store in Neon Postgres + pgvector.
 - **Next, M2:** a basic RAG chat (FastAPI + Next.js) with file and line citations.
+  Tested with qwen3.8-27b (Groq Preview) as of Nov 2026.
 
 ## Setup
 
