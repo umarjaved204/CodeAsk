@@ -376,7 +376,7 @@ Render and Northflank both fail (its free-tier reports conflict on card and free
 **Done when:** every item above has a measured or confirmed value recorded in "M2-0 results"
 below, and anything that contradicts the plan is flagged.
 
-### [ ] Slice 0: spike follow-ups (R1, R2)
+### [x] Slice 0: spike follow-ups (R1, R2)
 Redeploy the spike with `/ip`; call it with and without a forged `X-Forwarded-For`; call
 `/slow?s=120` from the Vercel page.
 
@@ -458,7 +458,10 @@ rotate the keys set there, freeze `spike/m2/` (Q19).
   during them;
 - the manual smoke checklist passes on the public URLs (ask, citation, unverified display,
   pre-generated, busy, cap via kill switch);
-- Render's Billing page shows usage within the free limits a week after launch.
+- Render's Billing page shows usage within the free limits a week after launch;
+- **before going public**, the Render card is removed (services keep running), or the
+  decision log has the "card on file" exception with mitigations (build spend limit $0,
+  auto-deploy off, low-limit card), and CLAUDE.md's stack row is updated (R7).
 
 ### M2 inputs (requirements collected in M0 and the M1 grilling)
 **Context building**
@@ -558,6 +561,8 @@ return errors as JSON from exception handlers inside the CORS layer, so the UI c
 | Vercel: signup without a card? Hobby terms | **No card asked (2026-11-02).** GitHub signup, Hobby plan. GitHub app limited to CodeAsk. Root dir `spike/m2/web`, first deploy 21 s |
 | Vercel page → Render from the browser | **Works** from `https://codeask-pi.vercel.app`: `/health` 0.66 s, `/db` 4.5 s (Neon waking), `/search` 1.8 s (embed 1.37 s), same top result. Gotcha: Render env changes only apply with a deploy ("Save only" does nothing to the running service) |
 | CORS with the Vercel origin | `ALLOWED_ORIGINS=http://localhost:3000,https://codeask-pi.vercel.app`: both get the header, `evil.example` doesn't |
+| Long requests (slice 0, 2026-11-02) | `/slow?s=120` → 200 after 121.1 s; `/slow?s=95` → 200 after 95.4 s (curl; a proxy cut-off would hit the browser the same way). No Cloudflare 100 s cut-off on Render |
+| Client IP (slice 0, 2026-11-02) | Render sits behind Cloudflare (a `162.159.x.x` hop in `X-Forwarded-For`). With a forged `X-Forwarded-For: 1.2.3.4`: the leftmost entry **and uvicorn's `request.client.host` both became 1.2.3.4** (forgeable). `True-Client-IP` and `CF-Connecting-IP` kept the real IP; a forged `True-Client-IP` was overwritten; a forged `CF-Connecting-IP` made Cloudflare reject the request (error 1000). Render doesn't document the Cloudflare layer |
 | Northflank: card asked at signup? sleeps? free limits | **Blocked (2026-11-02):** "sign up is disabled right now" (GitHub sign-in errored first). Card question untested |
 
 ### M2 decision log (grilling, 2026-11-02)
@@ -570,11 +575,11 @@ return errors as JSON from exception handlers inside the CORS layer, so the UI c
 | Q4 | **Prompt injection:** (a) system prompt + clearly delimited context blocks, (b) output checks: only validated citations, no model-supplied links or HTML. (c) filtering suspicious chunk text is skipped; revisit at M4 (tools) or if "own repo" returns | Featured repos are chosen by me; (b) also defeats fake citation markers in repo text | Chunk filtering now |
 | Q5 | **Citation click:** GitHub permalink at the stored commit SHA (`blob/<sha>/<path>#L<a>-L<b>`) first, then an in-app panel built from stored chunk content (cited lines lie inside the supplied context, so no `files` table), with a "view on GitHub" link. Code rendered as escaped text | Permalinks never drift; the panel needs no new table and sends only cited ranges (bandwidth) | A `files` table; panel only; permalink only |
 | Q6 | **Abuse limits:** per IP: 1 question in flight, modest hourly and daily limits (config). Question ≤ ~400 chars. Global daily cap ≈ 500–600 Groq calls (1,000/day minus a reserve for tests and pre-generation), tuned from use. At the cap: "live quota used up for today", pre-generated answers keep working. Kill-switch env var. Storage per Q16: per-IP counters in memory, the daily cap in Postgres | Capacity is ~2–3 questions/min; per-IP limits stop casual abuse only, the global cap is the backstop | Per-IP counters persisted |
-| Q6b | **Client IP header:** decided after the `/ip` spike check (slice 0). Reportedly Render keeps a client-supplied `X-Forwarded-For` and appends to it, so the leftmost entry may be spoofable | A spoofable IP makes per-IP limits useless | Trusting the leftmost `X-Forwarded-For` unchecked |
+| Q6b | **Client IP header (slice 0):** read the client IP **only from `CF-Connecting-IP`**. If it's missing (Render's Cloudflare layer is undocumented and could change), the request goes into one shared "unknown" bucket with a strict limit, and a warning is logged | Measured: a client can forge `X-Forwarded-For`, and uvicorn's `request.client.host` follows it; `CF-Connecting-IP` can't be forged (Cloudflare rejects it) | `request.client.host`; leftmost `X-Forwarded-For`; `True-Client-IP` (not forgeable either, but kept only as a cross-check) |
 | Q7 | **Data topology:** a **separate Neon project** for the demo. The API's DB role has SELECT on content tables and INSERT/UPDATE only on its own `usage` table. Prod URL lives in a gitignored `.env.prod`, loaded only by an explicit flag; ingest against prod prints the DB host and asks for confirmation. Featured repos are re-ingested into prod (minutes); prod has its own embedding store | Free compute (100 CU-h/month) and storage (0.5–1 GB, sources conflict) are per project, shared by its branches, so dev and M3 runs can't suspend the demo | Same DB; a branch of the dev project; a fully read-only role (breaks the DB-backed daily cap) |
 | Q8 | **Single-turn:** each question answered on its own; the UI says so. After an answer, follow-up chips built from the cited chunks' breadcrumbs with fixed templates (no LLM, no history) | History costs Groq tokens per minute and needs query rewriting for retrieval | Follow-ups with history (M4 topic) |
 | Q9 | **Citation contract:** inline `[path:start-end]`, parsed by the server. Valid only if the path matches a supplied block and the range lies wholly inside its supplied lines (**blocks after merging**; partly outside = unverified, no clamping). Valid ones become links; invalid ones are shown as "unverified" and counted (M3 metric). Zero valid citations means "couldn't ground this in the code" plus the "possibly relevant" files. No regeneration in M2 | Inline keeps each claim next to its source; markdown in JSON strings is fragile; regeneration costs a second Groq call | JSON output; silently dropping invalid citations; regenerate once |
-| Q10 | **Queue:** one FIFO over the whole `/ask` path, paced by Groq's headers (`*-tokens` = TPM, `*-requests` = RPD per Groq docs) **plus our own output-token accounting** from each answer's `usage` (qwen's 1,000 output tokens/min is not in the headers). Busy at ~60 s estimated wait (needs the 120 s check in slice 0); the UI shows position and estimated wait. Optional small exact-match answer cache (repo, commit, normalized question, prompt version, model), labelled "answered earlier", only if it stays small | A cache hit skips Voyage but never Groq, so Groq is the real bottleneck | Voyage-only queue; spinner without position |
+| Q10 | **Queue:** one FIFO over the whole `/ask` path, paced by Groq's headers (`*-tokens` = TPM, `*-requests` = RPD per Groq docs) **plus our own output-token accounting** from each answer's `usage` (qwen's 1,000 output tokens/min is not in the headers). Busy at ~60 s estimated wait (120 s requests proven in slice 0); the UI shows position and estimated wait. Optional small exact-match answer cache (repo, commit, normalized question, prompt version, model), labelled "answered earlier", only if it stays small | A cache hit skips Voyage but never Groq, so Groq is the real bottleneck | Voyage-only queue; spinner without position |
 | Q11 | **Context packing:** budget ~2–2.5K tokens (config), counted on the numbered display. Retrieve ~12–15 candidates, pack greedily by rank, per-file cap 2–3 chunks (**counted before merging**), merge adjacent same-file chunks, present grouped by file in line order. Class outlines only when a header chunk is retrieved, size-capped. M3 tunes the values | ~2–2.5K context keeps ~3 questions/min under 8K TPM; the cap fights M0's near-duplicates | Fixed k=5; ~3K budget |
 | Q12 | **Featured repos:** itsdangerous, requests, express, and CodeAsk itself, **pinned to a release commit** and refreshed only at milestones. Before featuring CodeAsk: make it public after a full-history secret scan (gitleaks). TableTalk and flask optional later | Python + JS, small to medium, plus a self-referential demo | Featuring CodeAsk at `main` (answers go stale every commit) |
 | Q13 | **Pre-generated answers:** ~5–8 questions per repo, chosen by me, answered by the live pipeline, each answer and its citations reviewed by me. Stored with commit SHA, prompt version, model id and date; labelled "pre-generated on <date> with <model>"; shown only if the SHA matches the repo's current one (re-ingest ⇒ regenerate). Generation counts against the daily cap, serving doesn't | Instant, free answers that are honestly labelled | LLM-written questions; serving stale answers |
@@ -593,8 +598,8 @@ return errors as JSON from exception handlers inside the CORS layer, so the UI c
 ### M2 open assumptions and risks
 | # | Assumption / risk | How it's settled |
 |---|---|---|
-| R1 | Render's client-IP header may be spoofable (community reports conflict with Render staff) | Slice 0 `/ip` test with a forged `X-Forwarded-For` |
-| R2 | `/ask` stays open for queue wait + processing (~65–70 s at a 60 s busy threshold); only 60 s was proven | Slice 0 `/slow?s=120` from the browser |
+| R1 | Render's client-IP header may be spoofable (community reports conflict with Render staff) | **Settled in slice 0:** use `CF-Connecting-IP` (Q6b). Remaining risk: Render drops Cloudflare; then the "unknown" bucket applies |
+| R2 | `/ask` stays open for queue wait + processing (~65–70 s at a 60 s busy threshold); only 60 s was proven | **Settled in slice 0:** 120 s requests return 200, so the ~60 s busy threshold stands |
 | R3 | **Caches vs "no question text stored" (Q16):** a persisted cache keyed by the normalized question would store visitor questions | **Resolved (2026-11-02):** live caches in memory only; persisted entries only for my own suggested questions. No live answer or embedding cache is built in M2 unless slice 4 measurements show repeated questions are common |
 | R4 | qwen's reasoning tokens may count against 1,000 output tokens/min and lengthen answers | Slice 1 model comparison |
 | R5 | Groq's free catalogue changes; the configured model can disappear | Startup model check + fallback id (Q15) |
