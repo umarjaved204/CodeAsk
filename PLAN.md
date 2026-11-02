@@ -432,7 +432,32 @@ tokens (`usage.prompt_tokens`), to calibrate the packer in slice 2.
   tokens, rate-limit headers) is in the decision log, with the default model chosen by the
   rule.
 
-### [~] Slice 2 (M2a): backend complete
+### [x] Slice 2 (M2a): backend complete
+**Done (2026-11-03):**
+- 271 offline tests pass via `scripts/check.ps1`: packer, grounding, API errors and limits,
+  model check, and the offline Q5 regression.
+- **Live Q5** (prompt v3, no cap, budget 2,000): the context is `signer.py:67-73`,
+  `signer.py:129-213` (merged), `signer.py:227-242` and `serializer.py:190-241` (merged). The
+  answer cites the `reversed(self.secret_keys)` loop (`signer.py:236-240`): **7/7 valid**, and
+  it now explains verification instead of speculating (slice 1: partial).
+- **End-to-end timing** (local, home network → Neon Ohio; Render numbers come in slice 6):
+
+  | Step | Time |
+  |---|---|
+  | Voyage embed | 1.19 s |
+  | Retrieve (search + `file_chunks`) | 1.91 s |
+  | Groq | 1.51 s |
+  | Total | 4.61 s |
+
+  - Groq usage: `prompt_tokens` 2,588 vs estimate 1,982 (+606, inside the slice 1 band of
+    +458..+652); 460 output tokens; `x-ratelimit-remaining-tokens` 8,000 → 4,812 after one
+    question, so ~3.2K TPM per question ≈ 2.5 questions/min.
+- **Local server** (`uvicorn --factory`): the startup model check logged "available: True";
+  `/status` 2 ms; `/repos` 3.9 s on its first DB call from home (local connect, as in M2-0);
+  the 3 featured repos are listed.
+- `/boom`-style errors: JSON with CORS headers is proven by `test_api.py` (TestClient with an
+  `Origin` header), not yet from a real browser page. That gets checked with the slice 3 page.
+
 Full packer (Q11: budget on the numbered display, 12–15 candidates, per-file cap, merging,
 class outlines), grounding rules (Q3, Q9: "couldn't ground", "possibly relevant", unverified
 citations), prompt version recorded with every answer (`PROMPT_VERSION` stays in `answer.py`

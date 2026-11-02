@@ -84,3 +84,9 @@ ANSWER_MAX_TOKENS = 600
 GROQ_TIMEOUT_S = 60
 GROQ_MAX_RETRIES = 2  # per request, on 429 only
 GROQ_MAX_RETRY_WAIT_S = 30  # a longer Retry-After is returned as an error, not waited out
+GROQ_MODELS_TIMEOUT_S = 10  # the model-list check must not hold up /status for long
+MODEL_CHECK_TTL_S = 600  # re-check that the model still exists at most this often (Q24)
+
+# ---------- API ----------
+# The only repos the public API answers about (Q1, Q12). CodeAsk itself joins once public.
+FEATURED_REPOS = ("pallets/itsdangerous", "psf/requests", "expressjs/express")

@@ -90,6 +90,7 @@ def main():
     (vector,) = embedder.embed([args.question], "query")
     embed_s = time.perf_counter() - t0
     result = ask(store, GroqClient(args.model), repo, args.question, vector)
+    total_s = time.perf_counter() - t0
 
     if not result["grounded"]:
         print("NOT GROUNDED (no valid citation): the API withholds this text. Possibly relevant: "
@@ -104,7 +105,9 @@ def main():
     print(f"usage: {result['usage']}")
     print(f"context estimate (Voyage tokens): {result['context_estimate']}  "
           f"reasoning chars: {result['reasoning_chars']}")
-    print(f"timings: embed {embed_s:.2f} s, {result['timings_s']}")
+    print(f"timings: embed {embed_s:.2f} s, {result['timings_s']}, total {total_s:.2f} s")
+    if result["dropped"]:
+        print(f"dropped: {', '.join(f'{ref} ({why})' for ref, why in result['dropped'])}")
     print(f"rate-limit headers: {result['headers']}")
 
 

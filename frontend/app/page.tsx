@@ -88,7 +88,22 @@ export default function Home() {
       <p aria-live="polite">{status}</p>
       {result && (
         <section>
-          <p style={{ whiteSpace: "pre-wrap" }}>{renderAnswer(result.answer, result.citations)}</p>
+          {result.answer === null ? (
+            <>
+              <p>Couldn&apos;t ground this in the code. Possibly relevant files:</p>
+              <ul>
+                {result.possibly_relevant.map((f) => (
+                  <li key={f.path}>
+                    <a href={f.url} target="_blank" rel="noopener noreferrer">
+                      {f.path}:{f.start}-{f.end}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <p style={{ whiteSpace: "pre-wrap" }}>{renderAnswer(result.answer, result.citations)}</p>
+          )}
           <ol>
             {result.citations.map((c) => (
               <li key={c.n} value={c.n}>

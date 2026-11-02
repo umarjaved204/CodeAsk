@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import os
 import socket
+from contextlib import contextmanager
 from urllib.parse import urlparse
 
 import psycopg
@@ -38,6 +39,16 @@ def connect() -> psycopg.Connection:
     # autocommit=True: every `with conn.transaction()` block is then exactly one transaction.
     return psycopg.connect(url, hostaddr=ipv4, autocommit=True, prepare_threshold=None,
                            connect_timeout=30)
+
+
+@contextmanager
+def store_session(schema: str = "public"):
+    """One connection per request (PLAN.md Q26): Neon's pooled endpoint is already a pool."""
+    conn = connect()
+    try:
+        yield Store(conn, schema)
+    finally:
+        conn.close()
 
 
 def vector_literal(vector: list[float]) -> str:

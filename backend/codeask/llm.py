@@ -19,12 +19,19 @@ RATE_HEADERS = ("x-ratelimit-limit-requests", "x-ratelimit-remaining-requests",
                 "x-ratelimit-remaining-tokens", "x-ratelimit-reset-tokens", "retry-after")
 
 
+GROQ_MODELS_URL = "https://api.groq.com/openai/v1/models"
+
+
 class GroqError(Exception):
-    pass
+    def __init__(self, message: str, status: int | None = None):
+        super().__init__(message)
+        self.status = status  # Groq's HTTP status (404 = the model is gone)
 
 
 class RateLimited(GroqError):
-    pass
+    def __init__(self, message: str, retry_after: float):
+        super().__init__(message, 429)
+        self.retry_after = retry_after
 
 
 @dataclass
@@ -40,23 +47,38 @@ class Reply:
 
 class GroqClient:
     def __init__(self, model: str = config.GROQ_MODEL, post=None, api_key: str | None = None,
-                 sleep=time.sleep, clock=time.monotonic):
+                 sleep=time.sleep, clock=time.monotonic, get=None):
         self.model = model
-        self._post, self._api_key = post, api_key
+        self._post, self._get, self._api_key = post, get, api_key
         self.sleep, self.clock = sleep, clock
+
+    def _auth(self) -> dict:
+        if self._api_key is None:
+            from dotenv import load_dotenv
+
+            load_dotenv()
+            self._api_key = os.environ["GROQ_API_KEY"]
+        return {"Authorization": f"Bearer {self._api_key}"}
 
     def _send(self, body: dict):
         if self._post is None:
             import requests
 
             self._post = requests.post
-        if self._api_key is None:
-            from dotenv import load_dotenv
-
-            load_dotenv()
-            self._api_key = os.environ["GROQ_API_KEY"]
         return self._post(GROQ_URL, json=body, timeout=config.GROQ_TIMEOUT_S,
-                          headers={"Authorization": f"Bearer {self._api_key}"})
+                          headers=self._auth())
+
+    def available_models(self) -> set[str]:
+        """Model ids Groq currently serves to this key (the startup and TTL check, Q24)."""
+        if self._get is None:
+            import requests
+
+            self._get = requests.get
+        response = self._get(GROQ_MODELS_URL, timeout=config.GROQ_MODELS_TIMEOUT_S,
+                             headers=self._auth())
+        if response.status_code != 200:
+            raise GroqError(f"Groq models {response.status_code}", response.status_code)
+        return {m["id"] for m in response.json()["data"]}
 
     def chat(self, messages: list[dict], max_tokens: int = config.ANSWER_MAX_TOKENS) -> Reply:
         body = {"model": self.model, "messages": messages, "temperature": 0,
@@ -69,13 +91,15 @@ class GroqClient:
             if response.status_code == 429:
                 wait = float(headers.get("retry-after", config.GROQ_MAX_RETRY_WAIT_S + 1))
                 if attempt == config.GROQ_MAX_RETRIES or wait > config.GROQ_MAX_RETRY_WAIT_S:
-                    raise RateLimited(f"429 from Groq (retry-after {wait:g} s), headers {headers}")
+                    raise RateLimited(f"429 from Groq (retry-after {wait:g} s), headers {headers}",
+                                      wait)
                 self.sleep(wait)
                 continue
             if response.status_code != 200:
                 # Groq's error body explains the problem (e.g. "Request too large"); it never
                 # echoes the key.
-                raise GroqError(f"Groq {response.status_code}: {response.text[:300]}")
+                raise GroqError(f"Groq {response.status_code}: {response.text[:300]}",
+                                response.status_code)
             data = response.json()
             message = data["choices"][0]["message"]
             return Reply(message.get("content") or "", message.get("reasoning"),

@@ -96,3 +96,30 @@ def test_key_goes_only_into_the_authorization_header():
     reply = c.chat([])
     assert post.calls[0]["headers"] == {"Authorization": f"Bearer {KEY}"}
     assert KEY not in repr(reply) and KEY not in repr(post.calls[0]["json"])
+
+
+def test_rate_limit_and_status_are_carried_on_the_exceptions():
+    c, _, _ = client(FakeResponse(429, headers={"retry-after": "45"}))
+    with pytest.raises(RateLimited) as err:
+        c.chat([])  # 45 s > GROQ_MAX_RETRY_WAIT_S: returned, not waited out
+    assert (err.value.retry_after, err.value.status) == (45.0, 429)
+    c, _, _ = client(FakeResponse(404, text='{"error": "model_not_found"}'))
+    with pytest.raises(GroqError) as err:
+        c.chat([])
+    assert err.value.status == 404
+
+
+def test_available_models_lists_ids_with_a_short_timeout_and_the_key_only_in_the_header():
+    calls = []
+
+    def get(url, timeout, headers):
+        calls.append((url, timeout, headers))
+        return FakeResponse(200, {"data": [{"id": "qwen/qwen3.8-27b"}, {"id": "other"}]})
+
+    c = GroqClient(get=get, api_key=KEY)
+    assert c.available_models() == {"qwen/qwen3.8-27b", "other"}
+    assert calls == [("https://api.groq.com/openai/v1/models", config.GROQ_MODELS_TIMEOUT_S,
+                      {"Authorization": f"Bearer {KEY}"})]
+    c = GroqClient(get=lambda url, timeout, headers: FakeResponse(401), api_key=KEY)
+    with pytest.raises(GroqError):
+        c.available_models()
