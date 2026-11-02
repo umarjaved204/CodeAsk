@@ -11,21 +11,27 @@ const css = readFileSync(path.join(here, "..", "app", "tokens.css"), "utf8");
 // [foreground, background, minimum ratio, what it is]. 4.5 = text, 3 = UI parts and focus
 // (WCAG 1.4.3 / 1.4.11). null = shown for information only.
 const PAIRS = [
-  ["ink", "paper", 4.5, "body text"],
-  ["ink", "sheet", 4.5, "code text in the panel"],
-  ["muted", "paper", 4.5, "provenance, notes"],
-  ["muted", "sheet", 4.5, "line numbers, panel meta"],
-  ["footnote", "paper", 4.5, "citation figures, links"],
-  ["footnote", "sheet", 4.5, "links in the panel"],
-  ["mark-ink", "mark", 4.5, "text on the highlighter"],
-  ["caution", "paper", 4.5, "unverified citation"],
-  ["caution", "sheet", 4.5, "unverified citation in the panel list"],
-  ["alert", "paper", 4.5, "error text"],
-  ["paper", "ink", 4.5, "button label on the ink button"],
-  ["edge", "paper", 3, "input and select borders"],
-  ["edge", "sheet", 3, "controls in the panel"],
-  ["footnote", "paper", 3, "focus ring"],
-  ["mark", "sheet", null, "highlighted lines vs the panel (also marked by text and weight)"],
+  // Text: 4.5:1 (WCAG 1.4.3)
+  ["text", "page", 4.5, "body text, question"],
+  ["text", "panel", 4.5, "code text in the panel"],
+  ["text-muted", "page", 4.5, "provenance, notes, placeholder text (inputs sit on page)"],
+  ["text-muted", "panel", 4.5, "line numbers, panel meta"],
+  ["citation", "page", 4.5, "citation chip text, links"],
+  ["citation", "panel", 4.5, "links and citation list in the panel"],
+  ["on-evidence", "evidence", 4.5, "open chip text; code and line numbers on the cited range"],
+  ["unverified", "page", 4.5, "unverified chip text"],
+  ["unverified", "panel", 4.5, "unverified entry in the panel's citation list"],
+  ["error", "page", 4.5, "error text"],
+  ["on-action", "action", 4.5, "button label"],
+  // UI parts: 3:1 (WCAG 1.4.11)
+  ["control-edge", "page", 3, "input and select borders"],
+  ["control-edge", "panel", 3, "controls in the panel"],
+  ["focus", "page", 3, "focus ring on the page"],
+  ["focus", "panel", 3, "focus ring in the panel"],
+  ["evidence-bar", "panel", 3, "gutter bar vs the panel beside it"],
+  ["evidence-bar", "evidence", 3, "gutter bar vs the highlighted line beside it"],
+  // For information: the highlight is ALSO marked by the bar, bold numbers and header text.
+  ["evidence", "panel", null, "highlighted lines vs the panel"],
 ];
 
 function themes(source) {

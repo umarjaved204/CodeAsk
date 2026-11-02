@@ -1,69 +1,48 @@
-/* Design tokens, direction A "Marked copy" (PLAN.md Q31). The single source for colour,
-   type, radii and elevation; Tailwind maps onto these variables, so the theme switches by
-   swapping variables, not by `dark:` classes.
+/* Colour and elevation tokens, direction A "Marked copy" (PLAN.md Q31). Semantic names only:
+   components say what something IS (evidence, unverified), never which colour it is. These
+   are the values that change with the theme; the fixed scale (fonts, sizes, radii) lives in
+   the @theme block of globals.css, which also maps these variables onto Tailwind colours.
    Theme: a script in <head> sets data-theme on <html> before first paint (saved choice, else
    the system setting). Without JavaScript the page stays light.
-   Contrast: `node design/check-contrast.mjs` checks the pairs it lists against WCAG AA. */
+   Contrast: `node design/check-contrast.mjs` checks every pair the design uses (WCAG AA). */
 
 :root {
   color-scheme: light;
-  /* Surfaces */
-  --paper: #F5F6F3;        /* page: cool grey-green paper, not cream */
-  --sheet: #EBEDE8;        /* the evidence panel, one shade deeper */
-  /* Text */
-  --ink: #1C2838;          /* blue-black ink: body text, headings */
-  --muted: #586273;        /* provenance, notes, line numbers */
-  /* Lines */
-  --rule: #D3D8D0;         /* hairline dividers (decorative, no contrast requirement) */
-  --edge: #7D8694;         /* control borders: inputs, select (3:1, WCAG 1.4.11) */
-  /* Meaning */
-  --footnote: #2A4A8A;     /* citation figures, links, focus ring */
-  --mark: #F9E07A;         /* highlighter: the active citation and its cited lines */
-  --mark-ink: #1C2838;     /* text on the highlighter */
-  --caution: #8A5300;      /* unverified citations (always with an icon and the word) */
-  --alert: #A3302A;        /* errors (always with text that says what happened) */
-  /* Elevation: only the mobile bottom sheet floats */
-  --shadow-sheet: 0 -8px 24px rgb(28 40 56 / .14);
+  --page: #F5F6F3;          /* cool grey-green paper, not cream */
+  --panel: #EBEDE8;         /* the evidence panel, one shade deeper */
+  --text: #1C2838;          /* blue-black ink */
+  --text-muted: #586273;    /* provenance, notes, line numbers, placeholder text */
+  --rule: #D3D8D0;          /* hairline dividers (decorative: no contrast requirement) */
+  --control-edge: #7D8694;  /* input and select borders (3:1, WCAG 1.4.11) */
+  --citation: #2A4A8A;      /* citation figures and links */
+  --focus: #2A4A8A;         /* focus ring */
+  --evidence: #F9E07A;      /* highlighter: the open citation and its cited lines */
+  --on-evidence: #1C2838;   /* text and line numbers on the highlighter */
+  --evidence-bar: #1C2838;  /* left border on cited lines: a cue that isn't colour alone */
+  --unverified: #8A5300;    /* unverified citations (always with an icon and the word) */
+  --error: #A3302A;         /* errors (always with text that says what happened) */
+  --action: #1C2838;        /* primary button */
+  --on-action: #F5F6F3;
+  --elevation-sheet: 0 -8px 24px rgb(28 40 56 / .14);  /* only the mobile bottom sheet floats */
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --paper: #1A212A;        /* deep blue slate, not tinted black */
-  --sheet: #212A35;
-  --ink: #E5E7E1;
-  --muted: #A2AAB5;
+  --page: #1A212A;          /* deep blue slate, not tinted black */
+  --panel: #212A35;
+  --text: #E5E7E1;
+  --text-muted: #A2AAB5;
   --rule: #323D49;
-  --edge: #6E7A8A;
-  --footnote: #A8BDF0;
-  --mark: #E9CF62;         /* still a highlighter: dark ink on yellow */
-  --mark-ink: #1A212A;
-  --caution: #E2AE62;
-  --alert: #F0A39C;
-  --shadow-sheet: 0 -8px 24px rgb(0 0 0 / .45);
-}
-
-:root {
-  /* Type: Newsreader (answer and question), Instrument Sans (interface), Fragment Mono (code
-     only). Families come from next/font as --font-newsreader etc. Sizes follow the classic
-     typographic scale (Bringhurst): 12 14 16 18 21 24 36. */
-  --font-serif: var(--font-newsreader), Georgia, serif;
-  --font-ui: var(--font-instrument), system-ui, sans-serif;
-  --font-mono: var(--font-fragment), ui-monospace, monospace;
-  --text-micro: 12px;      /* footnote figures */
-  --text-meta: 14px;       /* provenance, notes, panel meta, citation list */
-  --text-ui: 16px;         /* controls, buttons (16px stops iOS zooming into inputs) */
-  --text-body: 18px;       /* answer body, serif, line-height 1.65 */
-  --text-code: 14px;       /* code panel, line-height 1.65 */
-  --text-lead: 21px;       /* evidence number in the panel header */
-  --text-title-sm: 24px;   /* question on mobile */
-  --text-title: 36px;      /* question on desktop */
-  --leading-body: 1.65;
-  --leading-title: 1.15;
-  --measure: 66ch;         /* reading column: under 80 characters */
-  /* Radii by role, not one radius everywhere */
-  --radius-cite: 2px;      /* footnote figures */
-  --radius-control: 6px;   /* inputs, select, buttons */
-  --radius-sheet: 12px;    /* top corners of the mobile bottom sheet */
-  /* Minimum touch target for footnote figures on mobile (from direction C) */
-  --tap-min: 24px;
+  --control-edge: #6E7A8A;
+  --citation: #A8BDF0;
+  --focus: #A8BDF0;
+  --evidence: #E9CF62;      /* still a highlighter: dark ink on yellow */
+  --on-evidence: #1A212A;
+  /* A mid-tone: it must reach 3:1 against BOTH the dark panel and the light highlighter. */
+  --evidence-bar: #5E7499;
+  --unverified: #E2AE62;
+  --error: #F0A39C;
+  --action: #E5E7E1;
+  --on-action: #1A212A;
+  --elevation-sheet: 0 -8px 24px rgb(0 0 0 / .45);
 }

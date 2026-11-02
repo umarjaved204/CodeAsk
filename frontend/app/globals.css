@@ -1,0 +1,55 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+/* Colours: Tailwind utilities read the semantic token variables (inline), so the theme
+   switches by swapping variables in tokens.css, with no `dark:` classes anywhere. */
+@theme inline {
+  --color-page: var(--page);
+  --color-panel: var(--panel);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-rule: var(--rule);
+  --color-control-edge: var(--control-edge);
+  --color-citation: var(--citation);
+  --color-focus: var(--focus);
+  --color-evidence: var(--evidence);
+  --color-on-evidence: var(--on-evidence);
+  --color-evidence-bar: var(--evidence-bar);
+  --color-unverified: var(--unverified);
+  --color-error: var(--error);
+  --color-action: var(--action);
+  --color-on-action: var(--on-action);
+  --shadow-sheet: var(--elevation-sheet);
+  /* Families come from next/font (app/fonts.ts), self-hosted at build time. */
+  --font-serif: var(--font-newsreader), Georgia, serif;
+  --font-ui: var(--font-instrument), system-ui, sans-serif;
+  --font-mono: var(--font-fragment), ui-monospace, monospace;
+}
+
+/* The fixed scale: the classic typographic scale (Bringhurst) 12 14 16 18 21 24 36. */
+@theme {
+  --text-micro: 12px;        /* citation figures */
+  --text-meta: 14px;         /* provenance, notes, panel meta, citation list */
+  --text-ui: 16px;           /* controls and buttons (16px stops iOS zooming into inputs) */
+  --text-body: 18px;         /* the answer, serif */
+  --text-body--line-height: 1.65;
+  --text-code: 14px;
+  --text-code--line-height: 1.65;
+  --text-lead: 21px;         /* the citation number in the panel header */
+  --text-title-sm: 24px;     /* the question on mobile */
+  --text-title-sm--line-height: 1.2;
+  --text-title: 36px;        /* the question on desktop */
+  --text-title--line-height: 1.15;
+  --text-title--letter-spacing: -0.015em;
+  --container-measure: 66ch; /* the reading column: under 80 characters per line */
+  /* Radii by role, not one radius everywhere */
+  --radius-cite: 2px;
+  --radius-control: 6px;
+  --radius-sheet: 12px;      /* top corners of the mobile bottom sheet */
+}
+
+@layer base {
+  html { background-color: var(--page); color: var(--text); }
+  body { font-family: var(--font-ui); }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+}
