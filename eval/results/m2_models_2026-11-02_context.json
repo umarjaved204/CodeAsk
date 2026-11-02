@@ -1,0 +1,737 @@
+{
+  "source": "Reconstructed on 2026-11-02 from the local clone of pallets/itsdangerous at 672971d66a2ef9f85151e53283113f33d642dabd (the indexed commit) using each run's stored block ranges; the original run stored ranges only.",
+  "runs": [
+    {
+      "q": 1,
+      "model": "qwen/qwen3.8-27b",
+      "context": [
+        {
+          "path": "src/itsdangerous/signer.py",
+          "start": 182,
+          "end": 213,
+          "content": "    def derive_key(self, secret_key: str | bytes | None = None) -> bytes:\n        \"\"\"This method is called to derive the key. The default key\n        derivation choices can be overridden here. Key derivation is not\n        intended to be used as a security method to make a complex key\n        out of a short password. Instead you should use large random\n        secret keys.\n\n        :param secret_key: A specific secret key to derive from.\n            Defaults to the last item in :attr:`secret_keys`.\n\n        .. versionchanged:: 2.0\n            Added the ``secret_key`` parameter.\n        \"\"\"\n        if secret_key is None:\n            secret_key = self.secret_keys[-1]\n        else:\n            secret_key = want_bytes(secret_key)\n\n        if self.key_derivation == \"concat\":\n            return t.cast(bytes, self.digest_method(self.salt + secret_key).digest())\n        elif self.key_derivation == \"django-concat\":\n            return t.cast(\n                bytes, self.digest_method(self.salt + b\"signer\" + secret_key).digest()\n            )\n        elif self.key_derivation == \"hmac\":\n            mac = hmac.new(secret_key, digestmod=self.digest_method)\n            mac.update(self.salt)\n            return mac.digest()\n        elif self.key_derivation == \"none\":\n            return secret_key\n        else:\n            raise TypeError(\"Unknown key derivation method\")"
+        },
+        {
+          "path": "src/itsdangerous/signer.py",
+          "start": 175,
+          "end": 180,
+          "content": "    @property\n    def secret_key(self) -> bytes:\n        \"\"\"The newest (last) entry in the :attr:`secret_keys` list. This\n        is for compatibility from before key rotation support was added.\n        \"\"\"\n        return self.secret_keys[-1]"
+        },
+        {
+          "path": "src/itsdangerous/signer.py",
+          "start": 76,
+          "end": 127,
+          "content": "class Signer:\n    \"\"\"A signer securely signs bytes, then unsigns them to verify that\n    the value hasn't been changed.\n\n    The secret key should be a random string of ``bytes`` and should not\n    be saved to code or version control. Different salts should be used\n    to distinguish signing in different contexts. See :doc:`/concepts`\n    for information about the security of the secret key and salt.\n\n    :param secret_key: The secret key to sign and verify with. Can be a\n        list of keys, oldest to newest, to support key rotation.\n    :param salt: Extra key to combine with ``secret_key`` to distinguish\n        signatures in different contexts.\n    :param sep: Separator between the signature and value.\n    :param key_derivation: How to derive the signing key from the secret\n        key and salt. Possible values are ``concat``, ``django-concat``,\n        or ``hmac``. Defaults to :attr:`default_key_derivation`, which\n        defaults to ``django-concat``.\n    :param digest_method: Hash function to use when generating the HMAC\n        signature. Defaults to :attr:`default_digest_method`, which\n        defaults to :func:`hashlib.sha1`. Note that the security of the\n        hash alone doesn't apply when used intermediately in HMAC.\n    :param algorithm: A :class:`SigningAlgorithm` instance to use\n        instead of building a default :class:`HMACAlgorithm` with the\n        ``digest_method``.\n\n    .. versionchanged:: 2.0\n        Added support for key rotation by passing a list to\n        ``secret_key``.\n\n    .. versionchanged:: 0.18\n        ``algorithm`` was added as an argument to the class constructor.\n\n    .. versionchanged:: 0.14\n        ``key_derivation`` and ``digest_method`` were added as arguments\n        to the class constructor.\n    \"\"\"\n\n    #: The default digest method to use for the signer. The default is\n    #: :func:`hashlib.sha1`, but can be changed to any :mod:`hashlib` or\n    #: compatible object. Note that the security of the hash alone\n    #: doesn't apply when used intermediately in HMAC.\n    #:\n    #: .. versionadded:: 0.14\n    default_digest_method: t.Any = staticmethod(_lazy_sha1)\n\n    #: The default scheme to use to derive the signing key from the\n    #: secret key and salt. The default is ``django-concat``. Possible\n    #: values are ``concat``, ``django-concat``, and ``hmac``.\n    #:\n    #: .. versionadded:: 0.14\n    default_key_derivation: str = \"django-concat\""
+        },
+        {
+          "path": "src/itsdangerous/signer.py",
+          "start": 129,
+          "end": 173,
+          "content": "    def __init__(\n        self,\n        secret_key: str | bytes | cabc.Iterable[str] | cabc.Iterable[bytes],\n        salt: str | bytes | None = b\"itsdangerous.Signer\",\n        sep: str | bytes = b\".\",\n        key_derivation: str | None = None,\n        digest_method: t.Any | None = None,\n        algorithm: SigningAlgorithm | None = None,\n    ):\n        #: The list of secret keys to try for verifying signatures, from\n        #: oldest to newest. The newest (last) key is used for signing.\n        #:\n        #: This allows a key rotation system to keep a list of allowed\n        #: keys and remove expired ones.\n        self.secret_keys: list[bytes] = _make_keys_list(secret_key)\n        self.sep: bytes = want_bytes(sep)\n\n        if self.sep in _base64_alphabet:\n            raise ValueError(\n                \"The given separator cannot be used because it may be\"\n                \" contained in the signature itself. ASCII letters,\"\n                \" digits, and '-_=' must not be used.\"\n            )\n\n        if salt is not None:\n            salt = want_bytes(salt)\n        else:\n            salt = b\"itsdangerous.Signer\"\n\n        self.salt = salt\n\n        if key_derivation is None:\n            key_derivation = self.default_key_derivation\n\n        self.key_derivation: str = key_derivation\n\n        if digest_method is None:\n            digest_method = self.default_digest_method\n\n        self.digest_method: t.Any = digest_method\n\n        if algorithm is None:\n            algorithm = HMACAlgorithm(self.digest_method)\n\n        self.algorithm: SigningAlgorithm = algorithm"
+        },
+        {
+          "path": "src/itsdangerous/serializer.py",
+          "start": 236,
+          "end": 241,
+          "content": "    @property\n    def secret_key(self) -> bytes:\n        \"\"\"The newest (last) entry in the :attr:`secret_keys` list. This\n        is for compatibility from before key rotation support was added.\n        \"\"\"\n        return self.secret_keys[-1]"
+        }
+      ]
+    },
+    {
+      "q": 1,
+      "model": "openai/gpt-oss-120b",
+      "context": [
+        {
+          "path": "src/itsdangerous/signer.py",
+          "start": 182,
+          "end": 213,
+          "content": "    def derive_key(self, secret_key: str | bytes | None = None) -> bytes:\n        \"\"\"This method is called to derive the key. The default key\n        derivation choices can be overridden here. Key derivation is not\n        intended to be used as a security method to make a complex key\n        out of a short password. Instead you should use large random\n        secret keys.\n\n        :param secret_key: A specific secret key to derive from.\n            Defaults to the last item in :attr:`secret_keys`.\n\n        .. versionchanged:: 2.0\n            Added the ``secret_key`` parameter.\n        \"\"\"\n        if secret_key is None:\n            secret_key = self.secret_keys[-1]\n        else:\n            secret_key = want_bytes(secret_key)\n\n        if self.key_derivation == \"concat\":\n            return t.cast(bytes, self.digest_method(self.salt + secret_key).digest())\n        elif self.key_derivation == \"django-concat\":\n            return t.cast(\n                bytes, self.digest_method(self.salt + b\"signer\" + secret_key).digest()\n            )\n        elif self.key_derivation == \"hmac\":\n            mac = hmac.new(secret_key, digestmod=self.digest_method)\n            mac.update(self.salt)\n            return mac.digest()\n        elif self.key_derivation == \"none\":\n            return secret_key\n        else:\n            raise TypeError(\"Unknown key derivation method\")"
+        },
+        {
+          "path": "src/itsdangerous/signer.py",
+          "start": 175,
+          "end": 180,
+          "content": "    @property\n    def secret_key(self) -> bytes:\n        \"\"\"The newest (last) entry in the :attr:`secret_keys` list. This\n        is for compatibility from before key rotation support was added.\n        \"\"\"\n        return self.secret_keys[-1]"
+        },
+        {
+          "path": "src/itsdangerous/signer.py",
+          "start": 76,
+          "end": 127,
+          "content": "class Signer:\n    \"\"\"A signer securely signs bytes, then unsigns them to verify that\n    the value hasn't been changed.\n\n    The secret key should be a random string of ``bytes`` and should not\n    be saved to code or version control. Different salts should be used\n    to distinguish signing in different contexts. See :doc:`/concepts`\n    for information about the security of the secret key and salt.\n\n    :param secret_key: The secret key to sign and verify with. Can be a\n        list of keys, oldest to newest, to support key rotation.\n    :param salt: Extra key to combine with ``secret_key`` to distinguish\n        signatures in different contexts.\n    :param sep: Separator between the signature and value.\n    :param key_derivation: How to derive the signing key from the secret\n        key and salt. Possible values are ``concat``, ``django-concat``,\n        or ``hmac``. Defaults to :attr:`default_key_derivation`, which\n        defaults to ``django-concat``.\n    :param digest_method: Hash function to use when generating the HMAC\n        signature. Defaults to :attr:`default_digest_method`, which\n        defaults to :func:`hashlib.sha1`. Note that the security of the\n        hash alone doesn't apply when used intermediately in HMAC.\n    :param algorithm: A :class:`SigningAlgorithm` instance to use\n        instead of building a default :class:`HMACAlgorithm` with the\n        ``digest_method``.\n\n    .. versionchanged:: 2.0\n        Added support for key rotation by passing a list to\n        ``secret_key``.\n\n    .. versionchanged:: 0.18\n        ``algorithm`` was added as an argument to the class constructor.\n\n    .. versionchanged:: 0.14\n        ``key_derivation`` and ``digest_method`` were added as arguments\n        to the class constructor.\n    \"\"\"\n\n    #: The default digest method to use for the signer. The default is\n    #: :func:`hashlib.sha1`, but can be changed to any :mod:`hashlib` or\n    #: compatible object. Note that the security of the hash alone\n    #: doesn't apply when used intermediately in HMAC.\n    #:\n    #: .. versionadded:: 0.14\n    default_digest_method: t.Any = staticmethod(_lazy_sha1)\n\n    #: The default scheme to use to derive the signing key from the\n    #: secret key and salt. The default is ``django-concat``. Possible\n    #: values are ``concat``, ``django-concat``, and ``hmac``.\n    #:\n    #: .. versionadded:: 0.14\n    default_key_derivation: str = \"django-concat\""
+        },
+        {
+          "path": "src/itsdangerous/signer.py",
+          "start": 129,
+          "end": 173,
+          "content": "    def __init__(\n        self,\n        secret_key: str | bytes | cabc.Iterable[str] | cabc.Iterable[bytes],\n        salt: str | bytes | None = b\"itsdangerous.Signer\",\n        sep: str | bytes = b\".\",\n        key_derivation: str | None = None,\n        digest_method: t.Any | None = None,\n        algorithm: SigningAlgorithm | None = None,\n    ):\n        #: The list of secret keys to try for verifying signatures, from\n        #: oldest to newest. The newest (last) key is used for signing.\n        #:\n        #: This allows a key rotation system to keep a list of allowed\n        #: keys and remove expired ones.\n        self.secret_keys: list[bytes] = _make_keys_list(secret_key)\n        self.sep: bytes = want_bytes(sep)\n\n        if self.sep in _base64_alphabet:\n            raise ValueError(\n                \"The given separator cannot be used because it may be\"\n                \" contained in the signature itself. ASCII letters,\"\n                \" digits, and '-_=' must not be used.\"\n            )\n\n        if salt is not None:\n            salt = want_bytes(salt)\n        else:\n            salt = b\"itsdangerous.Signer\"\n\n        self.salt = salt\n\n        if key_derivation is None:\n            key_derivation = self.default_key_derivation\n\n        self.key_derivation: str = key_derivation\n\n        if digest_method is None:\n            digest_method = self.default_digest_method\n\n        self.digest_method: t.Any = digest_method\n\n        if algorithm is None:\n            algorithm = HMACAlgorithm(self.digest_method)\n\n        self.algorithm: SigningAlgorithm = algorithm"
+        },
+        {
+          "path": "src/itsdangerous/serializer.py",
+          "start": 236,
+          "end": 241,
+          "content": "    @property\n    def secret_key(self) -> bytes:\n        \"\"\"The newest (last) entry in the :attr:`secret_keys` list. This\n        is for compatibility from before key rotation support was added.\n        \"\"\"\n        return self.secret_keys[-1]"
+        }
+      ]
+    },
+    {
+      "q": 2,
+      "model": "qwen/qwen3.8-27b",
+      "context": [
+        {
+          "path": "src/itsdangerous/timed.py",
+          "start": 72,
+          "end": 158,
+          "content": "    def unsign(\n        self,\n        signed_value: str | bytes,\n        max_age: int | None = None,\n        return_timestamp: bool = False,\n    ) -> tuple[bytes, datetime] | bytes:\n        \"\"\"Works like the regular :meth:`.Signer.unsign` but can also\n        validate the time. See the base docstring of the class for\n        the general behavior. If ``return_timestamp`` is ``True`` the\n        timestamp of the signature will be returned as an aware\n        :class:`datetime.datetime` object in UTC.\n\n        .. versionchanged:: 2.0\n            The timestamp is returned as a timezone-aware ``datetime``\n            in UTC rather than a naive ``datetime`` assumed to be UTC.\n        \"\"\"\n        try:\n            result = super().unsign(signed_value)\n            sig_error = None\n        except BadSignature as e:\n            sig_error = e\n            result = e.payload or b\"\"\n\n        sep = want_bytes(self.sep)\n\n        # If there is no timestamp in the result there is something\n        # seriously wrong. In case there was a signature error, we raise\n        # that one directly, otherwise we have a weird situation in\n        # which we shouldn't have come except someone uses a time-based\n        # serializer on non-timestamp data, so catch that.\n        if sep not in result:\n            if sig_error:\n                raise sig_error\n\n            raise BadTimeSignature(\"timestamp missing\", payload=result)\n\n        value, ts_bytes = result.rsplit(sep, 1)\n        ts_int: int | None = None\n        ts_dt: datetime | None = None\n\n        try:\n            ts_int = bytes_to_int(base64_decode(ts_bytes))\n        except Exception:\n            pass\n\n        # Signature is *not* okay. Raise a proper error now that we have\n        # split the value and the timestamp.\n        if sig_error is not None:\n            if ts_int is not None:\n                try:\n                    ts_dt = self.timestamp_to_datetime(ts_int)\n                except (ValueError, OSError, OverflowError) as exc:\n                    # Windows raises OSError\n                    # 32-bit raises OverflowError\n                    raise BadTimeSignature(\n                        \"Malformed timestamp\", payload=value\n                    ) from exc\n\n            raise BadTimeSignature(str(sig_error), payload=value, date_signed=ts_dt)\n\n        # Signature was okay but the timestamp is actually not there or\n        # malformed. Should not happen, but we handle it anyway.\n        if ts_int is None:\n            raise BadTimeSignature(\"Malformed timestamp\", payload=value)\n\n        # Check timestamp is not older than max_age\n        if max_age is not None:\n            age = self.get_timestamp() - ts_int\n\n            if age > max_age:\n                raise SignatureExpired(\n                    f\"Signature age {age} > {max_age} seconds\",\n                    payload=value,\n                    date_signed=self.timestamp_to_datetime(ts_int),\n                )\n\n            if age < 0:\n                raise SignatureExpired(\n                    f\"Signature age {age} < 0 seconds\",\n                    payload=value,\n                    date_signed=self.timestamp_to_datetime(ts_int),\n                )\n\n        if return_timestamp:\n            return value, self.timestamp_to_datetime(ts_int)\n\n        return value"
+        },
+        {
+          "path": "src/itsdangerous/timed.py",
+          "start": 160,
+          "end": 167,
+          "content": "    def validate(self, signed_value: str | bytes, max_age: int | None = None) -> bool:\n        \"\"\"Only validates the given signed value. Returns ``True`` if\n        the signature exists and is valid.\"\"\"\n        try:\n            self.unsign(signed_value, max_age=max_age)\n            return True\n        except BadSignature:\n            return False"
+        },
+        {
+          "path": "src/itsdangerous/timed.py",
+          "start": 170,
+          "end": 228,
+          "content": "class TimedSerializer(Serializer[_TSerialized]):\n    \"\"\"Uses :class:`TimestampSigner` instead of the default\n    :class:`.Signer`.\n    \"\"\"\n\n    default_signer: type[TimestampSigner] = TimestampSigner  # pyright: ignore\n\n    def iter_unsigners(\n        self, salt: str | bytes | None = None\n    ) -> cabc.Iterator[TimestampSigner]:\n        return t.cast(\"cabc.Iterator[TimestampSigner]\", super().iter_unsigners(salt))\n\n    # TODO: Signature is incompatible because parameters were added\n    #  before salt.\n\n    def loads(  # type: ignore[override]\n        self,\n        s: str | bytes,\n        max_age: int | None = None,\n        return_timestamp: bool = False,\n        salt: str | bytes | None = None,\n    ) -> t.Any:\n        \"\"\"Reverse of :meth:`dumps`, raises :exc:`.BadSignature` if the\n        signature validation fails. If a ``max_age`` is provided it will\n        ensure the signature is not older than that time in seconds. In\n        case the signature is outdated, :exc:`.SignatureExpired` is\n        raised. All arguments are forwarded to the signer's\n        :meth:`~TimestampSigner.unsign` method.\n        \"\"\"\n        s = want_bytes(s)\n        last_exception = None\n\n        for signer in self.iter_unsigners(salt):\n            try:\n                base64d, timestamp = signer.unsign(\n                    s, max_age=max_age, return_timestamp=True\n                )\n                payload = self.load_payload(base64d)\n\n                if return_timestamp:\n                    return payload, timestamp\n\n                return payload\n            except SignatureExpired:\n                # The signature was unsigned successfully but was\n                # expired. Do not try the next signer.\n                raise\n            except BadSignature as err:\n                last_exception = err\n\n        raise t.cast(BadSignature, last_exception)\n\n    def loads_unsafe(  # type: ignore[override]\n        self,\n        s: str | bytes,\n        max_age: int | None = None,\n        salt: str | bytes | None = None,\n    ) -> tuple[bool, t.Any]:\n        return self._loads_unsafe_impl(s, salt, load_kwargs={\"max_age\": max_age})"
+        },
+        {
+          "path": "src/itsdangerous/timed.py",
+          "start": 22,
+          "end": 27,
+          "content": "class TimestampSigner(Signer):\n    \"\"\"Works like the regular :class:`.Signer` but also records the time\n    of the signing and can be used to expire signatures. The\n    :meth:`unsign` method can raise :exc:`.SignatureExpired` if the\n    unsigning failed because the signature is expired.\n    \"\"\""
+        }
+      ]
+    },
+    {
+      "q": 2,
+      "model": "openai/gpt-oss-120b",
+      "context": [
+        {
+          "path": "src/itsdangerous/timed.py",
+          "start": 72,
+          "end": 158,
+          "content": "    def unsign(\n        self,\n        signed_value: str | bytes,\n        max_age: int | None = None,\n        return_timestamp: bool = False,\n    ) -> tuple[bytes, datetime] | bytes:\n        \"\"\"Works like the regular :meth:`.Signer.unsign` but can also\n        validate the time. See the base docstring of the class for\n        the general behavior. If ``return_timestamp`` is ``True`` the\n        timestamp of the signature will be returned as an aware\n        :class:`datetime.datetime` object in UTC.\n\n        .. versionchanged:: 2.0\n            The timestamp is returned as a timezone-aware ``datetime``\n            in UTC rather than a naive ``datetime`` assumed to be UTC.\n        \"\"\"\n        try:\n            result = super().unsign(signed_value)\n            sig_error = None\n        except BadSignature as e:\n            sig_error = e\n            result = e.payload or b\"\"\n\n        sep = want_bytes(self.sep)\n\n        # If there is no timestamp in the result there is something\n        # seriously wrong. In case there was a signature error, we raise\n        # that one directly, otherwise we have a weird situation in\n        # which we shouldn't have come except someone uses a time-based\n        # serializer on non-timestamp data, so catch that.\n        if sep not in result:\n            if sig_error:\n                raise sig_error\n\n            raise BadTimeSignature(\"timestamp missing\", payload=result)\n\n        value, ts_bytes = result.rsplit(sep, 1)\n        ts_int: int | None = None\n        ts_dt: datetime | None = None\n\n        try:\n            ts_int = bytes_to_int(base64_decode(ts_bytes))\n        except Exception:\n            pass\n\n        # Signature is *not* okay. Raise a proper error now that we have\n        # split the value and the timestamp.\n        if sig_error is not None:\n            if ts_int is not None:\n                try:\n                    ts_dt = self.timestamp_to_datetime(ts_int)\n                except (ValueError, OSError, OverflowError) as exc:\n                    # Windows raises OSError\n                    # 32-bit raises OverflowError\n                    raise BadTimeSignature(\n                        \"Malformed timestamp\", payload=value\n                    ) from exc\n\n            raise BadTimeSignature(str(sig_error), payload=value, date_signed=ts_dt)\n\n        # Signature was okay but the timestamp is actually not there or\n        # malformed. Should not happen, but we handle it anyway.\n        if ts_int is None:\n            raise BadTimeSignature(\"Malformed timestamp\", payload=value)\n\n        # Check timestamp is not older than max_age\n        if max_age is not None:\n            age = self.get_timestamp() - ts_int\n\n            if age > max_age:\n                raise SignatureExpired(\n                    f\"Signature age {age} > {max_age} seconds\",\n                    payload=value,\n                    date_signed=self.timestamp_to_datetime(ts_int),\n                )\n\n            if age < 0:\n                raise SignatureExpired(\n                    f\"Signature age {age} < 0 seconds\",\n                    payload=value,\n                    date_signed=self.timestamp_to_datetime(ts_int),\n                )\n\n        if return_timestamp:\n            return value, self.timestamp_to_datetime(ts_int)\n\n        return value"
+        },
+        {
+          "path": "src/itsdangerous/timed.py",
+          "start": 160,
+          "end": 167,
+          "content": "    def validate(self, signed_value: str | bytes, max_age: int | None = None) -> bool:\n        \"\"\"Only validates the given signed value. Returns ``True`` if\n        the signature exists and is valid.\"\"\"\n        try:\n            self.unsign(signed_value, max_age=max_age)\n            return True\n        except BadSignature:\n            return False"
+        },
+        {
+          "path": "src/itsdangerous/timed.py",
+          "start": 170,
+          "end": 228,
+          "content": "class TimedSerializer(Serializer[_TSerialized]):\n    \"\"\"Uses :class:`TimestampSigner` instead of the default\n    :class:`.Signer`.\n    \"\"\"\n\n    default_signer: type[TimestampSigner] = TimestampSigner  # pyright: ignore\n\n    def iter_unsigners(\n        self, salt: str | bytes | None = None\n    ) -> cabc.Iterator[TimestampSigner]:\n        return t.cast(\"cabc.Iterator[TimestampSigner]\", super().iter_unsigners(salt))\n\n    # TODO: Signature is incompatible because parameters were added\n    #  before salt.\n\n    def loads(  # type: ignore[override]\n        self,\n        s: str | bytes,\n        max_age: int | None = None,\n        return_timestamp: bool = False,\n        salt: str | bytes | None = None,\n    ) -> t.Any:\n        \"\"\"Reverse of :meth:`dumps`, raises :exc:`.BadSignature` if the\n        signature validation fails. If a ``max_age`` is provided it will\n        ensure the signature is not older than that time in seconds. In\n        case the signature is outdated, :exc:`.SignatureExpired` is\n        raised. All arguments are forwarded to the signer's\n        :meth:`~TimestampSigner.unsign` method.\n        \"\"\"\n        s = want_bytes(s)\n        last_exception = None\n\n        for signer in self.iter_unsigners(salt):\n            try:\n                base64d, timestamp = signer.unsign(\n                    s, max_age=max_age, return_timestamp=True\n                )\n                payload = self.load_payload(base64d)\n\n                if return_timestamp:\n                    return payload, timestamp\n\n                return payload\n            except SignatureExpired:\n                # The signature was unsigned successfully but was\n                # expired. Do not try the next signer.\n                raise\n            except BadSignature as err:\n                last_exception = err\n\n        raise t.cast(BadSignature, last_exception)\n\n    def loads_unsafe(  # type: ignore[override]\n        self,\n        s: str | bytes,\n        max_age: int | None = None,\n        salt: str | bytes | None = None,\n    ) -> tuple[bool, t.Any]:\n        return self._loads_unsafe_impl(s, salt, load_kwargs={\"max_age\": max_age})"
+        },
+        {
+          "path": "src/itsdangerous/timed.py",
+          "start": 22,
+          "end": 27,
+          "content": "class TimestampSigner(Signer):\n    \"\"\"Works like the regular :class:`.Signer` but also records the time\n    of the signing and can be used to expire signatures. The\n    :meth:`unsign` method can raise :exc:`.SignatureExpired` if the\n    unsigning failed because the signature is expired.\n    \"\"\""
+        }
+      ]
+    },
+    {
+      "q": 3,
+      "model": "qwen/qwen3.8-27b",
+      "context": [
+        {
+          "path": "src/itsdangerous/url_safe.py",
+          "start": 15,
+          "end": 69,
+          "content": "class URLSafeSerializerMixin(Serializer[str]):\n    \"\"\"Mixed in with a regular serializer it will attempt to zlib\n    compress the string to make it shorter if necessary. It will also\n    base64 encode the string so that it can safely be placed in a URL.\n    \"\"\"\n\n    default_serializer: _PDataSerializer[str] = _CompactJSON\n\n    def load_payload(\n        self,\n        payload: bytes,\n        *args: t.Any,\n        serializer: t.Any | None = None,\n        **kwargs: t.Any,\n    ) -> t.Any:\n        decompress = False\n\n        if payload.startswith(b\".\"):\n            payload = payload[1:]\n            decompress = True\n\n        try:\n            json = base64_decode(payload)\n        except Exception as e:\n            raise BadPayload(\n                \"Could not base64 decode the payload because of an exception\",\n                original_error=e,\n            ) from e\n\n        if decompress:\n            try:\n                json = zlib.decompress(json)\n            except Exception as e:\n                raise BadPayload(\n                    \"Could not zlib decompress the payload before decoding the payload\",\n                    original_error=e,\n                ) from e\n\n        return super().load_payload(json, *args, **kwargs)\n\n    def dump_payload(self, obj: t.Any) -> bytes:\n        json = super().dump_payload(obj)\n        is_compressed = False\n        compressed = zlib.compress(json)\n\n        if len(compressed) < (len(json) - 1):\n            json = compressed\n            is_compressed = True\n\n        base64d = base64_encode(json)\n\n        if is_compressed:\n            base64d = b\".\" + base64d\n\n        return base64d"
+        },
+        {
+          "path": "src/itsdangerous/url_safe.py",
+          "start": 1,
+          "end": 12,
+          "content": "from __future__ import annotations\n\nimport typing as t\nimport zlib\n\nfrom ._json import _CompactJSON\nfrom .encoding import base64_decode\nfrom .encoding import base64_encode\nfrom .exc import BadPayload\nfrom .serializer import _PDataSerializer\nfrom .serializer import Serializer\nfrom .timed import TimedSerializer"
+        },
+        {
+          "path": "src/itsdangerous/url_safe.py",
+          "start": 72,
+          "end": 76,
+          "content": "class URLSafeSerializer(URLSafeSerializerMixin, Serializer[str]):\n    \"\"\"Works like :class:`.Serializer` but dumps and loads into a URL\n    safe string consisting of the upper and lowercase character of the\n    alphabet as well as ``'_'``, ``'-'`` and ``'.'``.\n    \"\"\""
+        },
+        {
+          "path": "src/itsdangerous/serializer.py",
+          "start": 271,
+          "end": 276,
+          "content": "    def dump_payload(self, obj: t.Any) -> bytes:\n        \"\"\"Dumps the encoded object. The return value is always bytes.\n        If the internal serializer returns text, the value will be\n        encoded as UTF-8.\n        \"\"\"\n        return want_bytes(self.serializer.dumps(obj, **self.serializer_kwargs))"
+        },
+        {
+          "path": "src/itsdangerous/url_safe.py",
+          "start": 79,
+          "end": 83,
+          "content": "class URLSafeTimedSerializer(URLSafeSerializerMixin, TimedSerializer[str]):\n    \"\"\"Works like :class:`.TimedSerializer` but dumps and loads into a\n    URL safe string consisting of the upper and lowercase character of\n    the alphabet as well as ``'_'``, ``'-'`` and ``'.'``.\n    \"\"\""
+        },
+        {
+          "path": "src/itsdangerous/encoding.py",
+          "start": 41,
+          "end": 46,
+          "content": "# The alphabet used by base64.urlsafe_*\n_base64_alphabet = f\"{string.ascii_letters}{string.digits}-_=\".encode(\"ascii\")\n\n_int64_struct = struct.Struct(\">Q\")\n_int_to_bytes = _int64_struct.pack\n_bytes_to_int = t.cast(\"t.Callable[[bytes], tuple[int]]\", _int64_struct.unpack)"
+        },
+        {
+          "path": "src/itsdangerous/serializer.py",
+          "start": 1,
+          "end": 11,
+          "content": "from __future__ import annotations\n\nimport collections.abc as cabc\nimport json\nimport typing as t\n\nfrom .encoding import want_bytes\nfrom .exc import BadPayload\nfrom .exc import BadSignature\nfrom .signer import _make_keys_list\nfrom .signer import Signer"
+        },
+        {
+          "path": "src/itsdangerous/__init__.py",
+          "start": 1,
+          "end": 17,
+          "content": "from .encoding import base64_decode as base64_decode\nfrom .encoding import base64_encode as base64_encode\nfrom .encoding import want_bytes as want_bytes\nfrom .exc import BadData as BadData\nfrom .exc import BadHeader as BadHeader\nfrom .exc import BadPayload as BadPayload\nfrom .exc import BadSignature as BadSignature\nfrom .exc import BadTimeSignature as BadTimeSignature\nfrom .exc import SignatureExpired as SignatureExpired\nfrom .serializer import Serializer as Serializer\nfrom .signer import HMACAlgorithm as HMACAlgorithm\nfrom .signer import NoneAlgorithm as NoneAlgorithm\nfrom .signer import Signer as Signer\nfrom .timed import TimedSerializer as TimedSerializer\nfrom .timed import TimestampSigner as TimestampSigner\nfrom .url_safe import URLSafeSerializer as URLSafeSerializer\nfrom .url_safe import URLSafeTimedSerializer as URLSafeTimedSerializer"
+        }
+      ]
+    },
+    {
+      "q": 3,
+      "model": "openai/gpt-oss-120b",
+      "context": [
+        {
+          "path": "src/itsdangerous/url_safe.py",
+          "start": 15,
+          "end": 69,
+          "content": "class URLSafeSerializerMixin(Serializer[str]):\n    \"\"\"Mixed in with a regular serializer it will attempt to zlib\n    compress the string to make it shorter if necessary. It will also\n    base64 encode the string so that it can safely be placed in a URL.\n    \"\"\"\n\n    default_serializer: _PDataSerializer[str] = _CompactJSON\n\n    def load_payload(\n        self,\n        payload: bytes,\n        *args: t.Any,\n        serializer: t.Any | None = None,\n        **kwargs: t.Any,\n    ) -> t.Any:\n        decompress = False\n\n        if payload.startswith(b\".\"):\n            payload = payload[1:]\n            decompress = True\n\n        try:\n            json = base64_decode(payload)\n        except Exception as e:\n            raise BadPayload(\n                \"Could not base64 decode the payload because of an exception\",\n                original_error=e,\n            ) from e\n\n        if decompress:\n            try:\n                json = zlib.decompress(json)\n            except Exception as e:\n                raise BadPayload(\n                    \"Could not zlib decompress the payload before decoding the payload\",\n                    original_error=e,\n                ) from e\n\n        return super().load_payload(json, *args, **kwargs)\n\n    def dump_payload(self, obj: t.Any) -> bytes:\n        json = super().dump_payload(obj)\n        is_compressed = False\n        compressed = zlib.compress(json)\n\n        if len(compressed) < (len(json) - 1):\n            json = compressed\n            is_compressed = True\n\n        base64d = base64_encode(json)\n\n        if is_compressed:\n            base64d = b\".\" + base64d\n\n        return base64d"
+        },
+        {
+          "path": "src/itsdangerous/url_safe.py",
+          "start": 1,
+          "end": 12,
+          "content": "from __future__ import annotations\n\nimport typing as t\nimport zlib\n\nfrom ._json import _CompactJSON\nfrom .encoding import base64_decode\nfrom .encoding import base64_encode\nfrom .exc import BadPayload\nfrom .serializer import _PDataSerializer\nfrom .serializer import Serializer\nfrom .timed import TimedSerializer"
+        },
+        {
+          "path": "src/itsdangerous/url_safe.py",
+          "start": 72,
+          "end": 76,
+          "content": "class URLSafeSerializer(URLSafeSerializerMixin, Serializer[str]):\n    \"\"\"Works like :class:`.Serializer` but dumps and loads into a URL\n    safe string consisting of the upper and lowercase character of the\n    alphabet as well as ``'_'``, ``'-'`` and ``'.'``.\n    \"\"\""
+        },
+        {
+          "path": "src/itsdangerous/serializer.py",
+          "start": 271,
+          "end": 276,
+          "content": "    def dump_payload(self, obj: t.Any) -> bytes:\n        \"\"\"Dumps the encoded object. The return value is always bytes.\n        If the internal serializer returns text, the value will be\n        encoded as UTF-8.\n        \"\"\"\n        return want_bytes(self.serializer.dumps(obj, **self.serializer_kwargs))"
+        },
+        {
+          "path": "src/itsdangerous/url_safe.py",
+          "start": 79,
+          "end": 83,
+          "content": "class URLSafeTimedSerializer(URLSafeSerializerMixin, TimedSerializer[str]):\n    \"\"\"Works like :class:`.TimedSerializer` but dumps and loads into a\n    URL safe string consisting of the upper and lowercase character of\n    the alphabet as well as ``'_'``, ``'-'`` and ``'.'``.\n    \"\"\""
+        },
+        {
+          "path": "src/itsdangerous/encoding.py",
+          "start": 41,
+          "end": 46,
+          "content": "# The alphabet used by base64.urlsafe_*\n_base64_alphabet = f\"{string.ascii_letters}{string.digits}-_=\".encode(\"ascii\")\n\n_int64_struct = struct.Struct(\">Q\")\n_int_to_bytes = _int64_struct.pack\n_bytes_to_int = t.cast(\"t.Callable[[bytes], tuple[int]]\", _int64_struct.unpack)"
+        },
+        {
+          "path": "src/itsdangerous/serializer.py",
+          "start": 1,
+          "end": 11,
+          "content": "from __future__ import annotations\n\nimport collections.abc as cabc\nimport json\nimport typing as t\n\nfrom .encoding import want_bytes\nfrom .exc import BadPayload\nfrom .exc import BadSignature\nfrom .signer import _make_keys_list\nfrom .signer import Signer"
+        },
+        {
+          "path": "src/itsdangerous/__init__.py",
+          "start": 1,
+          "end": 17,
+          "content": "from .encoding import base64_decode as base64_decode\nfrom .encoding import base64_encode as base64_encode\nfrom .encoding import want_bytes as want_bytes\nfrom .exc import BadData as BadData\nfrom .exc import BadHeader as BadHeader\nfrom .exc import BadPayload as BadPayload\nfrom .exc import BadSignature as BadSignature\nfrom .exc import BadTimeSignature as BadTimeSignature\nfrom .exc import SignatureExpired as SignatureExpired\nfrom .serializer import Serializer as Serializer\nfrom .signer import HMACAlgorithm as HMACAlgorithm\nfrom .signer import NoneAlgorithm as NoneAlgorithm\nfrom .signer import Signer as Signer\nfrom .timed import TimedSerializer as TimedSerializer\nfrom .timed import TimestampSigner as TimestampSigner\nfrom .url_safe import URLSafeSerializer as URLSafeSerializer\nfrom .url_safe import URLSafeTimedSerializer as URLSafeTimedSerializer"
+        }
+      ]
+    },
+    {
+      "q": 4,
+      "model": "qwen/qwen3.8-27b",
+      "context": [
+        {
+          "path": "src/itsdangerous/encoding.py",
+          "start": 28,
+          "end": 38,
+          "content": "def base64_decode(string: str | bytes) -> bytes:\n    \"\"\"Base64 decode a URL-safe string of bytes or text. The result is\n    bytes.\n    \"\"\"\n    string = want_bytes(string, encoding=\"ascii\", errors=\"ignore\")\n    string += b\"=\" * (-len(string) % 4)\n\n    try:\n        return base64.urlsafe_b64decode(string)\n    except (TypeError, ValueError) as e:\n        raise BadData(\"Invalid base64-encoded data\") from e"
+        },
+        {
+          "path": "src/itsdangerous/encoding.py",
+          "start": 1,
+          "end": 8,
+          "content": "from __future__ import annotations\n\nimport base64\nimport string\nimport struct\nimport typing as t\n\nfrom .exc import BadData"
+        },
+        {
+          "path": "src/itsdangerous/encoding.py",
+          "start": 41,
+          "end": 46,
+          "content": "# The alphabet used by base64.urlsafe_*\n_base64_alphabet = f\"{string.ascii_letters}{string.digits}-_=\".encode(\"ascii\")\n\n_int64_struct = struct.Struct(\">Q\")\n_int_to_bytes = _int64_struct.pack\n_bytes_to_int = t.cast(\"t.Callable[[bytes], tuple[int]]\", _int64_struct.unpack)"
+        },
+        {
+          "path": "src/itsdangerous/encoding.py",
+          "start": 20,
+          "end": 25,
+          "content": "def base64_encode(string: str | bytes) -> bytes:\n    \"\"\"Base64 encode a string of bytes or text. The resulting bytes are\n    safe to use in URLs.\n    \"\"\"\n    string = want_bytes(string)\n    return base64.urlsafe_b64encode(string).rstrip(b\"=\")"
+        },
+        {
+          "path": "src/itsdangerous/url_safe.py",
+          "start": 1,
+          "end": 12,
+          "content": "from __future__ import annotations\n\nimport typing as t\nimport zlib\n\nfrom ._json import _CompactJSON\nfrom .encoding import base64_decode\nfrom .encoding import base64_encode\nfrom .exc import BadPayload\nfrom .serializer import _PDataSerializer\nfrom .serializer import Serializer\nfrom .timed import TimedSerializer"
+        },
+        {
+          "path": "src/itsdangerous/signer.py",
+          "start": 1,
+          "end": 12,
+          "content": "from __future__ import annotations\n\nimport collections.abc as cabc\nimport hashlib\nimport hmac\nimport typing as t\n\nfrom .encoding import _base64_alphabet\nfrom .encoding import base64_decode\nfrom .encoding import base64_encode\nfrom .encoding import want_bytes\nfrom .exc import BadSignature"
+        },
+        {
+          "path": "src/itsdangerous/encoding.py",
+          "start": 49,
+          "end": 54,
+          "content": "def int_to_bytes(num: int) -> bytes:\n    return _int_to_bytes(num).lstrip(b\"\\x00\")\n\n\ndef bytes_to_int(bytestr: bytes) -> int:\n    return _bytes_to_int(bytestr.rjust(8, b\"\\x00\"))[0]"
+        },
+        {
+          "path": "src/itsdangerous/encoding.py",
+          "start": 11,
+          "end": 17,
+          "content": "def want_bytes(\n    s: str | bytes, encoding: str = \"utf-8\", errors: str = \"strict\"\n) -> bytes:\n    if isinstance(s, str):\n        s = s.encode(encoding, errors)\n\n    return s"
+        }
+      ]
+    },
+    {
+      "q": 4,
+      "model": "openai/gpt-oss-120b",
+      "context": [
+        {
+          "path": "src/itsdangerous/encoding.py",
+          "start": 28,
+          "end": 38,
+          "content": "def base64_decode(string: str | bytes) -> bytes:\n    \"\"\"Base64 decode a URL-safe string of bytes or text. The result is\n    bytes.\n    \"\"\"\n    string = want_bytes(string, encoding=\"ascii\", errors=\"ignore\")\n    string += b\"=\" * (-len(string) % 4)\n\n    try:\n        return base64.urlsafe_b64decode(string)\n    except (TypeError, ValueError) as e:\n        raise BadData(\"Invalid base64-encoded data\") from e"
+        },
+        {
+          "path": "src/itsdangerous/encoding.py",
+          "start": 1,
+          "end": 8,
+          "content": "from __future__ import annotations\n\nimport base64\nimport string\nimport struct\nimport typing as t\n\nfrom .exc import BadData"
+        },
+        {
+          "path": "src/itsdangerous/encoding.py",
+          "start": 41,
+          "end": 46,
+          "content": "# The alphabet used by base64.urlsafe_*\n_base64_alphabet = f\"{string.ascii_letters}{string.digits}-_=\".encode(\"ascii\")\n\n_int64_struct = struct.Struct(\">Q\")\n_int_to_bytes = _int64_struct.pack\n_bytes_to_int = t.cast(\"t.Callable[[bytes], tuple[int]]\", _int64_struct.unpack)"
+        },
+        {
+          "path": "src/itsdangerous/encoding.py",
+          "start": 20,
+          "end": 25,
+          "content": "def base64_encode(string: str | bytes) -> bytes:\n    \"\"\"Base64 encode a string of bytes or text. The resulting bytes are\n    safe to use in URLs.\n    \"\"\"\n    string = want_bytes(string)\n    return base64.urlsafe_b64encode(string).rstrip(b\"=\")"
+        },
+        {
+          "path": "src/itsdangerous/url_safe.py",
+          "start": 1,
+          "end": 12,
+          "content": "from __future__ import annotations\n\nimport typing as t\nimport zlib\n\nfrom ._json import _CompactJSON\nfrom .encoding import base64_decode\nfrom .encoding import base64_encode\nfrom .exc import BadPayload\nfrom .serializer import _PDataSerializer\nfrom .serializer import Serializer\nfrom .timed import TimedSerializer"
+        },
+        {
+          "path": "src/itsdangerous/signer.py",
+          "start": 1,
+          "end": 12,
+          "content": "from __future__ import annotations\n\nimport collections.abc as cabc\nimport hashlib\nimport hmac\nimport typing as t\n\nfrom .encoding import _base64_alphabet\nfrom .encoding import base64_decode\nfrom .encoding import base64_encode\nfrom .encoding import want_bytes\nfrom .exc import BadSignature"
+        },
+        {
+          "path": "src/itsdangerous/encoding.py",
+          "start": 49,
+          "end": 54,
+          "content": "def int_to_bytes(num: int) -> bytes:\n    return _int_to_bytes(num).lstrip(b\"\\x00\")\n\n\ndef bytes_to_int(bytestr: bytes) -> int:\n    return _bytes_to_int(bytestr.rjust(8, b\"\\x00\"))[0]"
+        },
+        {
+          "path": "src/itsdangerous/encoding.py",
+          "start": 11,
+          "end": 17,
+          "content": "def want_bytes(\n    s: str | bytes, encoding: str = \"utf-8\", errors: str = \"strict\"\n) -> bytes:\n    if isinstance(s, str):\n        s = s.encode(encoding, errors)\n\n    return s"
+        }
+      ]
+    },
+    {
+      "q": 5,
+      "model": "qwen/qwen3.8-27b",
+      "context": [
+        {
+          "path": "src/itsdangerous/signer.py",
+          "start": 175,
+          "end": 180,
+          "content": "    @property\n    def secret_key(self) -> bytes:\n        \"\"\"The newest (last) entry in the :attr:`secret_keys` list. This\n        is for compatibility from before key rotation support was added.\n        \"\"\"\n        return self.secret_keys[-1]"
+        },
+        {
+          "path": "src/itsdangerous/serializer.py",
+          "start": 236,
+          "end": 241,
+          "content": "    @property\n    def secret_key(self) -> bytes:\n        \"\"\"The newest (last) entry in the :attr:`secret_keys` list. This\n        is for compatibility from before key rotation support was added.\n        \"\"\"\n        return self.secret_keys[-1]"
+        },
+        {
+          "path": "src/itsdangerous/signer.py",
+          "start": 129,
+          "end": 173,
+          "content": "    def __init__(\n        self,\n        secret_key: str | bytes | cabc.Iterable[str] | cabc.Iterable[bytes],\n        salt: str | bytes | None = b\"itsdangerous.Signer\",\n        sep: str | bytes = b\".\",\n        key_derivation: str | None = None,\n        digest_method: t.Any | None = None,\n        algorithm: SigningAlgorithm | None = None,\n    ):\n        #: The list of secret keys to try for verifying signatures, from\n        #: oldest to newest. The newest (last) key is used for signing.\n        #:\n        #: This allows a key rotation system to keep a list of allowed\n        #: keys and remove expired ones.\n        self.secret_keys: list[bytes] = _make_keys_list(secret_key)\n        self.sep: bytes = want_bytes(sep)\n\n        if self.sep in _base64_alphabet:\n            raise ValueError(\n                \"The given separator cannot be used because it may be\"\n                \" contained in the signature itself. ASCII letters,\"\n                \" digits, and '-_=' must not be used.\"\n            )\n\n        if salt is not None:\n            salt = want_bytes(salt)\n        else:\n            salt = b\"itsdangerous.Signer\"\n\n        self.salt = salt\n\n        if key_derivation is None:\n            key_derivation = self.default_key_derivation\n\n        self.key_derivation: str = key_derivation\n\n        if digest_method is None:\n            digest_method = self.default_digest_method\n\n        self.digest_method: t.Any = digest_method\n\n        if algorithm is None:\n            algorithm = HMACAlgorithm(self.digest_method)\n\n        self.algorithm: SigningAlgorithm = algorithm"
+        },
+        {
+          "path": "src/itsdangerous/serializer.py",
+          "start": 190,
+          "end": 234,
+          "content": "    def __init__(\n        self,\n        secret_key: str | bytes | cabc.Iterable[str] | cabc.Iterable[bytes],\n        salt: str | bytes | None = b\"itsdangerous\",\n        serializer: t.Any | None = None,\n        serializer_kwargs: dict[str, t.Any] | None = None,\n        signer: type[Signer] | None = None,\n        signer_kwargs: dict[str, t.Any] | None = None,\n        fallback_signers: list[\n            dict[str, t.Any] | tuple[type[Signer], dict[str, t.Any]] | type[Signer]\n        ]\n        | None = None,\n    ):\n        #: The list of secret keys to try for verifying signatures, from\n        #: oldest to newest. The newest (last) key is used for signing.\n        #:\n        #: This allows a key rotation system to keep a list of allowed\n        #: keys and remove expired ones.\n        self.secret_keys: list[bytes] = _make_keys_list(secret_key)\n\n        if salt is not None:\n            salt = want_bytes(salt)\n            # if salt is None then the signer's default is used\n\n        self.salt = salt\n\n        if serializer is None:\n            serializer = self.default_serializer\n\n        self.serializer: _PDataSerializer[_TSerialized] = serializer\n        self.is_text_serializer: bool = is_text_serializer(serializer)\n\n        if signer is None:\n            signer = self.default_signer\n\n        self.signer: type[Signer] = signer\n        self.signer_kwargs: dict[str, t.Any] = signer_kwargs or {}\n\n        if fallback_signers is None:\n            fallback_signers = list(self.default_fallback_signers)\n\n        self.fallback_signers: list[\n            dict[str, t.Any] | tuple[type[Signer], dict[str, t.Any]] | type[Signer]\n        ] = fallback_signers\n        self.serializer_kwargs: dict[str, t.Any] = serializer_kwargs or {}"
+        },
+        {
+          "path": "src/itsdangerous/signer.py",
+          "start": 182,
+          "end": 213,
+          "content": "    def derive_key(self, secret_key: str | bytes | None = None) -> bytes:\n        \"\"\"This method is called to derive the key. The default key\n        derivation choices can be overridden here. Key derivation is not\n        intended to be used as a security method to make a complex key\n        out of a short password. Instead you should use large random\n        secret keys.\n\n        :param secret_key: A specific secret key to derive from.\n            Defaults to the last item in :attr:`secret_keys`.\n\n        .. versionchanged:: 2.0\n            Added the ``secret_key`` parameter.\n        \"\"\"\n        if secret_key is None:\n            secret_key = self.secret_keys[-1]\n        else:\n            secret_key = want_bytes(secret_key)\n\n        if self.key_derivation == \"concat\":\n            return t.cast(bytes, self.digest_method(self.salt + secret_key).digest())\n        elif self.key_derivation == \"django-concat\":\n            return t.cast(\n                bytes, self.digest_method(self.salt + b\"signer\" + secret_key).digest()\n            )\n        elif self.key_derivation == \"hmac\":\n            mac = hmac.new(secret_key, digestmod=self.digest_method)\n            mac.update(self.salt)\n            return mac.digest()\n        elif self.key_derivation == \"none\":\n            return secret_key\n        else:\n            raise TypeError(\"Unknown key derivation method\")"
+        },
+        {
+          "path": "src/itsdangerous/signer.py",
+          "start": 67,
+          "end": 73,
+          "content": "def _make_keys_list(\n    secret_key: str | bytes | cabc.Iterable[str] | cabc.Iterable[bytes],\n) -> list[bytes]:\n    if isinstance(secret_key, (str, bytes)):\n        return [want_bytes(secret_key)]\n\n    return [want_bytes(s) for s in secret_key]  # pyright: ignore"
+        }
+      ]
+    },
+    {
+      "q": 5,
+      "model": "openai/gpt-oss-120b",
+      "context": [
+        {
+          "path": "src/itsdangerous/signer.py",
+          "start": 175,
+          "end": 180,
+          "content": "    @property\n    def secret_key(self) -> bytes:\n        \"\"\"The newest (last) entry in the :attr:`secret_keys` list. This\n        is for compatibility from before key rotation support was added.\n        \"\"\"\n        return self.secret_keys[-1]"
+        },
+        {
+          "path": "src/itsdangerous/serializer.py",
+          "start": 236,
+          "end": 241,
+          "content": "    @property\n    def secret_key(self) -> bytes:\n        \"\"\"The newest (last) entry in the :attr:`secret_keys` list. This\n        is for compatibility from before key rotation support was added.\n        \"\"\"\n        return self.secret_keys[-1]"
+        },
+        {
+          "path": "src/itsdangerous/signer.py",
+          "start": 129,
+          "end": 173,
+          "content": "    def __init__(\n        self,\n        secret_key: str | bytes | cabc.Iterable[str] | cabc.Iterable[bytes],\n        salt: str | bytes | None = b\"itsdangerous.Signer\",\n        sep: str | bytes = b\".\",\n        key_derivation: str | None = None,\n        digest_method: t.Any | None = None,\n        algorithm: SigningAlgorithm | None = None,\n    ):\n        #: The list of secret keys to try for verifying signatures, from\n        #: oldest to newest. The newest (last) key is used for signing.\n        #:\n        #: This allows a key rotation system to keep a list of allowed\n        #: keys and remove expired ones.\n        self.secret_keys: list[bytes] = _make_keys_list(secret_key)\n        self.sep: bytes = want_bytes(sep)\n\n        if self.sep in _base64_alphabet:\n            raise ValueError(\n                \"The given separator cannot be used because it may be\"\n                \" contained in the signature itself. ASCII letters,\"\n                \" digits, and '-_=' must not be used.\"\n            )\n\n        if salt is not None:\n            salt = want_bytes(salt)\n        else:\n            salt = b\"itsdangerous.Signer\"\n\n        self.salt = salt\n\n        if key_derivation is None:\n            key_derivation = self.default_key_derivation\n\n        self.key_derivation: str = key_derivation\n\n        if digest_method is None:\n            digest_method = self.default_digest_method\n\n        self.digest_method: t.Any = digest_method\n\n        if algorithm is None:\n            algorithm = HMACAlgorithm(self.digest_method)\n\n        self.algorithm: SigningAlgorithm = algorithm"
+        },
+        {
+          "path": "src/itsdangerous/serializer.py",
+          "start": 190,
+          "end": 234,
+          "content": "    def __init__(\n        self,\n        secret_key: str | bytes | cabc.Iterable[str] | cabc.Iterable[bytes],\n        salt: str | bytes | None = b\"itsdangerous\",\n        serializer: t.Any | None = None,\n        serializer_kwargs: dict[str, t.Any] | None = None,\n        signer: type[Signer] | None = None,\n        signer_kwargs: dict[str, t.Any] | None = None,\n        fallback_signers: list[\n            dict[str, t.Any] | tuple[type[Signer], dict[str, t.Any]] | type[Signer]\n        ]\n        | None = None,\n    ):\n        #: The list of secret keys to try for verifying signatures, from\n        #: oldest to newest. The newest (last) key is used for signing.\n        #:\n        #: This allows a key rotation system to keep a list of allowed\n        #: keys and remove expired ones.\n        self.secret_keys: list[bytes] = _make_keys_list(secret_key)\n\n        if salt is not None:\n            salt = want_bytes(salt)\n            # if salt is None then the signer's default is used\n\n        self.salt = salt\n\n        if serializer is None:\n            serializer = self.default_serializer\n\n        self.serializer: _PDataSerializer[_TSerialized] = serializer\n        self.is_text_serializer: bool = is_text_serializer(serializer)\n\n        if signer is None:\n            signer = self.default_signer\n\n        self.signer: type[Signer] = signer\n        self.signer_kwargs: dict[str, t.Any] = signer_kwargs or {}\n\n        if fallback_signers is None:\n            fallback_signers = list(self.default_fallback_signers)\n\n        self.fallback_signers: list[\n            dict[str, t.Any] | tuple[type[Signer], dict[str, t.Any]] | type[Signer]\n        ] = fallback_signers\n        self.serializer_kwargs: dict[str, t.Any] = serializer_kwargs or {}"
+        },
+        {
+          "path": "src/itsdangerous/signer.py",
+          "start": 182,
+          "end": 213,
+          "content": "    def derive_key(self, secret_key: str | bytes | None = None) -> bytes:\n        \"\"\"This method is called to derive the key. The default key\n        derivation choices can be overridden here. Key derivation is not\n        intended to be used as a security method to make a complex key\n        out of a short password. Instead you should use large random\n        secret keys.\n\n        :param secret_key: A specific secret key to derive from.\n            Defaults to the last item in :attr:`secret_keys`.\n\n        .. versionchanged:: 2.0\n            Added the ``secret_key`` parameter.\n        \"\"\"\n        if secret_key is None:\n            secret_key = self.secret_keys[-1]\n        else:\n            secret_key = want_bytes(secret_key)\n\n        if self.key_derivation == \"concat\":\n            return t.cast(bytes, self.digest_method(self.salt + secret_key).digest())\n        elif self.key_derivation == \"django-concat\":\n            return t.cast(\n                bytes, self.digest_method(self.salt + b\"signer\" + secret_key).digest()\n            )\n        elif self.key_derivation == \"hmac\":\n            mac = hmac.new(secret_key, digestmod=self.digest_method)\n            mac.update(self.salt)\n            return mac.digest()\n        elif self.key_derivation == \"none\":\n            return secret_key\n        else:\n            raise TypeError(\"Unknown key derivation method\")"
+        },
+        {
+          "path": "src/itsdangerous/signer.py",
+          "start": 67,
+          "end": 73,
+          "content": "def _make_keys_list(\n    secret_key: str | bytes | cabc.Iterable[str] | cabc.Iterable[bytes],\n) -> list[bytes]:\n    if isinstance(secret_key, (str, bytes)):\n        return [want_bytes(secret_key)]\n\n    return [want_bytes(s) for s in secret_key]  # pyright: ignore"
+        }
+      ]
+    },
+    {
+      "q": 6,
+      "model": "qwen/qwen3.8-27b",
+      "context": [
+        {
+          "path": "src/itsdangerous/signer.py",
+          "start": 244,
+          "end": 256,
+          "content": "    def unsign(self, signed_value: str | bytes) -> bytes:\n        \"\"\"Unsigns the given string.\"\"\"\n        signed_value = want_bytes(signed_value)\n\n        if self.sep not in signed_value:\n            raise BadSignature(f\"No {self.sep!r} found in value\")\n\n        value, sig = signed_value.rsplit(self.sep, 1)\n\n        if self.verify_signature(value, sig):\n            return value\n\n        raise BadSignature(f\"Signature {sig!r} does not match\", payload=value)"
+        },
+        {
+          "path": "src/itsdangerous/signer.py",
+          "start": 76,
+          "end": 127,
+          "content": "class Signer:\n    \"\"\"A signer securely signs bytes, then unsigns them to verify that\n    the value hasn't been changed.\n\n    The secret key should be a random string of ``bytes`` and should not\n    be saved to code or version control. Different salts should be used\n    to distinguish signing in different contexts. See :doc:`/concepts`\n    for information about the security of the secret key and salt.\n\n    :param secret_key: The secret key to sign and verify with. Can be a\n        list of keys, oldest to newest, to support key rotation.\n    :param salt: Extra key to combine with ``secret_key`` to distinguish\n        signatures in different contexts.\n    :param sep: Separator between the signature and value.\n    :param key_derivation: How to derive the signing key from the secret\n        key and salt. Possible values are ``concat``, ``django-concat``,\n        or ``hmac``. Defaults to :attr:`default_key_derivation`, which\n        defaults to ``django-concat``.\n    :param digest_method: Hash function to use when generating the HMAC\n        signature. Defaults to :attr:`default_digest_method`, which\n        defaults to :func:`hashlib.sha1`. Note that the security of the\n        hash alone doesn't apply when used intermediately in HMAC.\n    :param algorithm: A :class:`SigningAlgorithm` instance to use\n        instead of building a default :class:`HMACAlgorithm` with the\n        ``digest_method``.\n\n    .. versionchanged:: 2.0\n        Added support for key rotation by passing a list to\n        ``secret_key``.\n\n    .. versionchanged:: 0.18\n        ``algorithm`` was added as an argument to the class constructor.\n\n    .. versionchanged:: 0.14\n        ``key_derivation`` and ``digest_method`` were added as arguments\n        to the class constructor.\n    \"\"\"\n\n    #: The default digest method to use for the signer. The default is\n    #: :func:`hashlib.sha1`, but can be changed to any :mod:`hashlib` or\n    #: compatible object. Note that the security of the hash alone\n    #: doesn't apply when used intermediately in HMAC.\n    #:\n    #: .. versionadded:: 0.14\n    default_digest_method: t.Any = staticmethod(_lazy_sha1)\n\n    #: The default scheme to use to derive the signing key from the\n    #: secret key and salt. The default is ``django-concat``. Possible\n    #: values are ``concat``, ``django-concat``, and ``hmac``.\n    #:\n    #: .. versionadded:: 0.14\n    default_key_derivation: str = \"django-concat\""
+        },
+        {
+          "path": "src/itsdangerous/serializer.py",
+          "start": 328,
+          "end": 343,
+          "content": "    def loads(\n        self, s: str | bytes, salt: str | bytes | None = None, **kwargs: t.Any\n    ) -> t.Any:\n        \"\"\"Reverse of :meth:`dumps`. Raises :exc:`.BadSignature` if the\n        signature validation fails.\n        \"\"\"\n        s = want_bytes(s)\n        last_exception = None\n\n        for signer in self.iter_unsigners(salt):\n            try:\n                return self.load_payload(signer.unsign(s))\n            except BadSignature as err:\n                last_exception = err\n\n        raise t.cast(BadSignature, last_exception)"
+        },
+        {
+          "path": "src/itsdangerous/signer.py",
+          "start": 258,
+          "end": 266,
+          "content": "    def validate(self, signed_value: str | bytes) -> bool:\n        \"\"\"Only validates the given signed value. Returns ``True`` if\n        the signature exists and is valid.\n        \"\"\"\n        try:\n            self.unsign(signed_value)\n            return True\n        except BadSignature:\n            return False"
+        },
+        {
+          "path": "src/itsdangerous/signer.py",
+          "start": 227,
+          "end": 242,
+          "content": "    def verify_signature(self, value: str | bytes, sig: str | bytes) -> bool:\n        \"\"\"Verifies the signature for the given value.\"\"\"\n        try:\n            sig = base64_decode(sig)\n        except Exception:\n            return False\n\n        value = want_bytes(value)\n\n        for secret_key in reversed(self.secret_keys):\n            key = self.derive_key(secret_key)\n\n            if self.algorithm.verify_signature(key, value, sig):\n                return True\n\n        return False"
+        },
+        {
+          "path": "src/itsdangerous/serializer.py",
+          "start": 349,
+          "end": 365,
+          "content": "    def loads_unsafe(\n        self, s: str | bytes, salt: str | bytes | None = None\n    ) -> tuple[bool, t.Any]:\n        \"\"\"Like :meth:`loads` but without verifying the signature. This\n        is potentially very dangerous to use depending on how your\n        serializer works. The return value is ``(signature_valid,\n        payload)`` instead of just the payload. The first item will be a\n        boolean that indicates if the signature is valid. This function\n        never fails.\n\n        Use it for debugging only and if you know that your serializer\n        module is not exploitable (for example, do not use it with a\n        pickle serializer).\n\n        .. versionadded:: 0.15\n        \"\"\"\n        return self._loads_unsafe_impl(s, salt)"
+        },
+        {
+          "path": "src/itsdangerous/serializer.py",
+          "start": 309,
+          "end": 320,
+          "content": "    def dumps(self, obj: t.Any, salt: str | bytes | None = None) -> _TSerialized:\n        \"\"\"Returns a signed string serialized with the internal\n        serializer. The return value can be either a byte or unicode\n        string depending on the format of the internal serializer.\n        \"\"\"\n        payload = want_bytes(self.dump_payload(obj))\n        rv = self.make_signer(salt).sign(payload)\n\n        if self.is_text_serializer:\n            return rv.decode(\"utf-8\")  # type: ignore[return-value]\n\n        return rv  # type: ignore[return-value]"
+        }
+      ]
+    },
+    {
+      "q": 6,
+      "model": "openai/gpt-oss-120b",
+      "context": [
+        {
+          "path": "src/itsdangerous/signer.py",
+          "start": 244,
+          "end": 256,
+          "content": "    def unsign(self, signed_value: str | bytes) -> bytes:\n        \"\"\"Unsigns the given string.\"\"\"\n        signed_value = want_bytes(signed_value)\n\n        if self.sep not in signed_value:\n            raise BadSignature(f\"No {self.sep!r} found in value\")\n\n        value, sig = signed_value.rsplit(self.sep, 1)\n\n        if self.verify_signature(value, sig):\n            return value\n\n        raise BadSignature(f\"Signature {sig!r} does not match\", payload=value)"
+        },
+        {
+          "path": "src/itsdangerous/signer.py",
+          "start": 76,
+          "end": 127,
+          "content": "class Signer:\n    \"\"\"A signer securely signs bytes, then unsigns them to verify that\n    the value hasn't been changed.\n\n    The secret key should be a random string of ``bytes`` and should not\n    be saved to code or version control. Different salts should be used\n    to distinguish signing in different contexts. See :doc:`/concepts`\n    for information about the security of the secret key and salt.\n\n    :param secret_key: The secret key to sign and verify with. Can be a\n        list of keys, oldest to newest, to support key rotation.\n    :param salt: Extra key to combine with ``secret_key`` to distinguish\n        signatures in different contexts.\n    :param sep: Separator between the signature and value.\n    :param key_derivation: How to derive the signing key from the secret\n        key and salt. Possible values are ``concat``, ``django-concat``,\n        or ``hmac``. Defaults to :attr:`default_key_derivation`, which\n        defaults to ``django-concat``.\n    :param digest_method: Hash function to use when generating the HMAC\n        signature. Defaults to :attr:`default_digest_method`, which\n        defaults to :func:`hashlib.sha1`. Note that the security of the\n        hash alone doesn't apply when used intermediately in HMAC.\n    :param algorithm: A :class:`SigningAlgorithm` instance to use\n        instead of building a default :class:`HMACAlgorithm` with the\n        ``digest_method``.\n\n    .. versionchanged:: 2.0\n        Added support for key rotation by passing a list to\n        ``secret_key``.\n\n    .. versionchanged:: 0.18\n        ``algorithm`` was added as an argument to the class constructor.\n\n    .. versionchanged:: 0.14\n        ``key_derivation`` and ``digest_method`` were added as arguments\n        to the class constructor.\n    \"\"\"\n\n    #: The default digest method to use for the signer. The default is\n    #: :func:`hashlib.sha1`, but can be changed to any :mod:`hashlib` or\n    #: compatible object. Note that the security of the hash alone\n    #: doesn't apply when used intermediately in HMAC.\n    #:\n    #: .. versionadded:: 0.14\n    default_digest_method: t.Any = staticmethod(_lazy_sha1)\n\n    #: The default scheme to use to derive the signing key from the\n    #: secret key and salt. The default is ``django-concat``. Possible\n    #: values are ``concat``, ``django-concat``, and ``hmac``.\n    #:\n    #: .. versionadded:: 0.14\n    default_key_derivation: str = \"django-concat\""
+        },
+        {
+          "path": "src/itsdangerous/serializer.py",
+          "start": 328,
+          "end": 343,
+          "content": "    def loads(\n        self, s: str | bytes, salt: str | bytes | None = None, **kwargs: t.Any\n    ) -> t.Any:\n        \"\"\"Reverse of :meth:`dumps`. Raises :exc:`.BadSignature` if the\n        signature validation fails.\n        \"\"\"\n        s = want_bytes(s)\n        last_exception = None\n\n        for signer in self.iter_unsigners(salt):\n            try:\n                return self.load_payload(signer.unsign(s))\n            except BadSignature as err:\n                last_exception = err\n\n        raise t.cast(BadSignature, last_exception)"
+        },
+        {
+          "path": "src/itsdangerous/signer.py",
+          "start": 258,
+          "end": 266,
+          "content": "    def validate(self, signed_value: str | bytes) -> bool:\n        \"\"\"Only validates the given signed value. Returns ``True`` if\n        the signature exists and is valid.\n        \"\"\"\n        try:\n            self.unsign(signed_value)\n            return True\n        except BadSignature:\n            return False"
+        },
+        {
+          "path": "src/itsdangerous/signer.py",
+          "start": 227,
+          "end": 242,
+          "content": "    def verify_signature(self, value: str | bytes, sig: str | bytes) -> bool:\n        \"\"\"Verifies the signature for the given value.\"\"\"\n        try:\n            sig = base64_decode(sig)\n        except Exception:\n            return False\n\n        value = want_bytes(value)\n\n        for secret_key in reversed(self.secret_keys):\n            key = self.derive_key(secret_key)\n\n            if self.algorithm.verify_signature(key, value, sig):\n                return True\n\n        return False"
+        },
+        {
+          "path": "src/itsdangerous/serializer.py",
+          "start": 349,
+          "end": 365,
+          "content": "    def loads_unsafe(\n        self, s: str | bytes, salt: str | bytes | None = None\n    ) -> tuple[bool, t.Any]:\n        \"\"\"Like :meth:`loads` but without verifying the signature. This\n        is potentially very dangerous to use depending on how your\n        serializer works. The return value is ``(signature_valid,\n        payload)`` instead of just the payload. The first item will be a\n        boolean that indicates if the signature is valid. This function\n        never fails.\n\n        Use it for debugging only and if you know that your serializer\n        module is not exploitable (for example, do not use it with a\n        pickle serializer).\n\n        .. versionadded:: 0.15\n        \"\"\"\n        return self._loads_unsafe_impl(s, salt)"
+        },
+        {
+          "path": "src/itsdangerous/serializer.py",
+          "start": 309,
+          "end": 320,
+          "content": "    def dumps(self, obj: t.Any, salt: str | bytes | None = None) -> _TSerialized:\n        \"\"\"Returns a signed string serialized with the internal\n        serializer. The return value can be either a byte or unicode\n        string depending on the format of the internal serializer.\n        \"\"\"\n        payload = want_bytes(self.dump_payload(obj))\n        rv = self.make_signer(salt).sign(payload)\n\n        if self.is_text_serializer:\n            return rv.decode(\"utf-8\")  # type: ignore[return-value]\n\n        return rv  # type: ignore[return-value]"
+        }
+      ]
+    },
+    {
+      "q": 7,
+      "model": "qwen/qwen3.8-27b",
+      "context": [
+        {
+          "path": "src/itsdangerous/exc.py",
+          "start": 60,
+          "end": 63,
+          "content": "class SignatureExpired(BadTimeSignature):\n    \"\"\"Raised if a signature timestamp is older than ``max_age``. This\n    is a subclass of :exc:`BadTimeSignature`.\n    \"\"\""
+        },
+        {
+          "path": "src/itsdangerous/exc.py",
+          "start": 36,
+          "end": 57,
+          "content": "class BadTimeSignature(BadSignature):\n    \"\"\"Raised if a time-based signature is invalid. This is a subclass\n    of :class:`BadSignature`.\n    \"\"\"\n\n    def __init__(\n        self,\n        message: str,\n        payload: t.Any | None = None,\n        date_signed: datetime | None = None,\n    ):\n        super().__init__(message, payload)\n\n        #: If the signature expired this exposes the date of when the\n        #: signature was created. This can be helpful in order to\n        #: tell the user how long a link has been gone stale.\n        #:\n        #: .. versionchanged:: 2.0\n        #:     The datetime value is timezone-aware rather than naive.\n        #:\n        #: .. versionadded:: 0.14\n        self.date_signed = date_signed"
+        },
+        {
+          "path": "src/itsdangerous/timed.py",
+          "start": 170,
+          "end": 228,
+          "content": "class TimedSerializer(Serializer[_TSerialized]):\n    \"\"\"Uses :class:`TimestampSigner` instead of the default\n    :class:`.Signer`.\n    \"\"\"\n\n    default_signer: type[TimestampSigner] = TimestampSigner  # pyright: ignore\n\n    def iter_unsigners(\n        self, salt: str | bytes | None = None\n    ) -> cabc.Iterator[TimestampSigner]:\n        return t.cast(\"cabc.Iterator[TimestampSigner]\", super().iter_unsigners(salt))\n\n    # TODO: Signature is incompatible because parameters were added\n    #  before salt.\n\n    def loads(  # type: ignore[override]\n        self,\n        s: str | bytes,\n        max_age: int | None = None,\n        return_timestamp: bool = False,\n        salt: str | bytes | None = None,\n    ) -> t.Any:\n        \"\"\"Reverse of :meth:`dumps`, raises :exc:`.BadSignature` if the\n        signature validation fails. If a ``max_age`` is provided it will\n        ensure the signature is not older than that time in seconds. In\n        case the signature is outdated, :exc:`.SignatureExpired` is\n        raised. All arguments are forwarded to the signer's\n        :meth:`~TimestampSigner.unsign` method.\n        \"\"\"\n        s = want_bytes(s)\n        last_exception = None\n\n        for signer in self.iter_unsigners(salt):\n            try:\n                base64d, timestamp = signer.unsign(\n                    s, max_age=max_age, return_timestamp=True\n                )\n                payload = self.load_payload(base64d)\n\n                if return_timestamp:\n                    return payload, timestamp\n\n                return payload\n            except SignatureExpired:\n                # The signature was unsigned successfully but was\n                # expired. Do not try the next signer.\n                raise\n            except BadSignature as err:\n                last_exception = err\n\n        raise t.cast(BadSignature, last_exception)\n\n    def loads_unsafe(  # type: ignore[override]\n        self,\n        s: str | bytes,\n        max_age: int | None = None,\n        salt: str | bytes | None = None,\n    ) -> tuple[bool, t.Any]:\n        return self._loads_unsafe_impl(s, salt, load_kwargs={\"max_age\": max_age})"
+        },
+        {
+          "path": "src/itsdangerous/timed.py",
+          "start": 22,
+          "end": 27,
+          "content": "class TimestampSigner(Signer):\n    \"\"\"Works like the regular :class:`.Signer` but also records the time\n    of the signing and can be used to expire signatures. The\n    :meth:`unsign` method can raise :exc:`.SignatureExpired` if the\n    unsigning failed because the signature is expired.\n    \"\"\""
+        },
+        {
+          "path": "src/itsdangerous/timed.py",
+          "start": 53,
+          "end": 54,
+          "content": "    # Ignore overlapping signatures check, return_timestamp is the only\n    # parameter that affects the return type."
+        },
+        {
+          "path": "src/itsdangerous/timed.py",
+          "start": 1,
+          "end": 19,
+          "content": "from __future__ import annotations\n\nimport collections.abc as cabc\nimport time\nimport typing as t\nfrom datetime import datetime\nfrom datetime import timezone\n\nfrom .encoding import base64_decode\nfrom .encoding import base64_encode\nfrom .encoding import bytes_to_int\nfrom .encoding import int_to_bytes\nfrom .encoding import want_bytes\nfrom .exc import BadSignature\nfrom .exc import BadTimeSignature\nfrom .exc import SignatureExpired\nfrom .serializer import _TSerialized\nfrom .serializer import Serializer\nfrom .signer import Signer"
+        },
+        {
+          "path": "src/itsdangerous/timed.py",
+          "start": 160,
+          "end": 167,
+          "content": "    def validate(self, signed_value: str | bytes, max_age: int | None = None) -> bool:\n        \"\"\"Only validates the given signed value. Returns ``True`` if\n        the signature exists and is valid.\"\"\"\n        try:\n            self.unsign(signed_value, max_age=max_age)\n            return True\n        except BadSignature:\n            return False"
+        }
+      ]
+    },
+    {
+      "q": 7,
+      "model": "openai/gpt-oss-120b",
+      "context": [
+        {
+          "path": "src/itsdangerous/exc.py",
+          "start": 60,
+          "end": 63,
+          "content": "class SignatureExpired(BadTimeSignature):\n    \"\"\"Raised if a signature timestamp is older than ``max_age``. This\n    is a subclass of :exc:`BadTimeSignature`.\n    \"\"\""
+        },
+        {
+          "path": "src/itsdangerous/exc.py",
+          "start": 36,
+          "end": 57,
+          "content": "class BadTimeSignature(BadSignature):\n    \"\"\"Raised if a time-based signature is invalid. This is a subclass\n    of :class:`BadSignature`.\n    \"\"\"\n\n    def __init__(\n        self,\n        message: str,\n        payload: t.Any | None = None,\n        date_signed: datetime | None = None,\n    ):\n        super().__init__(message, payload)\n\n        #: If the signature expired this exposes the date of when the\n        #: signature was created. This can be helpful in order to\n        #: tell the user how long a link has been gone stale.\n        #:\n        #: .. versionchanged:: 2.0\n        #:     The datetime value is timezone-aware rather than naive.\n        #:\n        #: .. versionadded:: 0.14\n        self.date_signed = date_signed"
+        },
+        {
+          "path": "src/itsdangerous/timed.py",
+          "start": 170,
+          "end": 228,
+          "content": "class TimedSerializer(Serializer[_TSerialized]):\n    \"\"\"Uses :class:`TimestampSigner` instead of the default\n    :class:`.Signer`.\n    \"\"\"\n\n    default_signer: type[TimestampSigner] = TimestampSigner  # pyright: ignore\n\n    def iter_unsigners(\n        self, salt: str | bytes | None = None\n    ) -> cabc.Iterator[TimestampSigner]:\n        return t.cast(\"cabc.Iterator[TimestampSigner]\", super().iter_unsigners(salt))\n\n    # TODO: Signature is incompatible because parameters were added\n    #  before salt.\n\n    def loads(  # type: ignore[override]\n        self,\n        s: str | bytes,\n        max_age: int | None = None,\n        return_timestamp: bool = False,\n        salt: str | bytes | None = None,\n    ) -> t.Any:\n        \"\"\"Reverse of :meth:`dumps`, raises :exc:`.BadSignature` if the\n        signature validation fails. If a ``max_age`` is provided it will\n        ensure the signature is not older than that time in seconds. In\n        case the signature is outdated, :exc:`.SignatureExpired` is\n        raised. All arguments are forwarded to the signer's\n        :meth:`~TimestampSigner.unsign` method.\n        \"\"\"\n        s = want_bytes(s)\n        last_exception = None\n\n        for signer in self.iter_unsigners(salt):\n            try:\n                base64d, timestamp = signer.unsign(\n                    s, max_age=max_age, return_timestamp=True\n                )\n                payload = self.load_payload(base64d)\n\n                if return_timestamp:\n                    return payload, timestamp\n\n                return payload\n            except SignatureExpired:\n                # The signature was unsigned successfully but was\n                # expired. Do not try the next signer.\n                raise\n            except BadSignature as err:\n                last_exception = err\n\n        raise t.cast(BadSignature, last_exception)\n\n    def loads_unsafe(  # type: ignore[override]\n        self,\n        s: str | bytes,\n        max_age: int | None = None,\n        salt: str | bytes | None = None,\n    ) -> tuple[bool, t.Any]:\n        return self._loads_unsafe_impl(s, salt, load_kwargs={\"max_age\": max_age})"
+        },
+        {
+          "path": "src/itsdangerous/timed.py",
+          "start": 22,
+          "end": 27,
+          "content": "class TimestampSigner(Signer):\n    \"\"\"Works like the regular :class:`.Signer` but also records the time\n    of the signing and can be used to expire signatures. The\n    :meth:`unsign` method can raise :exc:`.SignatureExpired` if the\n    unsigning failed because the signature is expired.\n    \"\"\""
+        },
+        {
+          "path": "src/itsdangerous/timed.py",
+          "start": 53,
+          "end": 54,
+          "content": "    # Ignore overlapping signatures check, return_timestamp is the only\n    # parameter that affects the return type."
+        },
+        {
+          "path": "src/itsdangerous/timed.py",
+          "start": 1,
+          "end": 19,
+          "content": "from __future__ import annotations\n\nimport collections.abc as cabc\nimport time\nimport typing as t\nfrom datetime import datetime\nfrom datetime import timezone\n\nfrom .encoding import base64_decode\nfrom .encoding import base64_encode\nfrom .encoding import bytes_to_int\nfrom .encoding import int_to_bytes\nfrom .encoding import want_bytes\nfrom .exc import BadSignature\nfrom .exc import BadTimeSignature\nfrom .exc import SignatureExpired\nfrom .serializer import _TSerialized\nfrom .serializer import Serializer\nfrom .signer import Signer"
+        },
+        {
+          "path": "src/itsdangerous/timed.py",
+          "start": 160,
+          "end": 167,
+          "content": "    def validate(self, signed_value: str | bytes, max_age: int | None = None) -> bool:\n        \"\"\"Only validates the given signed value. Returns ``True`` if\n        the signature exists and is valid.\"\"\"\n        try:\n            self.unsign(signed_value, max_age=max_age)\n            return True\n        except BadSignature:\n            return False"
+        }
+      ]
+    },
+    {
+      "q": 8,
+      "model": "qwen/qwen3.8-27b",
+      "context": [
+        {
+          "path": "src/itsdangerous/serializer.py",
+          "start": 1,
+          "end": 11,
+          "content": "from __future__ import annotations\n\nimport collections.abc as cabc\nimport json\nimport typing as t\n\nfrom .encoding import want_bytes\nfrom .exc import BadPayload\nfrom .exc import BadSignature\nfrom .signer import _make_keys_list\nfrom .signer import Signer"
+        },
+        {
+          "path": "src/itsdangerous/url_safe.py",
+          "start": 1,
+          "end": 12,
+          "content": "from __future__ import annotations\n\nimport typing as t\nimport zlib\n\nfrom ._json import _CompactJSON\nfrom .encoding import base64_decode\nfrom .encoding import base64_encode\nfrom .exc import BadPayload\nfrom .serializer import _PDataSerializer\nfrom .serializer import Serializer\nfrom .timed import TimedSerializer"
+        },
+        {
+          "path": "src/itsdangerous/__init__.py",
+          "start": 1,
+          "end": 17,
+          "content": "from .encoding import base64_decode as base64_decode\nfrom .encoding import base64_encode as base64_encode\nfrom .encoding import want_bytes as want_bytes\nfrom .exc import BadData as BadData\nfrom .exc import BadHeader as BadHeader\nfrom .exc import BadPayload as BadPayload\nfrom .exc import BadSignature as BadSignature\nfrom .exc import BadTimeSignature as BadTimeSignature\nfrom .exc import SignatureExpired as SignatureExpired\nfrom .serializer import Serializer as Serializer\nfrom .signer import HMACAlgorithm as HMACAlgorithm\nfrom .signer import NoneAlgorithm as NoneAlgorithm\nfrom .signer import Signer as Signer\nfrom .timed import TimedSerializer as TimedSerializer\nfrom .timed import TimestampSigner as TimestampSigner\nfrom .url_safe import URLSafeSerializer as URLSafeSerializer\nfrom .url_safe import URLSafeTimedSerializer as URLSafeTimedSerializer"
+        },
+        {
+          "path": "src/itsdangerous/serializer.py",
+          "start": 271,
+          "end": 276,
+          "content": "    def dump_payload(self, obj: t.Any) -> bytes:\n        \"\"\"Dumps the encoded object. The return value is always bytes.\n        If the internal serializer returns text, the value will be\n        encoded as UTF-8.\n        \"\"\"\n        return want_bytes(self.serializer.dumps(obj, **self.serializer_kwargs))"
+        },
+        {
+          "path": "src/itsdangerous/encoding.py",
+          "start": 1,
+          "end": 8,
+          "content": "from __future__ import annotations\n\nimport base64\nimport string\nimport struct\nimport typing as t\n\nfrom .exc import BadData"
+        },
+        {
+          "path": "src/itsdangerous/signer.py",
+          "start": 1,
+          "end": 12,
+          "content": "from __future__ import annotations\n\nimport collections.abc as cabc\nimport hashlib\nimport hmac\nimport typing as t\n\nfrom .encoding import _base64_alphabet\nfrom .encoding import base64_decode\nfrom .encoding import base64_encode\nfrom .encoding import want_bytes\nfrom .exc import BadSignature"
+        },
+        {
+          "path": "README.md",
+          "start": 1,
+          "end": 13,
+          "content": "<div align=\"center\"><img src=\"https://raw.githubusercontent.com/pallets/itsdangerous/refs/heads/stable/docs/_static/itsdangerous-name.svg\" alt=\"\" height=\"150\"></div>\n\n# ItsDangerous\n\n... so better sign this\n\nVarious helpers to pass data to untrusted environments and to get it\nback safe and sound. Data is cryptographically signed to ensure that a\ntoken has not been tampered with.\n\nIt's possible to customize how data is serialized. Data is compressed as\nneeded. A timestamp can be added and verified automatically while\nloading a token."
+        },
+        {
+          "path": "src/itsdangerous/serializer.py",
+          "start": 243,
+          "end": 269,
+          "content": "    def load_payload(\n        self, payload: bytes, serializer: _PDataSerializer[t.Any] | None = None\n    ) -> t.Any:\n        \"\"\"Loads the encoded object. This function raises\n        :class:`.BadPayload` if the payload is not valid. The\n        ``serializer`` parameter can be used to override the serializer\n        stored on the class. The encoded ``payload`` should always be\n        bytes.\n        \"\"\"\n        if serializer is None:\n            use_serializer = self.serializer\n            is_text = self.is_text_serializer\n        else:\n            use_serializer = serializer\n            is_text = is_text_serializer(serializer)\n\n        try:\n            if is_text:\n                return use_serializer.loads(payload.decode(\"utf-8\"))  # type: ignore[arg-type]\n\n            return use_serializer.loads(payload)  # type: ignore[arg-type]\n        except Exception as e:\n            raise BadPayload(\n                \"Could not load the payload because an exception\"\n                \" occurred on unserializing the data.\",\n                original_error=e,\n            ) from e"
+        }
+      ]
+    },
+    {
+      "q": 8,
+      "model": "openai/gpt-oss-120b",
+      "context": [
+        {
+          "path": "src/itsdangerous/serializer.py",
+          "start": 1,
+          "end": 11,
+          "content": "from __future__ import annotations\n\nimport collections.abc as cabc\nimport json\nimport typing as t\n\nfrom .encoding import want_bytes\nfrom .exc import BadPayload\nfrom .exc import BadSignature\nfrom .signer import _make_keys_list\nfrom .signer import Signer"
+        },
+        {
+          "path": "src/itsdangerous/url_safe.py",
+          "start": 1,
+          "end": 12,
+          "content": "from __future__ import annotations\n\nimport typing as t\nimport zlib\n\nfrom ._json import _CompactJSON\nfrom .encoding import base64_decode\nfrom .encoding import base64_encode\nfrom .exc import BadPayload\nfrom .serializer import _PDataSerializer\nfrom .serializer import Serializer\nfrom .timed import TimedSerializer"
+        },
+        {
+          "path": "src/itsdangerous/__init__.py",
+          "start": 1,
+          "end": 17,
+          "content": "from .encoding import base64_decode as base64_decode\nfrom .encoding import base64_encode as base64_encode\nfrom .encoding import want_bytes as want_bytes\nfrom .exc import BadData as BadData\nfrom .exc import BadHeader as BadHeader\nfrom .exc import BadPayload as BadPayload\nfrom .exc import BadSignature as BadSignature\nfrom .exc import BadTimeSignature as BadTimeSignature\nfrom .exc import SignatureExpired as SignatureExpired\nfrom .serializer import Serializer as Serializer\nfrom .signer import HMACAlgorithm as HMACAlgorithm\nfrom .signer import NoneAlgorithm as NoneAlgorithm\nfrom .signer import Signer as Signer\nfrom .timed import TimedSerializer as TimedSerializer\nfrom .timed import TimestampSigner as TimestampSigner\nfrom .url_safe import URLSafeSerializer as URLSafeSerializer\nfrom .url_safe import URLSafeTimedSerializer as URLSafeTimedSerializer"
+        },
+        {
+          "path": "src/itsdangerous/serializer.py",
+          "start": 271,
+          "end": 276,
+          "content": "    def dump_payload(self, obj: t.Any) -> bytes:\n        \"\"\"Dumps the encoded object. The return value is always bytes.\n        If the internal serializer returns text, the value will be\n        encoded as UTF-8.\n        \"\"\"\n        return want_bytes(self.serializer.dumps(obj, **self.serializer_kwargs))"
+        },
+        {
+          "path": "src/itsdangerous/encoding.py",
+          "start": 1,
+          "end": 8,
+          "content": "from __future__ import annotations\n\nimport base64\nimport string\nimport struct\nimport typing as t\n\nfrom .exc import BadData"
+        },
+        {
+          "path": "src/itsdangerous/signer.py",
+          "start": 1,
+          "end": 12,
+          "content": "from __future__ import annotations\n\nimport collections.abc as cabc\nimport hashlib\nimport hmac\nimport typing as t\n\nfrom .encoding import _base64_alphabet\nfrom .encoding import base64_decode\nfrom .encoding import base64_encode\nfrom .encoding import want_bytes\nfrom .exc import BadSignature"
+        },
+        {
+          "path": "README.md",
+          "start": 1,
+          "end": 13,
+          "content": "<div align=\"center\"><img src=\"https://raw.githubusercontent.com/pallets/itsdangerous/refs/heads/stable/docs/_static/itsdangerous-name.svg\" alt=\"\" height=\"150\"></div>\n\n# ItsDangerous\n\n... so better sign this\n\nVarious helpers to pass data to untrusted environments and to get it\nback safe and sound. Data is cryptographically signed to ensure that a\ntoken has not been tampered with.\n\nIt's possible to customize how data is serialized. Data is compressed as\nneeded. A timestamp can be added and verified automatically while\nloading a token."
+        },
+        {
+          "path": "src/itsdangerous/serializer.py",
+          "start": 243,
+          "end": 269,
+          "content": "    def load_payload(\n        self, payload: bytes, serializer: _PDataSerializer[t.Any] | None = None\n    ) -> t.Any:\n        \"\"\"Loads the encoded object. This function raises\n        :class:`.BadPayload` if the payload is not valid. The\n        ``serializer`` parameter can be used to override the serializer\n        stored on the class. The encoded ``payload`` should always be\n        bytes.\n        \"\"\"\n        if serializer is None:\n            use_serializer = self.serializer\n            is_text = self.is_text_serializer\n        else:\n            use_serializer = serializer\n            is_text = is_text_serializer(serializer)\n\n        try:\n            if is_text:\n                return use_serializer.loads(payload.decode(\"utf-8\"))  # type: ignore[arg-type]\n\n            return use_serializer.loads(payload)  # type: ignore[arg-type]\n        except Exception as e:\n            raise BadPayload(\n                \"Could not load the payload because an exception\"\n                \" occurred on unserializing the data.\",\n                original_error=e,\n            ) from e"
+        }
+      ]
+    }
+  ]
+}

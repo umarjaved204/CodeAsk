@@ -1,3 +1,8 @@
+import sys
+import unicodedata
+
+import pytest
+
 from codeask.answer import (Block, build_messages, estimate_tokens, number_lines, pack,
                             permalink, rewrite)
 
@@ -154,11 +159,17 @@ def test_short_path_stays_unverified_even_in_lenient_mode():
     assert not cited[0].valid
 
 
-def test_unobserved_dashes_stay_text():
-    text = "[src/timed.py:22—24] [src/timed.py:22−24]"  # em dash, minus sign
-    markdown, cited, stats = run(text)
-    assert markdown == text and stats == {"markers": 0, "attempted": 2, "valid": 0,
-                                          "unverified": 0}
+DASHES = [chr(cp) for cp in range(sys.maxunicode + 1)
+          if unicodedata.category(chr(cp)) == "Pd"] + ["−"]
+
+
+@pytest.mark.parametrize("dash", DASHES, ids=lambda d: f"U+{ord(d):04X}")
+def test_every_unicode_dash_parses_in_lenient_mode_and_display_text_is_untouched(dash):
+    _, cited, _ = run(f"[src/timed.py:22{dash}24]")
+    assert [(c.start, c.end, c.valid) for c in cited] == [(22, 24, True)]
+    # A bracket that fails to parse is shown exactly as the model wrote it.
+    broken = f"[src/timed.py:22{dash}x]"
+    assert run(broken)[0] == broken
 
 
 def test_repo_text_in_cjk_brackets_is_validated_like_any_other():

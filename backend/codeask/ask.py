@@ -32,6 +32,8 @@ def ask(store, llm, repo: dict, question: str, vector: list[float]) -> dict:
         "citations": [asdict(c) for c in citations],
         "stats": stats,
         "blocks": [f"{b.path}:{b.start}-{b.end}" for b in blocks],
+        # The exact context the model saw, so answers can be graded for groundedness later.
+        "context": [asdict(b) for b in blocks],
         # Voyage-token estimate of the context only; compare with usage.prompt_tokens
         # (Groq's tokenizer, plus system prompt and question) to calibrate the packer.
         "context_estimate": sum(estimate_tokens(r) for r in rows

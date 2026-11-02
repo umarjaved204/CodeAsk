@@ -9,6 +9,7 @@ the model wrote itself is stripped, so the only links in an answer are ones we m
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass
 from urllib.parse import quote
 
@@ -98,11 +99,18 @@ def _item(dashes: str) -> re.Pattern:
 
 
 # Strict = the contract in the prompt: [path:a-b] (also "–"), one citation per bracket.
-# Lenient adds only what models were SEEN to write (M2 comparison, 2026-11-02, added after
-# seeing the results): gpt-oss's 【path:a-b】 and U+2011 non-breaking hyphen; qwen's lists
-# [a.py:1-2, b.py:3-4] and [a.py:1-2, 5-9] (a bare range keeps the previous path).
+# Lenient (M2 comparison, 2026-11-02, added after seeing the results): every Unicode dash
+# (category Pd) and U+2212 count as "-" inside a parsed bracket; structural variants only as
+# SEEN: gpt-oss's 【path:a-b】, qwen's lists [a.py:1-2, b.py:3-4] and [a.py:1-2, 5-9] (a bare
+# range keeps the previous path).
 STRICT_ITEM = _item("-–")
-LENIENT_ITEM = _item("-–‑")
+LENIENT_ITEM = _item("-")
+
+
+def normalize_dashes(inner: str) -> str:
+    """Only for the bracket content being parsed; the displayed text keeps its characters."""
+    return "".join("-" if ch == "−" or unicodedata.category(ch) == "Pd" else ch
+                   for ch in inner)
 # Markdown links and images the model wrote: [text](target) / ![alt](target).
 MODEL_LINK = re.compile(r"(!?)\[([^\[\]\n]{0,300})\]\(([^()\n]{0,2000})\)")
 THINK = re.compile(r"<think>.*?(?:</think>|\Z)", re.DOTALL)
@@ -125,6 +133,8 @@ def parse_bracket(inner: str, cjk: bool, lenient: bool) -> list[tuple[str, int, 
     if cjk and not lenient:
         return None
     item = LENIENT_ITEM if lenient else STRICT_ITEM
+    if lenient:
+        inner = normalize_dashes(inner)
     parsed, path = [], None
     for part in inner.split(",") if lenient else [inner]:
         m = item.fullmatch(part)

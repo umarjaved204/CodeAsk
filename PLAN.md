@@ -621,7 +621,7 @@ return errors as JSON from exception handlers inside the CORS layer, so the UI c
 | Q14 | **Cold-start UX:** the page polls `/status` on load (retry every 2–3 s for ~60–90 s, since a waking server can fail without CORS headers), shows "server waking up", never locks the input, and sends a submitted question once the server is up. Pre-generated answers ship as **static JSON written by a local export script and committed** (Vercel never gets DB credentials) | Visitors can read and type during the ~24 s wake | Locking the input; a Vercel build-time DB export |
 | Q15 | **Model:** compare qwen3.8-27b and gpt-oss-120b in slice 1 on a fixed set of 5–8 questions (sanity set + a few more, one unanswerable): answer quality, citation validity, output and reasoning tokens, latency, rate-limit headers; check whether reasoning can be lowered or hidden. qwen stays default until the data says otherwise; result recorded here. Startup check that the configured model exists; a fallback model id in config | M0 only tested tool calls; M2 needs plain cited answers. Groq's free catalogue changes | Assuming qwen; a second model as overflow (later idea) |
 | Q15a | **Result (slice 1, 2026-11-02): qwen3.8-27b is the default** (`reasoning_effort: none`). By the rule fixed before the run (higher valid-citation rate wins if output tokens allow ≥ 2 questions/min; ties to qwen): strict validity qwen 45/46 (98%) vs gpt-oss 0/1; qwen averages 334 output tokens (~3 questions/min). The decision stands on the strict numbers alone. Table and grades: "M2 model comparison" below | gpt-oss cited in its own formats (`【…】`, U+2011, short paths), so its citations couldn't be verified even where its content was right | gpt-oss-120b as default |
-| Q15b | **Lenient citation notation** (added **after** seeing the results): `【…】`, U+2011 hyphen, several citations in one bracket (a bare range keeps the previous path), each validated on its own. Only patterns observed in the stored answers; paths stay exact. Strict and lenient rates are both reported | Accepts the observed notation without loosening validation | Accepting short paths; accepting every dash variant |
+| Q15b | **Lenient citation notation** (added **after** seeing the results): structural variants only as observed (`【…】`, several citations in one bracket, a bare range keeping the previous path), each validated on its own. **Every Unicode dash (category Pd) and U+2212 is normalized to "-"**, only inside the bracket content being parsed, never in displayed text. Paths stay exact. Strict and lenient rates are both reported | Accepts the observed notation without loosening validation; dashes are typography, brackets and lists are structure | Accepting short paths; unobserved bracket styles |
 | Q15c | **No model fallback.** Rule fixed before re-scoring: gpt-oss is the fallback only if its lenient validity is ≥ ~80% of qwen's with no new failure modes. Result: 21/31 (68%) = 69% of qwen's 98%, plus a new failure mode (all 10 unverified citations are short paths). When qwen fails, the demo serves pre-generated answers plus a notice; `GROQ_FALLBACK_MODEL = None` | Under "zero valid citations ⇒ couldn't ground", a fallback whose citations don't verify is useless | gpt-oss-120b as fallback |
 | Q15d | **A valid citation proves location, not truth.** Validation shows the cited lines were in the supplied context, not that they support the claim (qwen's Q3 `=` claim cites real lines yet misleads). Claims are graded by hand (rubric + "grounded?"); later (M3) a judge model can check support | Keeps "valid-citation rate" from being read as an accuracy score | Treating validity as correctness |
 | Q15e | **Prompt v2** (`PROMPT_VERSION`, recorded with every answer): cite per group of related claims, at most ~5 citations, copy the full path from the file tag | qwen cited up to 10 times per answer; gpt-oss shortened paths | Re-tuning the prompt on the comparison questions |
@@ -648,20 +648,28 @@ re-scored offline with `eval/m2_rescore.py`.
 | `prompt_tokens` minus packer estimate (system prompt + question + tokenizer gap) | +458 to +652 (estimate 875–1,984) | +83 to +375 |
 | Rate-limit headers | 1,000 RPD, **8,000 TPM** | 1,000 RPD, 8,000 TPM |
 | Quality rubric (correct / partial / wrong, by me) | **6 / 2 / 0** (partial: Q3, Q5) | **6 / 2 / 0** (partial: Q5, Q7) |
-| Grounded? (every claim supported by the supplied context; true but unsupported claims count against) | 7 yes, Q5 partly (speculation, labelled as such) | 7 yes, **Q5 no** (states the verification loop as fact; it wasn't in the context) |
+| Grounded? (vs the supplied context) | **8 yes** | 7 yes, **Q5 no** |
 
-Per question (grades by me; "grounded?" proposed by Claude from my notes, to confirm):
+Three separate judgements per answer: **correct** (vs the source, graded by me), **grounded**
+(vs the context the model was given: yes / partly = a minor unsupported detail / no = the
+central claim is unsupported), **citations valid** (server check, strict / lenient). The
+contexts were reconstructed from the clone at `672971d…` into
+`eval/results/m2_models_2026-11-02_context.json`; from now on `ask()` stores each answer's
+context.
 
-| Q | qwen | gpt-oss | Notes |
+| Q | qwen: correct · grounded · valid (strict / lenient) | gpt-oss: correct · grounded · valid (strict / lenient) | Notes |
 |---|---|---|---|
-| 1 key derivation | correct · yes | correct · yes | gpt-oss's citations didn't parse (strict) |
-| 2 max_age | correct · yes | correct · yes | |
-| 3 compression | partial · yes | correct · yes | qwen: "alphabet includes `=`" is literally `_base64_alphabet` at encoding.py:41-42 (cited, valid), but `base64_encode` strips padding (line 25); off-topic either way |
-| 4 base64 padding | correct · yes | correct · yes | gpt-oss cites short paths, so unverified |
-| 5 key rotation | partial · partly | partial · **no** | qwen says the verification loop isn't in the context, then speculates; gpt-oss states it as fact. The context lacked `verify_signature` (slice 2 regression check) |
-| 6 wrong salt | correct · yes | correct · yes | |
-| 7 exception | correct · yes | partial · yes | gpt-oss omits `payload` and the message |
-| 8 unanswerable | correct · yes | correct · yes | both say it's not in the files |
+| 1 key derivation | correct · yes · 10/10 / 10/10 | correct · yes · 0/0 / 6/6 | gpt-oss used `【…】` |
+| 2 max_age | correct · yes · 4/4 / 4/4 | correct · yes · 0/0 / 3/3 | |
+| 3 compression | partial · **yes** · 9/10 / 9/10 | correct · yes · 0/0 / 7/7 | qwen's "alphabet includes `=`" matches the supplied `_base64_alphabet` (encoding.py:41-46); the padding strip (line 25) wasn't in the context, so nothing there contradicts it: grounded yes, yet partial vs the source. 1 unverified = path typo `url_safepy` |
+| 4 base64 padding | correct · yes · 3/3 / 3/3 | correct · yes · 0/1 / 0/3 | gpt-oss's 3 short paths point inside the supplied lines |
+| 5 key rotation | partial · **yes** · 4/4 / 8/8 | partial · **no** · 0/0 / 0/7 | `verify_signature` wasn't in the context. qwen flagged the gap and labelled its inference; gpt-oss stated the loop as fact. gpt-oss's 7 short paths point inside the supplied lines |
+| 6 wrong salt | correct · yes · 5/5 / 7/7 | correct · yes · 0/0 / 3/3 | |
+| 7 exception | correct · yes · 5/5 / 7/7 | partial · yes · 0/0 / 2/2 | gpt-oss omits `payload` and the message |
+| 8 unanswerable | correct · yes · 5/5 / 5/5 | correct · yes · 0/0 / 0/0 | both say it's not in the files |
+
+"Grounded" for the answers without a note: checked by Claude against the reconstructed
+context (every valid citation lies in it; uncited claims spot-checked).
 
 **Decision rule applied (2026-11-02):** quality ties (6/2/0 each). Valid-citation rate:
 strict 98% vs 0%, lenient 98% vs 68%: **qwen wins under both**; both models stay under 500
