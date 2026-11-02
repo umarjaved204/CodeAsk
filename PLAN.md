@@ -336,8 +336,10 @@ Reranking, summaries, call graphs, languages beyond Python/JS/TS, the web UI, pe
 fallback, a cross-process limiter.
 
 ## [ ] M2 Basic RAG chat
-Next.js chat UI + FastAPI endpoint; answers cite files and lines. Built in six parts. The
-design of M2a–M2e is decided in a grilling session **after** the M2-0 spike results are in.
+Next.js chat UI + FastAPI endpoint; answers cite files and lines. Design decided in the M2
+grilling (2026-11-02): see "M2 decision log" (Q1–Q19) and "M2 open assumptions and risks"
+(R1–R12) below. Built as vertical slices: the first slice is a thin end-to-end path, later
+slices widen it.
 
 Pre-M2 fixes (done before the spike):
 - `requirements-api.txt` (runtime only: no tree-sitter, no tokenizer, no voyageai SDK).
@@ -374,40 +376,89 @@ Render and Northflank both fail (its free-tier reports conflict on card and free
 **Done when:** every item above has a measured or confirmed value recorded in "M2-0 results"
 below, and anything that contradicts the plan is flagged.
 
-### [ ] M2a Backend core
-FastAPI: `/ask` (retrieve → pack context → Groq → validated citations), repo/featured
-endpoints, connection pooling.
+### [ ] Slice 0: spike follow-ups (R1, R2)
+Redeploy the spike with `/ip`; call it with and without a forged `X-Forwarded-For`; call
+`/slow?s=120` from the Vercel page.
 
-**Done when:** a local `/ask` on an ingested repo returns an answer whose every citation is
-validated server-side against stored chunks, with tests for the packer and the validator.
+**Done when:** "M2-0 results" records which header carries the real client IP and whether a
+client can forge it (Q6b decided in the log), and whether a 120 s request survives Render's
+proxy (if not, the busy threshold drops below the proven limit).
 
-### [ ] M2b Frontend
-Next.js chat UI: repo picker (featured), question box, answer with clickable citations, safe
-markdown rendering.
+### [ ] Slice 1 (M2a): thin vertical slice, local
+`POST /ask` for one featured repo (itsdangerous) → retrieve → simple pack with absolute line
+numbers → Groq → parse `[path:start-end]` → validate → permalinks at the stored SHA. A bare
+`frontend/` page (TypeScript) that sends a question and shows the answer with permalink
+citations. Then the model comparison (Q15) on this pipeline.
 
-**Done when:** locally, I can pick a repo, ask in the browser, and click a citation that shows
-the right file and lines.
+**Done when:**
+- locally, a question typed in the browser returns an answer with ≥ 1 validated citation that
+  opens the right lines on GitHub;
+- pytest covers the citation parser and validator (valid, wrong path, partly outside, fake
+  marker from repo text) and passes;
+- the qwen vs gpt-oss-120b table (5–8 questions: quality, valid citations, output and
+  reasoning tokens, latency, headers) is recorded in the decision log, and the default model
+  is chosen from it.
 
-### [ ] M2c Queue and abuse controls
-Bounded FIFO Voyage queue, "busy" responses, queue position, a global daily cap, per-IP rate
-limits.
+### [ ] Slice 2 (M2a): backend complete
+Full packer (Q11: budget on the numbered display, 12–15 candidates, per-file cap, merging,
+class outlines), grounding rules (Q3, Q9: "couldn't ground", "possibly relevant", unverified
+citations), prompt with delimited context (Q4), prompt version in config, featured-repos
+endpoint, `/status`, connection pooling, JSON errors inside the CORS layer (M2-0 finding),
+generic error text only, model check + fallback id (Q15), one worker (R10), request-id logs
+without question text or IPs (Q16), Render's `HEAD /` answered.
 
-**Done when:** a burst test (more queries than slots) gets a queue position or "busy, try
-again" for every request, with no 429 reaching the user and no error, and the daily cap shows
-a friendly message.
+**Done when:** pytest for packer (budget never exceeded on the numbered display, cap counted
+before merging, merged ranges contiguous) and grounding cases passes; `/boom`-style errors
+reach the browser as JSON with CORS headers; `scripts/check.ps1` runs all offline tests and I
+paste a green run.
 
-### [ ] M2d Pre-generated answers
-Suggested questions per featured repo, answered offline, stored with citations, labelled
-"pre-generated".
+### [ ] Slice 3 (M2b): frontend
+Install frontend-design + `@playwright/test`. Repo picker (featured), question box (≤ 400
+chars), answer via `react-markdown` without raw HTML or model links/images, citation links +
+code panel (escaped text, line numbers, cited range highlighted, "view on GitHub"),
+"unverified" citations, follow-up chips (Q8), "each question is answered on its own" note,
+`aria-live` status (Q17).
 
-**Done when:** clicking a suggested question answers instantly with zero Voyage/Groq calls, and
-the UI marks it as pre-generated.
+**Done when:** locally I can pick a repo, ask, and click a citation that shows the right
+lines in the panel; Playwright (mocked backend) passes: ask → answer → citation click,
+unverified citation, injection render test (Q18).
 
-### [ ] M2e Deploy
-Render (API) + Vercel (UI), featured repos only, no ingestion endpoint on the internet.
+### [ ] Slice 4 (M2c): queue and abuse controls
+One FIFO over `/ask` paced by Groq headers + own output-token accounting (Q10), position and
+estimated wait in `/status`, busy at ~60 s (or the slice 0 limit), per-IP limits in memory
+with a salted hash (Q6, Q16), length limit, daily cap row in Postgres, daily outcome
+aggregates, kill switch. Measure how often questions repeat; build in-memory live caches
+only if they are common (R3).
 
-**Done when:** the public URLs work end to end, cold start is recorded here, and the deployed
-API exposes no ingestion route.
+**Done when:** pytest with a fake clock shows a burst of N > capacity gets queue positions or
+"busy" and never an error or a 429 to the client; the daily cap and kill switch return the
+friendly messages; Playwright passes the busy and cap flows.
+
+### [ ] Slice 5 (M2d): pre-generated answers
+Table + CLI to generate answers for my chosen questions through the live pipeline (Q13), a
+review step, a local export script writing static JSON into `frontend/` (Q14), the
+"pre-generated on <date> with <model>" label, SHA check.
+
+**Done when:** every featured repo (dev DB for now) has 5–8 reviewed answers; clicking a
+suggested question shows its answer instantly with zero Voyage/Groq calls; Playwright passes
+"pre-generated answers with the backend down".
+
+### [ ] Slice 6 (M2e): deploy
+Prod Neon project + API role (Q7), `.env.prod` with an explicit flag and host confirmation,
+gitleaks scan → CodeAsk public → pinned release commit (Q12), ingest the featured repos and
+generate their answers in prod, new Render + Vercel services with final names, CORS to the
+Vercel origin, cold-start UX (Q14), privacy footer (Q16, R11), delete the spike services and
+rotate the keys set there, freeze `spike/m2/` (Q19).
+
+**Done when:**
+- the `db` test proves the API role cannot write content tables or delete;
+- the deployed API exposes no ingestion route (checked against its route list);
+- 3 cold starts after ≥ 15 min idle are recorded from the deployed page (time until
+  "waking up" turns ready, and time to the first answer), and the UI never shows a raw error
+  during them;
+- the manual smoke checklist passes on the public URLs (ask, citation, unverified display,
+  pre-generated, busy, cap via kill switch);
+- Render's Billing page shows usage within the free limits a week after launch.
 
 ### M2 inputs (requirements collected in M0 and the M1 grilling)
 **Context building**
@@ -508,6 +559,52 @@ return errors as JSON from exception handlers inside the CORS layer, so the UI c
 | Vercel page → Render from the browser | **Works** from `https://codeask-pi.vercel.app`: `/health` 0.66 s, `/db` 4.5 s (Neon waking), `/search` 1.8 s (embed 1.37 s), same top result. Gotcha: Render env changes only apply with a deploy ("Save only" does nothing to the running service) |
 | CORS with the Vercel origin | `ALLOWED_ORIGINS=http://localhost:3000,https://codeask-pi.vercel.app`: both get the header, `evil.example` doesn't |
 | Northflank: card asked at signup? sleeps? free limits | **Blocked (2026-11-02):** "sign up is disabled right now" (GitHub sign-in errored first). Card question untested |
+
+### M2 decision log (grilling, 2026-11-02)
+| # | Decision | Why | Rejected alternative |
+|---|---|---|---|
+| Q1 | **Scope:** the public deployment offers featured repos only, with pre-generated answers for suggested questions; no ingestion endpoint on the internet. "Paste a URL" stays local (CLI now, a local UI later); README and CLAUDE.md say so | The 3 Voyage requests/min are shared with live questions, and an ingest of even a tiny repo holds up to 2 of them for minutes. Public cloning on a 512 MB instance adds attack surface and size-limit work that doesn't teach RAG | Public "paste any URL" in M2 (the original pitch and M0 outcome) |
+| Q1b | **Later, restricted:** a hosted "try your own tiny repo" only after M2c's queue and abuse controls are proven and M3 is done: size cap, one ingest at a time, ETA confirmation, queries take priority | Keeps the original idea without letting it shape M2 | Never; or now |
+| Q2 | **Response mode:** `/ask` (POST) returns one whole answer. A cheap `/status` (awake, queue length, estimated wait) is polled by the UI while waiting; the first poll on page load also wakes a sleeping server. Revisit streaming only if measured generation (qwen reasoning tokens included) reaches 5–10 s | The long waits are cold start (~24 s) and queue, which streaming can't shorten; citations are validated on the complete answer before anything is shown; 60 s requests survive Render's proxy (M2-0) | SSE token streaming; submit-then-poll |
+| Q3 | **Grounding:** answer only from the supplied context. If it's missing, say so and list the closest retrieved files as "possibly relevant"; partial answers allowed with the missing part marked. No general-knowledge fallback. An answer with no valid citation is not shown as an answer. No distance threshold. Unanswerable questions go into the M3 eval set | Guessing hides retrieval failures that M3 must measure; cosine distances aren't calibrated across questions or repos | General-knowledge fallback; a distance cut-off |
+| Q4 | **Prompt injection:** (a) system prompt + clearly delimited context blocks, (b) output checks: only validated citations, no model-supplied links or HTML. (c) filtering suspicious chunk text is skipped; revisit at M4 (tools) or if "own repo" returns | Featured repos are chosen by me; (b) also defeats fake citation markers in repo text | Chunk filtering now |
+| Q5 | **Citation click:** GitHub permalink at the stored commit SHA (`blob/<sha>/<path>#L<a>-L<b>`) first, then an in-app panel built from stored chunk content (cited lines lie inside the supplied context, so no `files` table), with a "view on GitHub" link. Code rendered as escaped text | Permalinks never drift; the panel needs no new table and sends only cited ranges (bandwidth) | A `files` table; panel only; permalink only |
+| Q6 | **Abuse limits:** per IP: 1 question in flight, modest hourly and daily limits (config). Question ≤ ~400 chars. Global daily cap ≈ 500–600 Groq calls (1,000/day minus a reserve for tests and pre-generation), tuned from use. At the cap: "live quota used up for today", pre-generated answers keep working. Kill-switch env var. Storage per Q16: per-IP counters in memory, the daily cap in Postgres | Capacity is ~2–3 questions/min; per-IP limits stop casual abuse only, the global cap is the backstop | Per-IP counters persisted |
+| Q6b | **Client IP header:** decided after the `/ip` spike check (slice 0). Reportedly Render keeps a client-supplied `X-Forwarded-For` and appends to it, so the leftmost entry may be spoofable | A spoofable IP makes per-IP limits useless | Trusting the leftmost `X-Forwarded-For` unchecked |
+| Q7 | **Data topology:** a **separate Neon project** for the demo. The API's DB role has SELECT on content tables and INSERT/UPDATE only on its own `usage` table. Prod URL lives in a gitignored `.env.prod`, loaded only by an explicit flag; ingest against prod prints the DB host and asks for confirmation. Featured repos are re-ingested into prod (minutes); prod has its own embedding store | Free compute (100 CU-h/month) and storage (0.5–1 GB, sources conflict) are per project, shared by its branches, so dev and M3 runs can't suspend the demo | Same DB; a branch of the dev project; a fully read-only role (breaks the DB-backed daily cap) |
+| Q8 | **Single-turn:** each question answered on its own; the UI says so. After an answer, follow-up chips built from the cited chunks' breadcrumbs with fixed templates (no LLM, no history) | History costs Groq tokens per minute and needs query rewriting for retrieval | Follow-ups with history (M4 topic) |
+| Q9 | **Citation contract:** inline `[path:start-end]`, parsed by the server. Valid only if the path matches a supplied block and the range lies wholly inside its supplied lines (**blocks after merging**; partly outside = unverified, no clamping). Valid ones become links; invalid ones are shown as "unverified" and counted (M3 metric). Zero valid citations means "couldn't ground this in the code" plus the "possibly relevant" files. No regeneration in M2 | Inline keeps each claim next to its source; markdown in JSON strings is fragile; regeneration costs a second Groq call | JSON output; silently dropping invalid citations; regenerate once |
+| Q10 | **Queue:** one FIFO over the whole `/ask` path, paced by Groq's headers (`*-tokens` = TPM, `*-requests` = RPD per Groq docs) **plus our own output-token accounting** from each answer's `usage` (qwen's 1,000 output tokens/min is not in the headers). Busy at ~60 s estimated wait (needs the 120 s check in slice 0); the UI shows position and estimated wait. Optional small exact-match answer cache (repo, commit, normalized question, prompt version, model), labelled "answered earlier", only if it stays small | A cache hit skips Voyage but never Groq, so Groq is the real bottleneck | Voyage-only queue; spinner without position |
+| Q11 | **Context packing:** budget ~2–2.5K tokens (config), counted on the numbered display. Retrieve ~12–15 candidates, pack greedily by rank, per-file cap 2–3 chunks (**counted before merging**), merge adjacent same-file chunks, present grouped by file in line order. Class outlines only when a header chunk is retrieved, size-capped. M3 tunes the values | ~2–2.5K context keeps ~3 questions/min under 8K TPM; the cap fights M0's near-duplicates | Fixed k=5; ~3K budget |
+| Q12 | **Featured repos:** itsdangerous, requests, express, and CodeAsk itself, **pinned to a release commit** and refreshed only at milestones. Before featuring CodeAsk: make it public after a full-history secret scan (gitleaks). TableTalk and flask optional later | Python + JS, small to medium, plus a self-referential demo | Featuring CodeAsk at `main` (answers go stale every commit) |
+| Q13 | **Pre-generated answers:** ~5–8 questions per repo, chosen by me, answered by the live pipeline, each answer and its citations reviewed by me. Stored with commit SHA, prompt version, model id and date; labelled "pre-generated on <date> with <model>"; shown only if the SHA matches the repo's current one (re-ingest ⇒ regenerate). Generation counts against the daily cap, serving doesn't | Instant, free answers that are honestly labelled | LLM-written questions; serving stale answers |
+| Q14 | **Cold-start UX:** the page polls `/status` on load (retry every 2–3 s for ~60–90 s, since a waking server can fail without CORS headers), shows "server waking up", never locks the input, and sends a submitted question once the server is up. Pre-generated answers ship as **static JSON written by a local export script and committed** (Vercel never gets DB credentials) | Visitors can read and type during the ~24 s wake | Locking the input; a Vercel build-time DB export |
+| Q15 | **Model:** compare qwen3.8-27b and gpt-oss-120b in slice 1 on a fixed set of 5–8 questions (sanity set + a few more, one unanswerable): answer quality, citation validity, output and reasoning tokens, latency, rate-limit headers; check whether reasoning can be lowered or hidden. qwen stays default until the data says otherwise; result recorded here. Startup check that the configured model exists; a fallback model id in config | M0 only tested tool calls; M2 needs plain cited answers. Groq's free catalogue changes | Assuming qwen; a second model as overflow (later idea) |
+| Q16 | **Visitor data:** per-IP limits use in-memory counters keyed by a hash of the IP with a random per-process salt, never persisted. The global daily cap is one Postgres row per day; Groq's 429s stay the ground truth. **No question text stored.** Only aggregate outcomes per day (answered, ungrounded, busy, unverified-citation rate, tokens, latency). App logs: request id, status, durations, outcome; never question text or IPs. Footer + README: questions go to third-party APIs (Groq, Voyage), nothing stored beyond counters (wording after checking their data terms) | Visitor questions have no known correct files, so they're useless as M3 eval data; storing less means less to protect | Storing raw IPs or questions |
+| Q17 | **Frontend stack:** Next.js + TypeScript, Tailwind only (frontend-design skill for the look), plain React state, one types file for the API. `react-markdown` without raw HTML; model-supplied links and images blocked (only the server creates citation links). Code panel: escaped plain text with line numbers and the cited range highlighted; no syntax highlighting in M2. Status messages in an `aria-live` region. No secrets in `NEXT_PUBLIC_` variables. Tests with the official `@playwright/test`; keep only one of webapp-testing / playwright skill | Few moving parts; safe rendering by construction | shadcn/ui; Shiki; a state library |
+| Q18 | **Tests:** backend pytest with fakes for parser, validator, packer, queue (fake clock) and limits, plus one `db` test proving the API role cannot write content tables or delete. Frontend Playwright against a mocked backend: ask → answer → citation click shows the right lines; invalid citation shown as "unverified"; cold start with a delayed `/status` and the question sent once up; busy and cap messages; pre-generated answers with the backend down; injection render (`<script>`, `<img onerror>`, markdown link and image in an answer: nothing executes or renders). Real end to end = a manual smoke checklist in slice 6. `scripts/check.ps1` runs all offline tests; I run it and paste the output | Pure functions with fakes need no network; the mocked backend makes UI states reproducible | Live API calls in tests |
+| Q19 | **Layout and spike services:** `backend/codeask/api/` and `frontend/` with separate deploy roots. New Render and Vercel services with the final names; the spike services are deleted after the results are recorded, and any key set there is rotated. `spike/m2/` stays as a frozen record with a one-line README, checked for secrets, and added to CLAUDE.md's frozen-files line | Clean names and settings for the real app; the spike stays as evidence | Reusing the spike services |
+
+### Not in M2 (scope guard)
+- Hosted ingestion of user-supplied URLs (see Q1b).
+- Token streaming (SSE), conversation history, regeneration of bad answers, chunk-text
+  filtering against injection, a second overflow model, syntax highlighting.
+
+### M2 open assumptions and risks
+| # | Assumption / risk | How it's settled |
+|---|---|---|
+| R1 | Render's client-IP header may be spoofable (community reports conflict with Render staff) | Slice 0 `/ip` test with a forged `X-Forwarded-For` |
+| R2 | `/ask` stays open for queue wait + processing (~65–70 s at a 60 s busy threshold); only 60 s was proven | Slice 0 `/slow?s=120` from the browser |
+| R3 | **Caches vs "no question text stored" (Q16):** a persisted cache keyed by the normalized question would store visitor questions | **Resolved (2026-11-02):** live caches in memory only; persisted entries only for my own suggested questions. No live answer or embedding cache is built in M2 unless slice 4 measurements show repeated questions are common |
+| R4 | qwen's reasoning tokens may count against 1,000 output tokens/min and lengthen answers | Slice 1 model comparison |
+| R5 | Groq's free catalogue changes; the configured model can disappear | Startup model check + fallback id (Q15) |
+| R6 | Neon prod storage is 0.5 or 1 GB (sources conflict); compute 100 CU-h/month per project; Neon wake adds 0.7–3.2 s to a cold request | Check the prod project's dashboard in slice 6 |
+| R7 | Card on file at Render (docs: optional; in practice asked at my first deploy). With a card, overage **bills** instead of suspending: bandwidth beyond 5 GB at $0.15/GB with **no spend cap** (HTTP responses, service-initiated traffic, DB responses leaving Render); build minutes beyond 500 (cappable: Workspace Settings → Build Pipeline → spend limit); custom domains beyond 2 at $0.25/month. Email alerts near and over limits (not configurable). 750 instance-hours are shared by all services in the workspace | Try removing the card; if it must stay: decision-log exception, build spend limit $0, auto-deploy off, low-limit virtual card, delete spike services. **If a card isn't acceptable: Northflank free Sandbox is the fallback** (retry signup; untested because signups were disabled on 2026-11-02), then Koyeb |
+| R8 | One Voyage key for local ingestion and the live app; the limiter is in-process, so a local prod ingest can collide with live queries | Ingest into prod only when the demo is idle, or with reserved slots |
+| R9 | Per-IP limits reset on restart/sleep and are bypassed by IP rotation | Accepted; the global daily cap and Groq's own limits are the backstop |
+| R10 | The in-process limiter and queue need exactly one worker; the queue must stay shorter than the thread pool (AnyIO default 40) | Pin `WEB_CONCURRENCY=1` / `--workers 1`; a config assert on the queue length |
+| R11 | Groq and Voyage data terms decide the privacy footer wording | Read their terms before slice 6 |
+| R12 | Render's free tier is "not for production" and its terms change (the card requirement surprised us) | Re-check terms at deploy; Koyeb/Northflank as fallbacks |
 
 ## [ ] M3 Eval harness
 Question set with expected files; hit rate and MRR baseline.
@@ -631,8 +728,8 @@ source, a filter refinement for M1.
 | Demo test (4 queries / 60 s) | PASS (worst wait 17.5 s ≤ 20 s, no errors) |
 | Variant (6 / 60 s, informational) | FAIL (1 error, 37.9 s wait) → bursts need a queue + cache |
 
-**Outcome:** keep Voyage, no card. Design = pre-indexed featured repos + small on-demand repos +
-file filtering + query-embedding cache, **plus a FIFO queue in the backend for Voyage calls**
+**Outcome:** keep Voyage, no card. Design = pre-indexed featured repos + file filtering +
+query-embedding cache (small on-demand repos: **later, restricted**, see the M2 decision log), **plus a FIFO queue in the backend for Voyage calls**
 (the 6/60 s test showed independent retries are unfair and can fail).
 
 **Gemini Embedding** (100 RPM / 30K TPM / 1,000 RPD) is a **candidate to compare in M3**, not

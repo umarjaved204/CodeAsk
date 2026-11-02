@@ -1,6 +1,7 @@
 # CodeAsk
 
-Paste a GitHub repo URL and chat with that codebase. Answers cite real files and line numbers.
+Chat with a GitHub codebase. Answers cite real files and line numbers. The public demo serves
+pre-indexed featured repos only; any repo URL can be ingested locally (CLI, later a local UI).
 Includes a RAG evaluation harness (hit rate, MRR), and later an agent mode and voice input.
 Portfolio project. Milestones, decisions and measured results live in [PLAN.md](PLAN.md).
 **Read PLAN.md at the start of every session. When a decision changes, update its decision log.**
@@ -15,9 +16,9 @@ Portfolio project. Milestones, decisions and measured results live in [PLAN.md](
   (chunking, embeddings, retrieval, evaluation) as we go.
 - Keep scope tight. No over-engineering, no features I didn't ask for.
 - Frozen files are never edited: `spike/m0.py`.
-- When grilling me (/grill-me), ask one question at a time, worded neutrally ("what should X be,
-  and why?"), never so that "yes" accepts your recommendation. Give your recommendation after I
-  have answered.
+- When grilling me (/grill-me), ask in rounds of up to about six independent questions, each
+  worded neutrally with the relevant facts. Give no recommendation until I've answered. Ask
+  dependent questions one at a time.
 - Commit and push at the end of every work session (I once lost a whole project).
 
 ## Skills

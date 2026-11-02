@@ -1,7 +1,11 @@
 # CodeAsk
 
-Chat with a GitHub codebase: paste a repo URL, ask a question, get an answer that cites real
-files and line numbers. A portfolio project built on free tiers only.
+Chat with a GitHub codebase: ask a question, get an answer that cites real files and line
+numbers. A portfolio project built on free tiers only.
+
+The public demo serves a few pre-indexed **featured repos**. To use your own repo, run the
+ingestion locally (any `https://github.com/<owner>/<repo>` URL); there is no ingestion endpoint
+on the internet.
 
 ## Status
 

@@ -11,7 +11,7 @@ from __future__ import annotations
 import os
 import time
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 STARTED = time.time()
@@ -84,6 +84,14 @@ def search(q: str = "How is the signing key derived?"):
     return {"connect_ms": round((t1 - t0) * 1000), "embed_ms": round((t2 - t1) * 1000),
             "search_ms": round((t3 - t2) * 1000), "memory_mb": memory_mb(),
             "top": [f"{r['path']}:{r['start_line']}-{r['end_line']} {r['breadcrumb']}" for r in rows]}
+
+
+@app.get("/ip")
+def ip(request: Request):
+    """Which headers carry the client IP on this host, and can a client spoof them?"""
+    names = ("x-forwarded-for", "true-client-ip", "cf-connecting-ip", "x-real-ip", "forwarded")
+    return {"peer": request.client.host if request.client else None,
+            **{n: request.headers.get(n) for n in names}}
 
 
 @app.get("/boom")
