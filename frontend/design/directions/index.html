@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CodeAsk direction mock</title>
+<!-- Static mock for slice 3 step 2 (PLAN.md). ?d=a|b|c picks the direction's stylesheet.
+     Same real content in every direction: the live key-rotation answer (prompt v3). -->
+<link rel="stylesheet" href="base.css">
+<script>
+  const d = new URLSearchParams(location.search).get("d") || "a";
+  document.write('<link rel="stylesheet" href="' + d + '.css">');
+</script>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="#" aria-label="CodeAsk home">
+    <svg class="glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H4v18h4M16 3h4v18h-4" fill="none" stroke="currentColor" stroke-width="2.2"/></svg>
+    <span class="word">CodeAsk</span>
+  </a>
+  <nav class="links">
+    <a href="#">How it works</a>
+    <button class="theme" type="button" aria-label="Switch to dark theme">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>
+    </button>
+  </nav>
+</header>
+
+<main class="layout">
+  <section class="reading" aria-labelledby="question">
+    <p class="provenance">Example answer, generated on 3 Nov 2026 by qwen3.8-27b from pallets/itsdangerous at commit 672971d. Pre-generated, not live.</p>
+    <h1 id="question">How does it support rotating to a new secret key while old keys still work?</h1>
+    <div class="answer">
+      <p>The library supports key rotation by accepting an iterable of secret keys and storing them as a list ordered from oldest to newest.</p>
+      <ol>
+        <li><strong>Key storage.</strong> Both <code>Signer</code> and <code>Serializer</code> accept <code>secret_key</code> as a string, bytes, or an iterable. The helper <code>_make_keys_list</code> converts it into a <code>list[bytes]</code> stored in <code>self.secret_keys</code><a class="cite" href="#" aria-label="Citation 1, verified">1</a>. The documentation says the list is ordered “from oldest to newest” and that the “newest (last) key is used for signing”<a class="cite" href="#" aria-label="Citation 2, verified">2</a>.</li>
+        <li><strong>Signing.</strong> Signing uses the last item in <code>secret_keys</code>. The <code>secret_key</code> property returns <code>self.secret_keys[-1]</code><a class="cite" href="#" aria-label="Citation 3, verified">3</a>, and <code>derive_key</code> also defaults to it when no key is given<a class="cite" href="#" aria-label="Citation 4, verified">4</a>.</li>
+        <li><strong>Verification.</strong> <code>verify_signature</code> walks <code>self.secret_keys</code> in reverse, newest to oldest, and accepts the signature as soon as one key verifies it<a class="cite is-active" href="#" aria-label="Citation 5, verified, open" aria-current="true">5</a>. Tokens signed with an older key stay valid while that key is in the list.</li>
+        <li><strong>Serializers.</strong> <code>Serializer</code> stores <code>secret_keys</code> the same way and exposes the same <code>secret_key</code> property<a class="cite" href="#" aria-label="Citation 6, verified">6</a><a class="cite" href="#" aria-label="Citation 7, verified">7</a>.</li>
+      </ol>
+      <p>To rotate, add the new key to the end of the list. Keep old keys until no tokens signed with them can still arrive, then remove them.</p>
+    </div>
+    <p class="hint">Tap a citation to see the code.</p>
+    <form class="composer" onsubmit="return false">
+      <div class="row">
+        <label class="sr" for="repo">Repository</label>
+        <select id="repo"><option>pallets/itsdangerous</option><option>psf/requests</option><option>expressjs/express</option></select>
+        <span class="count" aria-hidden="true">0 / 400</span>
+      </div>
+      <div class="row">
+        <label class="sr" for="ask">Question</label>
+        <textarea id="ask" rows="2" maxlength="400" placeholder="Ask about the code in pallets/itsdangerous"></textarea>
+        <button type="submit">Ask</button>
+      </div>
+      <p class="note">Answers use only the code of the featured repos and cite the lines they rely on. Rate-limited demo; each question is answered on its own.</p>
+    </form>
+  </section>
+
+  <aside class="evidence" aria-label="Cited code">
+    <div class="ev-head">
+      <p class="ev-title"><span class="ev-n">5</span><span class="ev-path">src/itsdangerous/signer.py</span></p>
+      <p class="ev-meta">Cited lines 236–240, shown within 227–242</p>
+      <a class="gh" href="#">View on GitHub</a>
+    </div>
+    <pre class="code"><code><span class="line"><span class="no">227</span><span class="tx">    def verify_signature(self, value: str | bytes, sig: str | bytes) -> bool:</span></span>
+<span class="line"><span class="no">228</span><span class="tx">        """Verifies the signature for the given value."""</span></span>
+<span class="line"><span class="no">229</span><span class="tx">        try:</span></span>
+<span class="line"><span class="no">230</span><span class="tx">            sig = base64_decode(sig)</span></span>
+<span class="line"><span class="no">231</span><span class="tx">        except Exception:</span></span>
+<span class="line"><span class="no">232</span><span class="tx">            return False</span></span>
+<span class="line"><span class="no">233</span><span class="tx"></span></span>
+<span class="line"><span class="no">234</span><span class="tx">        value = want_bytes(value)</span></span>
+<span class="line"><span class="no">235</span><span class="tx"></span></span>
+<span class="line hit hit-start"><span class="no">236</span><span class="tx">        for secret_key in reversed(self.secret_keys):</span></span>
+<span class="line hit"><span class="no">237</span><span class="tx">            key = self.derive_key(secret_key)</span></span>
+<span class="line hit"><span class="no">238</span><span class="tx"></span></span>
+<span class="line hit"><span class="no">239</span><span class="tx">            if self.algorithm.verify_signature(key, value, sig):</span></span>
+<span class="line hit hit-end"><span class="no">240</span><span class="tx">                return True</span></span>
+<span class="line"><span class="no">241</span><span class="tx"></span></span>
+<span class="line"><span class="no">242</span><span class="tx">        return False</span></span></code></pre>
+    <nav class="ev-list" aria-label="Citations in this answer">
+      <ol>
+        <li><a href="#"><span class="li-n">1</span>signer.py, lines 67–73</a></li>
+        <li><a href="#"><span class="li-n">2</span>signer.py, lines 138–143</a></li>
+        <li><a href="#"><span class="li-n">3</span>signer.py, lines 175–180</a></li>
+        <li><a href="#"><span class="li-n">4</span>signer.py, lines 195–196</a></li>
+        <li><a href="#" aria-current="true"><span class="li-n">5</span>signer.py, lines 236–240</a></li>
+        <li><a href="#"><span class="li-n">6</span>serializer.py, lines 203–208</a></li>
+        <li><a href="#"><span class="li-n">7</span>serializer.py, lines 236–241</a></li>
+      </ol>
+    </nav>
+  </aside>
+</main>
+</body>
+</html>

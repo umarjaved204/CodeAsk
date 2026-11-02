@@ -1,0 +1,62 @@
+/* Shared skeleton for the direction mocks: layout only. Each direction sets the variables
+   and its own character in a.css / b.css / c.css. */
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--ui); }
+a { color: inherit; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);
+      white-space: nowrap; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.top { display: flex; align-items: center; justify-content: space-between; height: 64px;
+       padding: 0 32px; }
+.brand { display: flex; align-items: center; gap: 8px; text-decoration: none; }
+.glyph { width: 22px; height: 22px; }
+.links { display: flex; align-items: center; gap: 20px; }
+.links a { color: var(--muted); text-decoration: none; font-size: 15px; }
+.theme { width: 36px; height: 36px; display: grid; place-items: center; border: 0;
+         background: transparent; color: var(--muted); cursor: pointer; }
+.theme svg { width: 20px; height: 20px; }
+
+.layout { display: grid; grid-template-columns: minmax(0, 53fr) minmax(0, 47fr); }
+.reading { padding: 12px 56px 0; }
+.reading > * { max-width: 66ch; }
+.answer ol { padding-left: 1.4em; }
+.answer li { margin-bottom: .6em; }
+.cite { text-decoration: none; }
+
+.composer { position: sticky; bottom: 0; padding: 14px 0 18px; background: var(--bg); }
+.composer .row { display: flex; gap: 10px; align-items: stretch; }
+.composer .row + .row { margin-top: 8px; }
+.composer textarea { flex: 1; resize: none; font: inherit; font-size: 16px; padding: 10px 12px; }
+.composer select { font: inherit; font-size: 15px; }
+.count { margin-left: auto; align-self: center; font-size: 13px; color: var(--muted); }
+.note { margin: 10px 0 0; font-size: 13px; line-height: 1.45; color: var(--muted); }
+.hint { display: none; }
+
+.evidence { position: sticky; top: 0; align-self: start; height: calc(100vh - 64px);
+            overflow: auto; display: flex; flex-direction: column; }
+.ev-head { padding: 20px 24px 12px; }
+.ev-title, .ev-meta { margin: 0; }
+.code { margin: 0; overflow-x: auto; font-family: var(--mono); font-size: 13.5px;
+        line-height: 1.65; padding: 8px 0; }
+/* A flex column ignores the newline text nodes between lines (else they render as blank rows). */
+.code code { display: flex; flex-direction: column; min-width: max-content; }
+.line { display: flex; min-width: 100%; }
+.no { flex: none; width: 5ch; padding-right: 1.6ch; text-align: right; color: var(--muted);
+      user-select: none; }
+.tx { white-space: pre; padding-right: 24px; }
+.ev-list { margin-top: auto; padding: 12px 24px 20px; }
+.ev-list ol { list-style: none; margin: 0; padding: 0; }
+.ev-list a { display: flex; gap: 10px; padding: 4px 0; text-decoration: none; font-size: 14px; }
+
+@media (max-width: 760px) {
+  .top { padding: 0 18px; height: 56px; }
+  .layout { grid-template-columns: 1fr; }
+  .reading { padding: 4px 18px 0; }
+  .evidence { display: none; }  /* bottom sheet, closed by default (PLAN.md brief) */
+  .hint { display: block; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}

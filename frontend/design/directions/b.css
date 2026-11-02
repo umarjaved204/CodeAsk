@@ -1,0 +1,71 @@
+/* Direction B, "Bracket": precise and instrument-like. One grotesk family; the square bracket
+   is the only bold element: the wordmark glyph, the chips, and a tall bracket in the code
+   gutter spanning exactly the cited lines. */
+@import url("https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=Red+Hat+Mono:wght@400;500&display=swap");
+
+:root {
+  --bg: #FBFBFA;
+  --panel: #FBFBFA;
+  --text: #222A33;      /* blue graphite */
+  --muted: #5D6672;
+  --rule: #DCDFE3;
+  --accent: #0B6A65;    /* verdigris: what is verified */
+  --tint: #E3F0EE;      /* cited lines */
+  --focus: #0B6A65;
+  --ui: "Schibsted Grotesk", system-ui, sans-serif;
+  --mono: "Red Hat Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1A2227; --panel: #1E272D; --text: #E2E7EA; --muted: #9DA8B0; --rule: #2E3940;
+    --accent: #6BC4B8; --tint: #22383A; --focus: #6BC4B8;
+  }
+}
+
+.top { border-bottom: 1px solid var(--rule); }
+.word { font-size: 20px; font-weight: 700; letter-spacing: -.02em; }
+.glyph { color: var(--accent); }
+
+.provenance { margin: 22px 0 12px; font-size: 14px; color: var(--muted); }
+h1 { font-size: 32px; font-weight: 600; line-height: 1.18; letter-spacing: -.022em;
+     margin: 0 0 20px; }
+.answer { font-size: 17px; line-height: 1.6; }
+.answer p { margin: 0 0 .85em; }
+.answer strong { font-weight: 600; }
+.answer code { font-family: var(--mono); font-size: .88em; }
+
+/* Chips: the number held between two drawn brackets. */
+.cite { display: inline-flex; align-items: center; height: 1.25em; margin: 0 .1em 0 .2em;
+        padding: 0 .28em; font-size: 13px; font-weight: 600; color: var(--accent);
+        vertical-align: .12em; position: relative; font-variant-numeric: tabular-nums; }
+.cite::before, .cite::after { content: ""; position: absolute; top: 0; bottom: 0; width: .26em;
+        border: 1.5px solid currentColor; }
+.cite::before { left: 0; border-right: 0; }
+.cite::after { right: 0; border-left: 0; }
+.cite.is-active { background: var(--accent); color: var(--bg); }
+
+.composer { border-top: 1px solid var(--rule); }
+.composer textarea, .composer select { background: var(--bg); color: var(--text);
+  border: 1.5px solid var(--rule); border-radius: 3px; }
+.composer select { padding: 6px 10px; }
+.composer textarea:focus { border-color: var(--accent); outline: none; }
+.composer button { font: inherit; font-weight: 600; font-size: 15px; padding: 0 22px;
+  border: 0; border-radius: 3px; background: var(--accent); color: var(--bg); cursor: pointer; }
+
+.evidence { background: var(--panel); border-left: 1px solid var(--rule); }
+.ev-title { display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 600; }
+.ev-n { display: inline-grid; place-items: center; min-width: 30px; height: 30px;
+        background: var(--accent); color: var(--bg); font-weight: 700; border-radius: 3px; }
+.ev-meta { font-size: 13.5px; color: var(--muted); margin-top: 6px; }
+.gh { display: inline-block; margin-top: 6px; font-size: 14px; color: var(--accent); }
+.line .no { position: relative; padding-right: 2.6ch; }
+.line.hit { background: var(--tint); }
+.line.hit .no { color: var(--accent); font-weight: 500; }
+/* The gutter bracket: a vertical stroke with ticks at the first and last cited line. */
+.line.hit .no::after { content: ""; position: absolute; right: 6px; top: 0; bottom: 0;
+        width: 5px; border-left: 2px solid var(--accent); }
+.line.hit-start .no::after { top: 4px; border-top: 2px solid var(--accent); }
+.line.hit-end .no::after { bottom: 4px; border-bottom: 2px solid var(--accent); }
+.ev-list { border-top: 1px solid var(--rule); }
+.ev-list .li-n { width: 1.6em; color: var(--accent); font-weight: 700; }
+.ev-list a[aria-current] { font-weight: 600; }

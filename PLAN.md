@@ -590,12 +590,66 @@ AI-looking one. In this order, before any component code:
 Constraints: Tailwind only, no component library, no extra UI dependencies without asking; the
 Q17 rules stand (`react-markdown` without raw HTML, no model links or images). Open design
 question for the build plan: the code panel needs the cited lines, but `/ask` returns no
-context today (`public_view()` withholds it). Q5 says send only the cited ranges, never whole
-files.
+context today (`public_view()` withholds it). Settled in the brief round as Q30.
+
+**Design brief (grilling, 2026-11-03):**
+- **Audience, in order:** recruiters, then interviewers/engineers, then developers.
+  - The first screen shows value with zero interaction: a pre-generated example answer with
+    visible citation chips, labelled pre-generated (date, model, commit), with the ask box
+    right below and the repo picker.
+  - Interviewers verify by clicking a citation. Developers go straight to the picker and the
+    box.
+- **Character:** precise, calm, trustworthy; quietly editorial. The answer is set like a
+  well-typeset article, with citations acting as footnotes.
+  - **Avoid:** the startup landing page (gradient hero, glass effects), terminal cosplay (neon
+    on black), emoji-heavy UI. Also frontend-design's listed defaults: cream + serif +
+    terracotta, ALL-CAPS eyebrow labels, identical soft-shadow cards, `·` meta strings, `→` on
+    buttons, monospace for labels.
+- **References:** none given (the question came back as the unfilled template three times).
+  Work from the brief alone; I name references if a direction misses.
+- **Theme:** follows the system setting, with a toggle. Both themes are designed equally,
+  and the theme is applied before first paint (no flash of the wrong theme).
+- **Layout, desktop:** side by side.
+  - The answer sits in a reading column under ~80 characters per line.
+  - The code panel is on the right, with the **first valid** citation pre-opened, so the
+    evidence is visible without a click.
+  - Long code lines scroll horizontally.
+- **Layout, mobile:**
+  - The panel is a bottom sheet, closed by default, with a hint: "Tap a citation to see the
+    code".
+  - Chips open the sheet. Nothing opens automatically.
+  - A partial-height peek gets revisited only if the screenshots feel empty.
+- **The ask box is visible without scrolling** at 1440×900 and 390×844 (or sticky), checked
+  by screenshots.
+- **The repo picker defaults to itsdangerous.** The other repos show their suggested questions
+  once slice 5 lands.
+- **A "How it works" link** in the header or footer, to the repo README (a slot for the M3
+  results later). No new page.
+- **Brand:** a text wordmark in the chosen typeface, plus a tiny glyph echoing the citation
+  brackets (`[ ]`) that doubles as the favicon. It stands on its own.
+- **Example answer:**
+  - The itsdangerous key-rotation question, from the live pipeline.
+  - Graded by me with the three-column rubric (correct, grounded, citations valid) before it
+    becomes the fixture.
+  - Saved as a static fixture with date, model, prompt version, commit SHA and the cited
+    lines (Q30), and labelled pre-generated.
+  - Slice 5 replaces it with the reviewed set.
+  - Hand-built mocks cover the state inventory: ungrounded, unverified citations, very long
+    answer, many chips, long code lines.
+- **Non-negotiables:** WCAG AA contrast, a keyboard-only path, reduced motion respected,
+  `aria-live` status messages.
+- **Product requirements** (decision log):
+  - numbered citation chips;
+  - a code panel with line numbers and the cited range highlighted;
+  - unverified citations visibly different, by icon and text and not by colour alone;
+  - a calm ungrounded state;
+  - an honest "about this demo" note: featured repos only, rate-limited, pre-generated
+    answers labelled.
 
 **Done when:**
 - locally I can pick a repo, ask, and click a citation that shows the right lines in the
   panel;
+- the ask box is visible without scrolling at 1440×900 and 390×844 (screenshots);
 - Playwright (mocked backend) passes: ask → answer → citation click, unverified citation,
   injection render test (Q18);
 - I have approved a direction and the tokens;
@@ -790,6 +844,9 @@ return errors as JSON from exception handlers inside the CORS layer, so the UI c
 | Q26 | **DB connections:** one connection per request via a small context manager; no `psycopg_pool` in M2. Revisit if the measured connect time per request is consistently above ~100 ms | Neon's pooled endpoint (PgBouncer) is already a pool; Render → Neon connect measured ~20 ms (M2-0); no new dependency; no open question about whether an idle open connection blocks Neon's scale to zero | An app-side `psycopg_pool` (the original "pooling" item) |
 | Q27 | **Expected chunks** (`eval/m2_expected.json`, ranges from `672971d…`): drafted by Claude from the source before the slice 2 candidates were printed; **confirmed by me after I had seen the printed candidates**, with edits: Q7 adds `exc.py:22-33` BadSignature as required (the slice 1 grading treated omitting `payload`/message as partial, so the set must include where `payload` is defined); Q1 adds the Signer class header (`default_key_derivation`) as supporting. A range counts as packed when every **non-blank** line of it lies inside the packed blocks after merging. Committed before the packer experiment; later changes are amendments with a reason | The variant rule (Q20) needs a target fixed before the variants are compared | Choosing expected chunks after seeing packing results |
 | Q28 | **Packer default: no per-file cap, budget 2,000 (provisional).** Overrides Q11's cap. `PER_FILE_CAP` stays a parameter (default `None`) for the M3 ablation. **Evidence is one small repo** (itsdangerous, 8 questions, 12 required chunks): in slice 5, re-run `eval/m2_pack_compare.py` on requests and express using the pre-registered expected chunks of their suggested questions; if the result flips, revisit the cap (per repo or in M3). Q6 `derive_key` not being in the top 15 is an M3 retrieval finding. **Why 2,500 packs fewer than 2,000:** greedy skip-and-continue packing is not monotone in the budget. In Q5 at 2,000 the Signer class header (`signer.py:76-127`, ~870 with its 37-line docstring) doesn't fit and is skipped, leaving room for `derive_key` and `verify_signature`; at 2,500 it fits and `derive_key` no longer does. Only a stop-at-first-misfit greedy is monotone, and it would lose both at 2,000. So there is no "more budget never removes a chunk" test; a test pins the skip behaviour instead | Only no cap at 2,000 packs every retrieved required chunk (11/12); it's also the simplest variant (Q20 rule). M1 chunks don't overlap, so the near-duplicates the cap targeted (M0) are gone; on a small repo the answer genuinely sits in one file and a cap pushes weaker other-file chunks in | Hard cap 3 (fails the Q5 regression check); soft cap 3 (same); cap 5; budget 2,500 |
+| Q29 | **Design brief** (slice 3 grilling, 2026-11-03): see the brief under slice 3. Recruiters lead; a pre-generated example answer with citations on the first screen; precise, calm, quietly editorial; system theme + toggle; side by side on desktop with the first valid citation pre-opened; bottom sheet on mobile, closed by default; text wordmark + bracket glyph | The first screen must show value with zero interaction for a recruiter skimming for ~30 s | A landing-page hero; an empty ask box first |
+| Q30 | **The code panel's lines travel with the answer:** `/ask` (and the example fixture) includes the supplied blocks that contain at least one valid citation, nothing else. Amends Q5's "cited ranges plus a little context": a block is bounded by the context budget (~2K tokens, a few KB), never a whole file | The panel and the pre-opened citation need the lines; the blocks are exactly what the model saw, so the panel shows the real evidence | A `files` table; fetching lines from GitHub in the browser; sending all supplied blocks |
+| Q31 | **Visual direction A, "Marked copy"** (step 2, 2026-11-03; mocks in `frontend/design/directions/`, rendered by `frontend/design/render-directions.mjs`): the answer set as a typeset page (Newsreader serif; Instrument Sans for the interface; Fragment Mono for code) on cool grey-green paper with blue-black ink; citations as small bracketed footnote figures; **the active footnote and its cited lines share one highlighter yellow** (kept a true highlighter, dark ink on yellow, in dark mode too). From C: chips get a larger tap area on mobile (≥ 24 px) without looking bigger | The only direction whose memorable element is the product's own idea (claims tied to marked evidence); matches "precise, calm, quietly editorial, citations as footnotes" most directly | **B "Bracket"** (Schibsted Grotesk, verdigris, a drawn bracket in the code gutter): cohesive brand story but reads as a generic developer tool, and the gutter bracket is too subtle to carry the design. **C "Two rooms"** (Atkinson Hyperlegible, code on a bottle-green slab): clearest split and most tappable chips, but the dark rounded slab drifts to the familiar IDE look and is the least editorial |
 
 ### M2 model comparison (slice 1, 2026-11-02)
 pallets/itsdangerous, 8 questions (`eval/m2_models.json`, Q8 unanswerable), one Voyage request,

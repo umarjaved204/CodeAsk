@@ -1,0 +1,61 @@
+/* Direction A, "Marked copy": a typeset page whose evidence is marked up with a highlighter.
+   The active chip and its cited lines share one highlighter wash: the only bold element. */
+@import url("https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Instrument+Sans:wght@400;500;600&family=Fragment+Mono&display=swap");
+
+:root {
+  --bg: #F5F6F3;        /* cool paper (grey-green, not cream) */
+  --panel: #EBEDE8;     /* the exhibit sheet, a shade deeper */
+  --text: #1C2838;      /* blue-black ink */
+  --muted: #586273;
+  --rule: #D3D8D0;
+  --ink: #2A4A8A;       /* footnote blue: chips and links */
+  --mark: #F9E07A;      /* highlighter */
+  --mark-text: #1C2838;
+  --focus: #2A4A8A;
+  --ui: "Instrument Sans", system-ui, sans-serif;
+  --serif: "Newsreader", Georgia, serif;
+  --mono: "Fragment Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1A212A; --panel: #212A35; --text: #E5E7E1; --muted: #A2AAB5; --rule: #323D49;
+    --ink: #A8BDF0; --mark: #E9CF62; --mark-text: #1A212A; --focus: #A8BDF0;
+  }
+}
+
+.word { font-family: var(--serif); font-size: 22px; font-weight: 600; letter-spacing: -.01em; }
+.glyph { color: var(--ink); }
+
+.provenance { margin: 18px 0 10px; font-size: 14px; color: var(--muted); }
+h1 { font-family: var(--serif); font-weight: 500; font-size: 36px; line-height: 1.15;
+     letter-spacing: -.015em; margin: 0 0 22px; font-variation-settings: "opsz" 60; }
+.answer { font-family: var(--serif); font-size: 19px; line-height: 1.62; }
+.answer p { margin: 0 0 .9em; }
+.answer strong { font-weight: 600; }
+.answer code { font-family: var(--mono); font-size: .8em; padding: 0 .15em; }
+
+/* Footnote-style references: small blue figures in brackets, raised slightly. */
+.cite { font-family: var(--ui); font-size: 12.5px; font-weight: 600; color: var(--ink);
+        vertical-align: .45em; padding: 0 .12em; margin-left: .08em; border-radius: 2px; }
+.cite::before { content: "["; } .cite::after { content: "]"; }
+.cite.is-active { background: var(--mark); color: var(--mark-text); }
+
+.composer { border-top: 1px solid var(--rule); }
+.composer textarea, .composer select { background: transparent; color: var(--text);
+  border: 1px solid var(--rule); border-radius: 6px; }
+.composer select { padding: 6px 10px; }
+.composer button { font: inherit; font-weight: 600; font-size: 15px; padding: 0 22px;
+  border: 0; border-radius: 6px; background: var(--text); color: var(--bg); cursor: pointer; }
+
+.evidence { background: var(--panel); border-left: 1px solid var(--rule); }
+.ev-title { display: flex; align-items: baseline; gap: 10px; font-size: 15px; font-weight: 600; }
+.ev-n { font-family: var(--serif); font-size: 26px; font-weight: 500; color: var(--ink); }
+.ev-meta { font-size: 13.5px; color: var(--muted); margin-top: 2px; }
+.gh { display: inline-block; margin-top: 8px; font-size: 14px; color: var(--ink); }
+.line.hit { background: var(--mark); color: var(--mark-text); }
+.line.hit .no { color: var(--mark-text); }
+.line.hit .no { font-weight: 600; }
+.ev-list { border-top: 1px solid var(--rule); }
+.ev-list .li-n { width: 1.6em; color: var(--ink); font-weight: 600; }
+.ev-list a[aria-current] { font-weight: 600; }
+.ev-list a[aria-current] .li-n { background: var(--mark); color: var(--mark-text); text-align: center; border-radius: 2px; }
