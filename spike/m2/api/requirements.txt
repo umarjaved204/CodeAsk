@@ -1,0 +1,4 @@
+# M2-0 spike only: the API runtime deps plus a web server. The real API pins its own in M2a.
+-r ../../../requirements-api.txt
+fastapi==0.162.0
+uvicorn==0.54.0

@@ -351,15 +351,25 @@ Pre-M2 fixes (done before the spike):
 ### [ ] M2-0 Spike: hosting facts before design
 Render (free web service), running a throwaway `spike/m2/` FastAPI app on the API
 requirements:
-- card-free signup? Current free-tier terms (the 2026 plan change, bandwidth)
+- card-free signup? Current free-tier terms. Reported (third-party, 2026-11-02): 512 MB RAM,
+  0.1 vCPU, spins down after 15 min idle, wake ~1 min, 750 instance-hours/month per workspace
+  (all free services suspended when used up), ephemeral disk. **Bandwidth is unclear:** one
+  source says 5 GB/month, then $0.15/GB (Apr 2026). Confirm on render.com/docs/free and
+  render.com/pricing, and check whether going over can bill without a card
 - Ohio region; pinned Python version
 - **cold start after 15+ min idle** (time to the first byte, measured from the browser)
-- **memory** with the API requirements loaded (RSS after a real search)
+- **memory** with the API requirements loaded (RSS after a real search), against 512 MB
 - a **60 s request** from the browser: does Render's proxy keep it open?
-- **CORS** from the Vercel origin
+- **CORS** locked to the Vercel origin (a request from another origin is refused)
 - **Neon connect and query time from Render** (same region)
+- **logs never show secrets** (deploy log, startup, an error path)
 
 Vercel (Hobby): a Next.js hello page that calls the Render API **from the browser**.
+
+Second candidate: **Northflank** free Sandbox (reported: always on, no sleep). Its pricing page
+says "No card needed"; its billing docs reportedly require a payment method before creating
+resources. Verify with a real signup and record whether a card was asked for. **Koyeb** only if
+Render and Northflank both fail (its free-tier reports conflict on card and free compute).
 
 **Done when:** every item above has a measured or confirmed value recorded in "M2-0 results"
 below, and anything that contradicts the plan is flagged.
@@ -461,9 +471,20 @@ API exposes no ingestion route.
   ingestion stays a local CLI job.
 - **Consider a separate Neon branch or database for the public demo,** so local experiments
   can't break it.
+- **The browser calls the backend directly,** with CORS locked to my origin. Long queue waits
+  don't go through Vercel functions (their timeouts and invocation limits).
+- **No keep-alive pings** (Render treats them as abuse). Handle cold starts in the UI.
 
 ### M2-0 results
 _Fill in during the spike._
+
+**Local run (2026-11-02, home network → Neon Ohio, not representative of Render):**
+`/search` returned `Signer > derive_key` first; Neon connect ~1.6 s warm, 7.7 s on the first
+call (Neon's compute was probably suspended). CORS from `http://localhost:3000` worked.
+**Finding:** an unhandled exception (`/boom`) reaches the browser as "Failed to fetch", not as
+a 500. Starlette builds that 500 outside the CORS middleware, so it has no CORS header. M2a must
+return errors as JSON from exception handlers inside the CORS layer, so the UI can tell
+"server error" from "server asleep / unreachable".
 
 | Item | Result |
 |---|---|
@@ -474,10 +495,14 @@ _Fill in during the spike._
 | Render: warm request time | |
 | Render: memory (RSS) at start / after a real search | |
 | Render: 60 s request from the browser | |
-| Render → Neon: connect / query time | |
-| CORS from the Vercel origin | |
+| Render → Neon: connect / query time (warm Neon) | |
+| Render → Neon: first connect with Neon suspended (both wake on one request?) | |
+| Render: bandwidth allowance / what happens when over | |
+| CORS locked to the Vercel origin (other origin refused?) | |
+| Render: logs free of secrets | |
 | Vercel: signup without a card? Hobby terms | |
 | Vercel page → Render from the browser | |
+| Northflank: card asked at signup? sleeps? free limits | |
 
 ## [ ] M3 Eval harness
 Question set with expected files; hit rate and MRR baseline.
