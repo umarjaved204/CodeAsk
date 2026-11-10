@@ -14,7 +14,7 @@ const BASE =
 function VerifiedChip({ citation, open, onOpen }: {
   citation: Citation;
   open: boolean;
-  onOpen: (n: number, opener: HTMLElement) => void;
+  onOpen: (n: number) => void;
 }) {
   const where = `${citation.path}, lines ${citation.start} to ${citation.end}`;
   return (
@@ -22,7 +22,7 @@ function VerifiedChip({ citation, open, onOpen }: {
       type="button"
       aria-label={`Citation ${citation.n}: ${where}`}
       aria-current={open ? "true" : undefined}
-      onClick={(event) => onOpen(citation.n, event.currentTarget)}
+      onClick={() => onOpen(citation.n)}
       className={`${BASE} ${open
         ? "bg-evidence text-on-evidence forced-colors:outline forced-colors:outline-1"
         : "text-citation"}`}
@@ -68,7 +68,7 @@ function UnverifiedChip({ citation }: { citation: Citation }) {
 export function Chip({ citation, open, onOpen }: {
   citation: Citation;
   open: boolean;
-  onOpen: (n: number, opener: HTMLElement) => void;
+  onOpen: (n: number) => void;
 }) {
   return citation.valid
     ? <VerifiedChip citation={citation} open={open} onOpen={onOpen} />

@@ -10,7 +10,7 @@ import { Chip } from "./Chip";
 type Citations = {
   byNumber: Map<number, Citation>;
   openN: number | null;
-  onOpen: (n: number, opener: HTMLElement) => void;
+  onOpen: (n: number) => void;
 };
 
 // Through context, so `components` below can stay constant: a new function identity would
@@ -37,7 +37,7 @@ export function Answer({ markdown, citations, openN, onOpen }: {
   markdown: string;
   citations: Citation[];
   openN: number | null;
-  onOpen: (n: number, opener: HTMLElement) => void;
+  onOpen: (n: number) => void;
 }) {
   const value = useMemo(
     () => ({ byNumber: new Map(citations.map((c) => [c.n, c])), openN, onOpen }),

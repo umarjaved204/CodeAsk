@@ -52,6 +52,10 @@
   html { background-color: var(--page); color: var(--text); }
   body { font-family: var(--font-ui); }
   :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  /* Code is evidence: show it as written, so "->" never becomes a drawn arrow. */
+  code, pre { font-variant-ligatures: none; }
+  /* The page behind the open mobile sheet must not scroll. */
+  html:has(dialog[open]) { overflow: hidden; }
 }
 
 /* The answer is model-written markdown, so its elements can't carry utility classes. */
