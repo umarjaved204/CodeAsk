@@ -1,6 +1,6 @@
 # Runs every offline check: the backend pytest suite, the frontend dangerouslySetInnerHTML
-# check and the frontend lint. slow and db tests stay opt-in (pytest -m slow / pytest -m db);
-# frontend tests join later in slice 3.
+# check, the frontend lint and the frontend tests. slow and db tests stay opt-in
+# (pytest -m slow / pytest -m db).
 # Run from anywhere: powershell -ExecutionPolicy Bypass -File scripts\check.ps1
 $root = Split-Path -Parent $PSScriptRoot
 Push-Location $root
@@ -26,10 +26,13 @@ if ($bad.Count -gt 0 -or $allowed.Count -gt 1) {
     Write-Host "check: dangerouslySetInnerHTML only in the theme script" -ForegroundColor Green
 }
 
-# Frontend lint (Next's rules + react/no-danger), from the exact pinned versions.
+# Frontend lint (Next's rules + react/no-danger) and tests, from the exact pinned versions.
 Push-Location "$root\frontend"
 try {
     npm run lint --silent
+    if ($LASTEXITCODE -ne 0 -and $code -eq 0) { $code = $LASTEXITCODE }
+    # Frontend tests on Playwright's runner (logic tests need no browser).
+    npm test --silent
     if ($LASTEXITCODE -ne 0 -and $code -eq 0) { $code = $LASTEXITCODE }
 } finally {
     Pop-Location

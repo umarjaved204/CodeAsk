@@ -747,7 +747,8 @@ Frontend:
    classification: JSON error → typed; non-JSON or no response → waking/offline); `featured.ts`
    (static repo list + the example); **two small reducers** with discriminated unions:
    connection (`unknown | waking | up | down | offline`) and ask lifecycle
-   (`idle | loading | answered | ungrounded | busy | error`). Long answers, long lines, many
+   (`idle | waiting | loading | answered | ungrounded | busy | error`; `waiting` holds a
+   question submitted while the server wakes, and it is sent once). Long answers, long lines, many
    citations, truncation and input limits are rendering conditions or local form state, not
    machine states.
 5. **Races:** every response carries its repo and a request counter; stale ones are dropped.
