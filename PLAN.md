@@ -720,18 +720,21 @@ Backend first:
    The fixture is **attempt 2**: attempt 1 (the slice 2 timing run, same prompt v3, 7/7 valid)
    was printed and not saved. If the two texts differ materially, that is noted here.
    **Done (2026-11-03):** `frontend/data/examples/pallets__itsdangerous.json` (generated
-   2026-11-02 21:36 UTC, 382 output tokens, 4 blocks, 9.6 KB public payload). **Grade, by me
-   (Umar Javed, 2026-11-03): correct; grounded yes; citations 7/7 strict.** Every claim
+   2026-11-02 21:36 UTC, 382 output tokens, 4 blocks, 9.6 KB public payload). **Grade, by
+   Claude (mentor review chat, 2026-11-03, at my request; corrected 2026-11-11, it was
+   wrongly recorded as mine): correct; grounded yes; citations 7/7 strict. My spot-check is
+   pending** (Q37). Every claim
    checked against the four supplied blocks; the mechanism is explained fully, but the
    practical rotation step (add the new key last, remove old ones later) is missing, so it is
    slightly incomplete. Attempts 1 and 2 differ only in minor ways, not materially (same
    claims; attempt 2 drops the closing paragraph and cites all of `verify_signature`,
    227-242, instead of the loop, 236-240). Temperature 0 did not make the two runs identical:
-   regenerated answers won't match reviewed ones word for word (matters for slice 5). The
-   label may say "checked by the author". Readable copy:
+   regenerated answers won't match reviewed ones word for word (matters for slice 5). Until
+   my spot-check is done, the label says "Checked against the cited code by Claude; not yet
+   reviewed by the author." Readable copy:
    `eval/results/m2_example_itsdangerous_grading.md`.
    **I grade it** (three columns: correct, grounded, citations valid; who and when). The page
-   says "checked by the author" only once the grade is filled in.
+   says "checked by the author" only once `grade.author_checked` is true (my spot-check done).
 
 Frontend:
 3. Housekeeping: `"strict": true`; gitignore `next-env.d.ts`; `react-markdown` pinned exactly
@@ -973,6 +976,8 @@ return errors as JSON from exception handlers inside the CORS layer, so the UI c
 | Q33 | **Tokens approved** (step 3, 2026-11-03): semantic colour tokens in `frontend/app/tokens.css` (`page`, `panel`, `text`, `text-muted`, `rule`, `control-edge`, `citation`, `focus`, `evidence`, `on-evidence`, `evidence-bar`, `unverified`, `error`, `action`, `on-action`, `elevation-sheet`), light and dark; the fixed scale in the `@theme` block of `frontend/app/globals.css` (type 12/14/16/18/21/24/36, a 66ch measure, radii 2/6/12 by role). Tailwind **4.3.3** (`tailwindcss` and `@tailwindcss/postcss` pinned exactly; `postcss` 8.5.32); Tailwind colours read the token variables, so no `dark:` classes. Theme set before first paint by a `<head>` script (try/catch around `localStorage`, sets `color-scheme`; `suppressHydrationWarning` on `<html>`). **With the gutter bar:** cited lines get a left border in `evidence-bar` (a border survives forced-colors mode; a background doesn't). **Contrast** (`node design/check-contrast.mjs`, every pair passes in both themes): text pairs ≥ 4.5:1 (lowest: `text-muted` on `panel`, 5.22 in light); UI parts ≥ 3:1 (lowest: the dark `evidence-bar` 3.06 against both the panel and the highlighter, so re-run the check after any change to the dark `panel` or `evidence`); for information, the light highlighter vs the panel is 1.12:1, which is why the bar, bold line numbers and the header text also mark the cited range | WCAG AA without exceptions; semantic names let the design change without touching components | Raw colour names; a background-only highlight |
 | Q34 | **Slice 3 build plan** (2026-11-03, mentor amendments; full plan under slice 3): `blocks` as a separate list with a `block` index on each citation and a payload cap; a fixture from the first live run, graded by me; two small reducers (connection, ask lifecycle) instead of one machine for 19 states; stale responses dropped by repo + request counter, Ask held until an old request settles; `urlTransform` allowing only `cite:<digits>`; native `<dialog>` for the mobile sheet; the whole block shown, scrolled to the cited range (cap ~300 lines); logic tests on Playwright's runner | Smallest design that covers every state honestly; one in-flight question per IP (slice 4); no new UI dependencies | One reducer for all states; a hand-built focus trap; truncating blocks over 60 lines; `AbortController` on repo switch |
 | Q35 | **TypeScript 6.0.3, not 7** (slice 3 build step 3, 2026-11-03). Lint failed on TypeScript 7.0.2 with "typescript-eslint does not support TS 7.0" (`eslint-config-next` 16.4.4 pulls in `typescript-eslint` 8.72.1, which supports TypeScript ≥ 4.8.4 < 6.1; support for ≥ 7.1 is tracked upstream). Exact pins now: `next` 16.4.4, `typescript` 6.0.3, `tailwindcss` / `@tailwindcss/postcss` 4.3.3, `eslint` 9.39.5, `eslint-config-next` 16.4.4, `react-markdown` 10.1.0, `@axe-core/playwright` 4.14.0, `@playwright/test` 1.64.1; `save-exact=true` in `frontend/.npmrc`. `next build` passes in strict mode and lint is clean. `npm audit --omit=dev`: **0 vulnerabilities** in what ships; 16 moderate ones are all in dev tooling. npm marks ESLint 9.39.5 as no longer supported: revisit ESLint 10 (and TypeScript 7) in slice 6, once `eslint-config-next`'s plugins and `typescript-eslint` support them. Also: the dev server writes `.next/dev/types`, which `next build` type-checks, so delete `.next` after removing a route | TypeScript 7 arrived by accident in slice 1; its main gain (compile speed) barely matters here, and lint with TypeScript rules is a Done-when item | Running a TypeScript 6 copy side by side for lint only; dropping the TypeScript lint rules |
+| Q36 | **Side by side starts at 1024 px** (slice 3, the built page, 2026-11-11), not the mocks' 760 px: tablets get the bottom sheet. Confirm in the 768 and 1024 screenshots | Safer layout on tablets: at 760-1023 px the reading column and the code panel would both be cramped | 760 px, as in the direction mocks |
+| Q37 | **Example fixture grade provenance** (2026-11-11): the itsdangerous fixture was graded by Claude in the mentor review chat on 2026-11-03 at my request, not by me; PLAN.md and the fixture had wrongly recorded it as mine. The fixture's `grade.by` says Claude and `grade.author_checked` is `false`; the label reads "Checked against the cited code by Claude; not yet reviewed by the author." It switches to "Checked by the author." only after my three spot-checks (the `reversed(self.secret_keys)` loop, the "oldest to newest" comment, `return self.secret_keys[-1]`). **Also: temperature 0 is not reproducible on Groq** (attempts 1 and 2 differ in wording and citation 5's range), so slice 5's reviewed answers must be stored, not regenerated | An honest label is the point of the product; a recruiter-facing page must not claim a human check that didn't happen | Leaving "checked by the author"; dropping the check sentence from the label |
 
 ### M2 model comparison (slice 1, 2026-11-02)
 pallets/itsdangerous, 8 questions (`eval/m2_models.json`, Q8 unanswerable), one Voyage request,

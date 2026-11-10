@@ -63,6 +63,7 @@ export type Grade = {
   citations_valid: string;
   by: string;
   date: string;
+  author_checked: boolean; // false: graded by Claude, the author's spot-check is still pending
   note: string;
 };
 
@@ -75,6 +76,6 @@ export type Example = {
   generated_at: string; // ISO 8601, UTC
   model: string;
   prompt_version: number;
-  grade: Grade | null; // "checked by the author" only when filled in
+  grade: Grade | null; // "checked by the author" only when author_checked is true
   response: AskResponse;
 };

@@ -1,7 +1,9 @@
 # Runs every offline check: the backend pytest suite, the frontend dangerouslySetInnerHTML
 # check, the frontend lint and the frontend tests. slow and db tests stay opt-in
 # (pytest -m slow / pytest -m db).
-# Run from anywhere: powershell -ExecutionPolicy Bypass -File scripts\check.ps1
+# The browser tests (a production build against a mocked API) run too, unless -Quick is given.
+# Run from anywhere: powershell -ExecutionPolicy Bypass -File scripts\check.ps1 [-Quick]
+param([switch]$Quick)
 $root = Split-Path -Parent $PSScriptRoot
 Push-Location $root
 try {
@@ -14,7 +16,7 @@ try {
 # dangerouslySetInnerHTML is allowed once: the static theme script in app/layout.tsx
 # (PLAN.md slice 3, build step 3). Anywhere else it could render model text as HTML.
 $sources = Get-ChildItem "$root\frontend" -Recurse -File -Include *.ts, *.tsx, *.js, *.jsx, *.mjs |
-    Where-Object { $_.FullName -notmatch '\\(node_modules|\.next)\\' }
+    Where-Object { $_.FullName -notmatch '\\(node_modules|\.next|\.next-e2e)\\' }
 $hits = @($sources | Select-String -SimpleMatch "dangerouslySetInnerHTML")
 $allowed = @($hits | Where-Object { $_.Path -eq "$root\frontend\app\layout.tsx" })
 $bad = @($hits | Where-Object { $_.Path -ne "$root\frontend\app\layout.tsx" })
@@ -34,6 +36,12 @@ try {
     # Frontend tests on Playwright's runner (logic tests need no browser).
     npm test --silent
     if ($LASTEXITCODE -ne 0 -and $code -eq 0) { $code = $LASTEXITCODE }
+    if ($Quick) {
+        Write-Host "check: browser tests skipped (-Quick)" -ForegroundColor Yellow
+    } else {
+        npm run test:e2e --silent
+        if ($LASTEXITCODE -ne 0 -and $code -eq 0) { $code = $LASTEXITCODE }
+    }
 } finally {
     Pop-Location
 }

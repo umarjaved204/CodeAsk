@@ -16,11 +16,13 @@ const example = {
   commit_sha: "672971d66a2ef9f85151e53283113f33d642dabd", grade: null,
 } as Example;
 
-test("the pre-generated label is a sentence, in UTC, and only claims a check once graded", () => {
-  expect(provenance(example))
-    .toBe("Example answer, generated 2 Nov 2026 with qwen3.8-27b on commit 672971d.");
-  expect(provenance({ ...example, grade: {} as Example["grade"] }))
-    .toMatch(/ Checked by the author\.$/);
+test("the pre-generated label is a sentence, in UTC, and names who checked it", () => {
+  const base = "Example answer, generated 2 Nov 2026 with qwen3.8-27b on commit 672971d.";
+  const grade = (author_checked: boolean) => ({ author_checked }) as Example["grade"];
+  expect(provenance(example)).toBe(base);
+  expect(provenance({ ...example, grade: grade(false) })).toBe(
+    `${base} Checked against the cited code by Claude; not yet reviewed by the author.`);
+  expect(provenance({ ...example, grade: grade(true) })).toBe(`${base} Checked by the author.`);
 });
 
 test("waking changes its wording after 35 seconds", () => {

@@ -10,5 +10,5 @@ export default defineConfig([
   ...nextVitals,
   ...nextTs,
   { rules: { "react/no-danger": "error" } },
-  globalIgnores([".next/**", "out/**", "next-env.d.ts", "design-review/**"]),
+  globalIgnores([".next/**", ".next-e2e/**", "out/**", "next-env.d.ts", "design-review/**"]),
 ]);

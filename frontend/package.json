@@ -6,7 +6,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "playwright test"
+    "test": "playwright test",
+    "test:e2e": "playwright test -c playwright.e2e.config.ts"
   },
   "dependencies": {
     "next": "16.4.4",

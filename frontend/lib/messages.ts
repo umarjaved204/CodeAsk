@@ -13,7 +13,9 @@ export function provenance(example: Example): string {
   const date = new Date(example.generated_at); // UTC, so server and browser render the same text
   const day = `${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
   const model = example.model.split("/").pop();
-  const checked = example.grade ? " Checked by the author." : "";
+  const checked = !example.grade ? ""
+    : example.grade.author_checked ? " Checked by the author."
+    : " Checked against the cited code by Claude; not yet reviewed by the author.";
   return `Example answer, generated ${day} with ${model} on commit ` +
     `${example.commit_sha.slice(0, 7)}.${checked}`;
 }

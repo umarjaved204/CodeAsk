@@ -30,14 +30,15 @@
  },
  "retries_429": 0,
  "attempt": 2,
- "attempt_note": "Attempt 1 (2026-11-03, the slice 2 timing run, same prompt v3) was printed, not saved: 7/7 citations valid.",
+ "attempt_note": "Attempt 1 (slice 2 timing run, same prompt v3; run before 2026-11-02 20:17 UTC / 3 Nov 01:17 PKT, the commit time; exact time not recorded) was printed, not saved: 7/7 citations valid.",
  "grade": {
   "correct": "correct",
   "grounded": "yes",
   "citations_valid": "7/7 strict",
-  "by": "Umar Javed",
+  "by": "Claude, in the mentor review chat, at the author's request",
   "date": "2026-11-03",
-  "note": "Every claim checked against the four supplied blocks (spot-checked the verify_signature loop, the \"oldest to newest\" comment and the secret_key property). The answer explains the mechanism fully but omits the practical rotation step (add the new key last, remove old ones later), so it is slightly incomplete. Attempts 1 and 2 differ only in minor ways, not materially (same claims; the closing paragraph is dropped and citation 5 is broader)."
+  "author_checked": false,
+  "note": "Graded by Claude, not by the author. Author spot-check pending: the reversed(self.secret_keys) loop, the \"oldest to newest\" comment and return self.secret_keys[-1]. Every claim checked against the four supplied blocks. The answer explains the mechanism fully but omits the practical rotation step (add the new key last, remove old ones later), so it is slightly incomplete. Attempts 1 and 2 differ only in minor ways, not materially (same claims; the closing paragraph is dropped and citation 5 is broader)."
  },
  "response": {
   "grounded": true,
