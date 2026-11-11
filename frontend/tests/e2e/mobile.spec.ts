@@ -42,6 +42,29 @@ test("a tapped chip opens the sheet on its lines; Esc closes it and focus return
   await expect(sheet(page)).toBeVisible();
 });
 
+// The highlighter means "this footnote is open"; on a phone nothing is open until the sheet is.
+// CSS selectors, because the page behind an open modal is inert and drops out of role queries.
+test("a chip is highlighted and aria-current only while its sheet is open (round 1, C2)", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByText(/^Example answer/)).toBeVisible();
+  const answerChip = (n: number) => page.locator(`.answer button[aria-label^="Citation ${n}:"]`);
+  const background = (n: number) => answerChip(n).evaluate((el) => getComputedStyle(el).backgroundColor);
+  const current = page.locator(".answer button[aria-current]");
+
+  await expect(current).toHaveCount(0); // the first valid citation is NOT shown as open
+  expect(await background(1)).toBe("rgba(0, 0, 0, 0)");
+
+  await chip2(page).tap();
+  await expect(sheet(page)).toBeVisible();
+  await expect(answerChip(2)).toHaveAttribute("aria-current", "true");
+  expect(await background(2)).not.toBe("rgba(0, 0, 0, 0)");
+
+  await page.keyboard.press("Escape");
+  await expect(sheet(page)).toBeHidden();
+  await expect(current).toHaveCount(0);
+  expect(await background(2)).toBe("rgba(0, 0, 0, 0)");
+});
+
 test("Close closes the sheet and focus returns to the chip", async ({ page }) => {
   await page.goto("/");
   await chip2(page).tap();

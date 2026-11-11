@@ -2,7 +2,7 @@
 // at 320 CSS px (WCAG 1.4.10: no horizontal page scroll, the ask box still usable).
 import type { Page } from "@playwright/test";
 
-import { expect, test } from "./mocks";
+import { LONG_LINE_END, LONG_LINES, expect, test } from "./mocks";
 
 const panel = (page: Page) => page.getByRole("complementary", { name: "Cited code" });
 const sheet = (page: Page) => page.getByRole("dialog", { name: "Cited code" });
@@ -25,6 +25,46 @@ test("1024 px: the side panel; a chip updates it and no sheet opens", async ({ p
   await expect(panel(page)).toContainText("Cited lines 138–142");
   await expect(sheet(page)).toBeHidden();
 });
+
+// Round 1, F1: a ~300-character code line widened the panel's grid column, crushing the answer
+// at 1024 and making the page scroll sideways at 1440. The e2e suite missed it because no test
+// used a long line at these widths.
+for (const [width, minReading] of [[1024, 440], [1440, 600]] as const) {
+  test(`a long code line scrolls inside the panel at ${width} and never widens the layout`, async ({ page, api }) => {
+    await page.setViewportSize({ width, height: 900 });
+    api.on("POST /ask", () => ({ json: LONG_LINES }));
+    await page.goto("/");
+    await expect.poll(() => api.count("GET /repos")).toBeGreaterThan(0);
+    await page.getByRole("textbox", { name: "Question" }).fill("How is rotation configured?");
+    await page.getByRole("textbox", { name: "Question" }).press("Enter");
+    await expect(page.getByText("Answer ready.")).toBeAttached();
+
+    const m = await page.evaluate(() => {
+      const box = (el: Element | null) => el?.getBoundingClientRect() ?? new DOMRect();
+      const region = document.querySelector<HTMLElement>("aside [role='region']");
+      return {
+        pageWidth: document.documentElement.scrollWidth, viewport: window.innerWidth,
+        reading: box(document.querySelector("section[aria-labelledby='question']")).width,
+        panel: box(document.querySelector("aside")),
+        answer: box(document.querySelector(".answer")),
+        scroll: region ? { width: region.scrollWidth, client: region.clientWidth } : null,
+      };
+    });
+    expect(m.pageWidth).toBeLessThanOrEqual(m.viewport); // 1. no sideways page scroll
+    expect(m.reading).toBeGreaterThanOrEqual(minReading); // 2. the reading column keeps its room
+    expect(m.reading / (m.reading + m.panel.width)).toBeCloseTo(0.53, 1); // ...and the 53/47 split
+    expect(m.answer.right).toBeLessThanOrEqual(m.panel.left); // 3. answer and panel don't overlap
+    expect(m.scroll && m.scroll.width > m.scroll.client).toBe(true); // 4. the panel scrolls...
+
+    // ...and scrolling it brings the end of the long line into view: nothing is cut off.
+    const region = page.getByRole("complementary", { name: "Cited code" }).getByRole("region");
+    await region.evaluate((el) => { el.scrollLeft = el.scrollWidth; });
+    const line = region.locator("span.whitespace-pre", { hasText: LONG_LINE_END });
+    const [lineBox, regionBox] = await Promise.all([line.boundingBox(), region.boundingBox()]);
+    expect(lineBox && regionBox).toBeTruthy();
+    expect(lineBox!.x + lineBox!.width).toBeLessThanOrEqual(regionBox!.x + regionBox!.width + 1);
+  });
+}
 
 test.describe("reflow at 320x568", () => {
   test.use({ viewport: { width: 320, height: 568 }, isMobile: true, hasTouch: true });

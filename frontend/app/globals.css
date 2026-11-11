@@ -41,7 +41,10 @@
   --text-title: 36px;        /* the question on desktop */
   --text-title--line-height: 1.15;
   --text-title--letter-spacing: -0.015em;
-  --container-measure: 66ch; /* the reading column: under 80 characters per line */
+  /* The reading column, for ~62-68 serif characters per line (round 1, F2). Not 66ch: `ch`
+     resolves in the wrapper's interface font, which gave ~85 serif characters. rem doesn't
+     depend on the wrapper's font; the value is measured by the screens' notes, not computed. */
+  --container-measure: 30.5rem;
   /* Radii by role, not one radius everywhere */
   --radius-cite: 2px;
   --radius-control: 6px;

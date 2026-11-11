@@ -114,6 +114,32 @@ export const LONG_BLOCK = {
              content: Array.from({ length: 400 }, (_, i) => `line ${i + 1}`).join("\n") }],
 };
 
+/** Code lines wider than the panel, one of them ~300 characters (screens state 13, and the
+ *  round 1 F1 regression: a long line must scroll inside the panel, never widen the layout). */
+export const LONG_LINE_END = "until their old key is removed";
+export const LONG_LINES = {
+  ...R,
+  answer: "Rotation is configured in one call, with the old and the new key side by side [1](cite:1).",
+  citations: [{ n: 1, path: "examples/rotation_config.py", start: 3, end: 6, valid: true, block: 0,
+                url: `${PERMALINK}/examples/rotation_config.py#L3-L6` }],
+  blocks: [{
+    path: "examples/rotation_config.py", start: 1, end: 8,
+    content: [
+      "def make_signer(app):",
+      "    \"\"\"Sign with the newest key; verify with every key still listed.\"\"\"",
+      "    return Signer(",
+      "        secret_key=[\"2025-key-kept-for-tokens-issued-before-the-rotation\", \"2026-current-key\"], salt=\"itsdangerous.Signer\", key_derivation=\"django-concat\", digest_method=hashlib.sha256,",
+      "    # rotation: append new keys at the end, keep old keys until every token they signed " +
+      "has expired, then remove them from the start of the list; signing always uses the last " +
+      "key, verification tries every key from newest to oldest, so tokens issued before the " +
+      `rotation keep working ${LONG_LINE_END}`,
+      "    )",
+      "",
+      "# The list order is the contract: oldest first, newest last.",
+    ].join("\n"),
+  }],
+};
+
 export class MockApi {
   private readonly handlers = defaults();
   private readonly counts = new Map<string, number>();

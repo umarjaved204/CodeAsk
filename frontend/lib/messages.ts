@@ -1,7 +1,7 @@
 // What the page says about its own state (PLAN.md slice 3, state inventory). Pure, so the logic
 // tests can pin the wording and the timing rules.
 import type { Failure } from "./api";
-import type { Connection } from "./state";
+import type { Ask, Connection } from "./state";
 import type { Example, Grade, Queue } from "./types";
 
 export const WAKING_SLOW_MS = 35_000;
@@ -97,6 +97,21 @@ export function errorMessage(failure: Failure, repo: string, online: boolean): s
         ? `The server couldn't answer (request ${failure.requestId}). Try again.`
         : "The server couldn't answer. Try again.";
   }
+}
+
+/** Red and assertive only when something on our side failed: the server erred, or can't be
+ *  reached while the visitor is online. Limits, a removed repo and the visitor's own offline
+ *  network are calm (round 1, F5; offline: my decision). */
+export function isAlarm(failure: Failure, online: boolean): boolean {
+  if (failure.kind === "unreachable") return online;
+  return !["daily_cap", "model_unavailable", "not_found"].includes(failure.code);
+}
+
+/** The composer's connection line. One owner per message (round 1, F4): when the question
+ *  itself failed for lack of a connection, its own status says so, and this line is quiet. */
+export function connectionNote(connection: Connection, ask: Ask, now: number): string | null {
+  if (ask.kind === "error" && ask.failure.kind === "unreachable") return null;
+  return connectionMessage(connection, now);
 }
 
 /** Trying again can't help until the limit resets, the model returns or the repo list changes. */

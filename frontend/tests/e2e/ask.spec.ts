@@ -92,6 +92,13 @@ test("an unverified chip toggles its inline note and leaves the panel alone", as
     "Unverified: the answer cites src/itsdangerous/signer.py, lines 67 to 73, which are outside " +
     "the code the model was given.");
   await expect(panel(page)).toContainText("Cited lines 138–142");
+  // Round 1, F7: the note follows the paragraph that holds the chip; the sentence stays whole.
+  const around = await page.getByRole("note").evaluate((note) => ({
+    before: note.previousElementSibling?.textContent ?? "",
+    holdsChip: !!note.previousElementSibling?.querySelector('[aria-label="Citation 1, unverified"]'),
+  }));
+  expect(around.holdsChip).toBe(true);
+  expect(around.before).toContain("[1?]. The documentation explicitly states");
   await chip.click();
   await expect(chip).toHaveAttribute("aria-expanded", "false");
   await expect(page.getByRole("note")).toHaveCount(0);

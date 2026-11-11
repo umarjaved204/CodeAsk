@@ -1,13 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback, useEffect, useReducer, useRef, useState, useSyncExternalStore, type ReactNode,
+} from "react";
 
 import { getRepos, getStatus, pollQueue, postAsk } from "../lib/api";
 import { DEFAULT_REPO, EXAMPLES, FEATURED } from "../lib/featured";
 import { safeGithubUrl } from "../lib/markdown";
 import {
-  BUSY_MESSAGE, BUSY_OVER_MESSAGE, SETTLING_MESSAGE, WAITING_MESSAGE, canRetry, connectionMessage,
-  errorMessage, isQueued, loadingMessage, provenance, queuedAnnouncement, queuedMessage,
+  BUSY_MESSAGE, BUSY_OVER_MESSAGE, SETTLING_MESSAGE, WAITING_MESSAGE, canRetry, connectionNote,
+  errorMessage, isAlarm, isQueued, loadingMessage, provenance, queuedAnnouncement, queuedMessage,
 } from "../lib/messages";
 import { IDLE, askReducer, canSubmit, connectionReducer, type Ask } from "../lib/state";
 import type { AskResponse, Repo } from "../lib/types";
@@ -21,6 +23,14 @@ const POLL_MS = 2_500;
 const QUEUE_FIRST_POLL_MS = 1_000; // state 5 (Q40): first look ~1 s after asking
 const QUEUE_POLL_MS = 3_000; // then every 3 s while the question waits
 const DESKTOP = "(min-width: 64rem)"; // Tailwind's lg: side by side from here
+
+// Whether the side panel is on screen; the server can't know, so it renders the phone case.
+function subscribeToWidth(onChange: () => void) {
+  const query = window.matchMedia(DESKTOP);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+const sidePanelShown = () => window.matchMedia(DESKTOP).matches;
 
 function RetryButton({ onClick, disabled = false, children }: {
   onClick: () => void;
@@ -81,6 +91,7 @@ function AskStatus({ ask, now, online, onRetry, onShowExample }: {
   let message: ReactNode = null;
   let action: ReactNode = null;
   let visible: ReactNode = null; // text shown outside the live region (state 5)
+  let alarm: ReactNode = null; // a real failure: red, in the assertive region
   const pulse = (
     <span aria-hidden="true" className="size-2 rounded-full bg-citation motion-safe:animate-pulse" />
   );
@@ -122,19 +133,25 @@ function AskStatus({ ask, now, online, onRetry, onShowExample }: {
       );
       break;
     }
-    case "error":
-      message = <span className="text-error">{errorMessage(ask.failure, ask.repo, online)}</span>;
+    case "error": {
+      // Red and assertive only when something on our side failed (round 1, F5); limits,
+      // offline and a removed repo are calm, so they stay in the polite status region.
+      const text = errorMessage(ask.failure, ask.repo, online);
+      if (isAlarm(ask.failure, online)) alarm = <span className="text-error">{text}</span>;
+      else message = <span>{text}</span>;
       if (canRetry(ask.failure)) {
         action = <RetryButton onClick={onRetry}>Try again</RetryButton>;
       } else if (EXAMPLES[ask.repo]) {
         action = <RetryButton onClick={onShowExample}>Show the example answer</RetryButton>;
       }
       break;
+    }
   }
   return (
     <>
       {visible}
       <div role="status" className="text-ui">{message}</div>
+      <div role="alert" className="text-ui">{alarm}</div>
       {action}
     </>
   );
@@ -292,12 +309,15 @@ export function App() {
   const response = ask.kind === "answered" ? ask.response : example?.response ?? null;
   const openN = chosenN ?? response?.citations.find((c) => c.valid)?.n ?? null;
   const online = typeof navigator === "undefined" || navigator.onLine;
+  const panelShown = useSyncExternalStore(subscribeToWidth, sidePanelShown, () => false);
   const panel = <EvidencePanel response={response} openN={openN} onOpen={openCitation} />;
 
-  const connectionNote = connectionMessage(connection, now);
-  const composerStatus = connectionNote ? (
-    <p className={connection.kind === "waking" ? "text-text-muted" : "text-error"}>
-      {connectionNote}{" "}
+  // One owner per message (round 1, F4): connectionNote() decides, from the state, whether the
+  // composer's connection line speaks. Only "down" is red; waking and offline are calm (F5).
+  const connectionLine = connectionNote(connection, ask, now);
+  const composerStatus = connectionLine ? (
+    <p className={connection.kind === "down" ? "text-error" : "text-text-muted"}>
+      {connectionLine}{" "}
       {connection.kind === "down" && (
         <button type="button" className="cursor-pointer underline"
                 onClick={() => dispatchConnection({ type: "retry", at: Date.now() })}>
@@ -321,7 +341,10 @@ export function App() {
         Skip to the question box
       </a>
       <Header />
-      <main className="grid flex-1 lg:min-h-0 lg:grid-cols-[53fr_47fr]">
+      {/* minmax(0, fr): a column may shrink below its content, so a long code line scrolls
+          inside the panel instead of widening it (round 1, F1: at 1024 the panel crushed the
+          answer; at 1440 a 300-character line made the page scroll sideways). */}
+      <main className="grid flex-1 lg:min-h-0 lg:grid-cols-[minmax(0,53fr)_minmax(0,47fr)]">
         <section aria-labelledby="question"
                  className="flex min-w-0 flex-col px-5 lg:min-h-0 lg:overflow-y-auto lg:px-14">
           <div className="max-w-measure pt-2 pb-8">
@@ -336,7 +359,7 @@ export function App() {
               {response?.answer && (
                 <>
                   <Answer markdown={response.answer} citations={response.citations} openN={openN}
-                          onOpen={openCitation} />
+                          onOpen={openCitation} sheetOpen={sheetOpen} panelShown={panelShown} />
                   <p className="text-meta text-text-muted lg:hidden">Tap a citation to see the code.</p>
                 </>
               )}
@@ -351,7 +374,7 @@ export function App() {
                     status={composerStatus} />
         </section>
         <aside aria-label="Cited code"
-               className="hidden min-h-0 flex-col border-l border-rule bg-panel lg:flex">
+               className="hidden min-h-0 min-w-0 flex-col border-l border-rule bg-panel lg:flex">
           {panel}
         </aside>
       </main>
