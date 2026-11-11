@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 
-import { getRepos, getStatus, postAsk } from "../lib/api";
+import { getRepos, getStatus, pollQueue, postAsk } from "../lib/api";
 import { DEFAULT_REPO, EXAMPLES, FEATURED } from "../lib/featured";
 import { safeGithubUrl } from "../lib/markdown";
 import {
   BUSY_MESSAGE, BUSY_OVER_MESSAGE, SETTLING_MESSAGE, WAITING_MESSAGE, canRetry, connectionMessage,
-  errorMessage, loadingMessage, provenance,
+  errorMessage, isQueued, loadingMessage, provenance, queuedAnnouncement, queuedMessage,
 } from "../lib/messages";
 import { IDLE, askReducer, canSubmit, connectionReducer, type Ask } from "../lib/state";
 import type { AskResponse, Repo } from "../lib/types";
@@ -18,6 +18,8 @@ import { Header } from "./Header";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 const POLL_MS = 2_500;
+const QUEUE_FIRST_POLL_MS = 1_000; // state 5 (Q40): first look ~1 s after asking
+const QUEUE_POLL_MS = 3_000; // then every 3 s while the question waits
 const DESKTOP = "(min-width: 64rem)"; // Tailwind's lg: side by side from here
 
 function RetryButton({ onClick, disabled = false, children }: {
@@ -78,18 +80,31 @@ function AskStatus({ ask, now, online, onRetry, onShowExample }: {
 }) {
   let message: ReactNode = null;
   let action: ReactNode = null;
+  let visible: ReactNode = null; // text shown outside the live region (state 5)
+  const pulse = (
+    <span aria-hidden="true" className="size-2 rounded-full bg-citation motion-safe:animate-pulse" />
+  );
   switch (ask.kind) {
     case "waiting":
       message = <span className="text-text-muted">{WAITING_MESSAGE}</span>;
       break;
     case "loading":
-      message = (
-        <span className="flex items-center gap-2 text-text-muted">
-          <span aria-hidden="true"
-                className="size-2 rounded-full bg-citation motion-safe:animate-pulse" />
-          {loadingMessage(Math.max(0, now - ask.startedAt))}
-        </span>
-      );
+      if (isQueued(ask.queue)) {
+        // The seconds update every poll in a line that is NOT announced; the live region gets
+        // only the place, so a screen reader hears it once per position change (Q40).
+        visible = (
+          <p aria-live="off" className="flex items-center gap-2 text-ui text-text-muted">
+            {pulse}{queuedMessage(ask.queue)}
+          </p>
+        );
+        message = <span className="sr-only">{queuedAnnouncement(ask.queue)}</span>;
+      } else {
+        message = (
+          <span className="flex items-center gap-2 text-text-muted">
+            {pulse}{loadingMessage(Math.max(0, now - ask.startedAt))}
+          </span>
+        );
+      }
       break;
     case "answered":
       message = <span className="sr-only">Answer ready.</span>;
@@ -118,6 +133,7 @@ function AskStatus({ ask, now, online, onRetry, onShowExample }: {
   }
   return (
     <>
+      {visible}
       <div role="status" className="text-ui">{message}</div>
       {action}
     </>
@@ -211,6 +227,32 @@ export function App() {
       loadRepos(setRepos);
     }
   }, []);
+
+  // State 5 (Q40): while a question is loading, ask /status for its place in line. Only while
+  // this visitor's question is pending (never idle: not a keep-alive, Q14); chained timeouts so
+  // replies can't overlap; stops at position 1 or when the question settles, aborting any poll
+  // in flight. A failed poll is ignored: the /ask reply decides the outcome.
+  const loadingId = ask.kind === "loading" ? ask.requestId : null;
+  const atFront = ask.kind === "loading" && ask.queue?.position === 1;
+  useEffect(() => {
+    if (loadingId === null || atFront) return;
+    const requestId = loadingId;
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout>;
+    async function poll() {
+      const result = await pollQueue(fetch, API, controller.signal);
+      if (controller.signal.aborted) return;
+      if (result.ok) {
+        dispatchAsk({ type: "queue_update", requestId, queue: result.queue, at: Date.now() });
+      }
+      timer = setTimeout(poll, QUEUE_POLL_MS);
+    }
+    timer = setTimeout(poll, QUEUE_FIRST_POLL_MS);
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [loadingId, atFront]);
 
   // A question asked while the server woke goes out once, when the server is up.
   useEffect(() => {

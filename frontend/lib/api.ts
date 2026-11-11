@@ -1,7 +1,7 @@
 // Talking to the API. Every outcome is classified, never thrown: the UI must tell "the server
 // answered with an error" from "the server isn't there" (asleep on Render's free tier, down,
 // or the visitor is offline). `fetch` is injected so the logic tests need no network.
-import type { ApiErrorCode, AskResponse, Repo, Status } from "./types";
+import type { ApiErrorCode, AskResponse, Queue, Repo, Status } from "./types";
 
 export type Failure =
   // The API answered with its JSON error shape (Q22).
@@ -66,8 +66,28 @@ async function call<T>(fetchFn: Fetch, url: string, init?: RequestInit): Promise
   return classify<T>(response);
 }
 
-export function getStatus(fetchFn: Fetch, base: string): Promise<Result<Status>> {
-  return call<Status>(fetchFn, `${base}/status`, { cache: "no-store" });
+export function getStatus(fetchFn: Fetch, base: string, signal?: AbortSignal): Promise<Result<Status>> {
+  return call<Status>(fetchFn, `${base}/status`, { cache: "no-store", signal });
+}
+
+/** The one place `queue` from /status is checked (Q40). Never throws: anything unexpected means
+ *  "no queue", except a bad wait, which keeps the position and drops only the seconds. */
+export function readQueue(raw: unknown): Queue | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const { position, wait_s: wait } = raw as Record<string, unknown>;
+  if (typeof position !== "number" || !Number.isInteger(position) || position < 1 || position > 99) {
+    return null;
+  }
+  const waitS = typeof wait === "number" && Number.isFinite(wait) && wait >= 0 ? wait : null;
+  return { position, waitS };
+}
+
+/** Where the caller's question is in line, while it waits: a validated place, null when
+ *  nothing is queued, or a failed poll (which the page ignores; the /ask reply decides). */
+export async function pollQueue(fetchFn: Fetch, base: string, signal?: AbortSignal):
+    Promise<{ ok: true; queue: Queue | null } | { ok: false }> {
+  const result = await getStatus(fetchFn, base, signal);
+  return result.ok ? { ok: true, queue: readQueue(result.data.queue) } : { ok: false };
 }
 
 export function getRepos(fetchFn: Fetch, base: string): Promise<Result<Repo[]>> {

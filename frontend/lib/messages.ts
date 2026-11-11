@@ -2,7 +2,7 @@
 // tests can pin the wording and the timing rules.
 import type { Failure } from "./api";
 import type { Connection } from "./state";
-import type { Example, Grade } from "./types";
+import type { Example, Grade, Queue } from "./types";
 
 export const WAKING_SLOW_MS = 35_000;
 export const LOADING_SLOW_MS = 12_000;
@@ -44,7 +44,38 @@ export function loadingMessage(elapsedMs: number): string {
     : "Still working. This demo is rate-limited, so it can take up to a minute.";
 }
 
-export const WAITING_MESSAGE = "Your question will be sent when the server is ready.";
+// ---------- state 5, queued (Q40, provisional) ----------
+
+/** 1st, 2nd, 3rd, 4th … 11th, 12th, 13th … 21st, 22nd … 112th. */
+export function ordinal(n: number): string {
+  const lastTwo = n % 100;
+  if (lastTwo >= 11 && lastTwo <= 13) return `${n}th`;
+  return `${n}${["th", "st", "nd", "rd"][n % 10] ?? "th"}`;
+}
+
+/** A wait in seconds, rounded up to the next 10 and never 0: 1 -> 10, 40 -> 40, 41 -> 50. */
+export function roundedWait(seconds: number): number {
+  return Math.max(10, Math.ceil(seconds / 10) * 10);
+}
+
+/** The visible line (aria-live off): it updates every poll, so the seconds stay current. */
+export function queuedMessage(queue: Queue): string {
+  const place = `${ordinal(queue.position)} in line`;
+  return queue.waitS === null ? `${place}.` : `${place}, about ${roundedWait(queue.waitS)} seconds.`;
+}
+
+/** The hidden live region's text: only the place, so it changes (and is announced) only when
+ *  the position changes, never for the seconds. */
+export function queuedAnnouncement(queue: Queue): string {
+  return `${ordinal(queue.position)} in line.`; // the visible line without the seconds
+}
+
+/** Queued means someone is ahead: position 1 is being answered and reads as loading. */
+export function isQueued(queue: Queue | null): queue is Queue {
+  return queue !== null && queue.position >= 2;
+}
+
+export const WAITING_MESSAGE ="Your question will be sent when the server is ready.";
 export const SETTLING_MESSAGE = "Finishing the previous question.";
 export const BUSY_MESSAGE =
   "The demo is at capacity. This demo runs on free tiers, so only a few questions fit per minute.";

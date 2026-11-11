@@ -15,6 +15,7 @@
 import { test as base, expect, type Page, type Request } from "@playwright/test";
 
 import { EXAMPLES, FEATURED } from "../../lib/featured";
+import type { QueueWire, Status } from "../../lib/types";
 
 export const PORT = 3100;
 export const APP_ORIGIN = `http://localhost:${PORT}`;
@@ -61,6 +62,13 @@ export function held() {
 export function apiError(status: number, code: string, message: string,
                          headers?: Record<string, string>): Reply {
   return { status, json: { error: code, message, request_id: "a1b2c3d4" }, headers };
+}
+
+/** PROVISIONAL (Q40; slice 4 confirms the shape): a /status reply carrying the caller's place
+ *  in the /ask queue, as app.py status() is expected to send it. */
+export function statusWith(queue: QueueWire | null): Reply {
+  const body: Status = { ok: true, model: EXAMPLE.model, model_available: true, prompt_version: 3, queue };
+  return { json: body };
 }
 
 /** What Render serves while the instance wakes (M2-0): HTML, not our JSON. */
@@ -131,17 +139,22 @@ export class MockApi {
       }
       this.counts.set(key, this.count(key) + 1);
       const reply = await handler(request);
-      if (reply === "abort") return route.abort("connectionrefused");
-      if ("body" in reply) {
-        return route.fulfill({ status: reply.status, contentType: reply.contentType,
-                               body: reply.body });
+      try {
+        if (reply === "abort") return await route.abort("connectionrefused");
+        if ("body" in reply) {
+          return await route.fulfill({ status: reply.status, contentType: reply.contentType,
+                                       body: reply.body });
+        }
+        return await route.fulfill({
+          status: reply.status ?? 200, contentType: "application/json",
+          body: JSON.stringify(reply.json),
+          headers: { ...(reply.expose === false ? {} : { "access-control-expose-headers": EXPOSED_HEADERS }),
+                     ...reply.headers },
+        });
+      } catch {
+        // The page already gave up on this request (e.g. a /status poll aborted when the
+        // question settled, Q40). A held reply released afterwards has nowhere to go.
       }
-      return route.fulfill({
-        status: reply.status ?? 200, contentType: "application/json",
-        body: JSON.stringify(reply.json),
-        headers: { ...(reply.expose === false ? {} : { "access-control-expose-headers": EXPOSED_HEADERS }),
-                   ...reply.headers },
-      });
     });
   }
 }

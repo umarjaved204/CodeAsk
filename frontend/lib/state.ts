@@ -3,7 +3,7 @@
 // tests can drive them. Everything else in the state inventory (the example answer, waking
 // phases, long answers, truncation, input limits) is a rendering condition, not a state.
 import type { Failure } from "./api";
-import type { AskResponse } from "./types";
+import type { AskResponse, Queue } from "./types";
 
 // ---------- connection: is the API there? ----------
 // A free Render instance sleeps after 15 min idle and takes ~30 s to wake (M2-0), so "no
@@ -47,7 +47,10 @@ export type Ask =
   | { kind: "idle"; settling: number | null }
   // Submitted while the server is waking: sent once, automatically, when it is up.
   | ({ kind: "waiting" } & Asked)
-  | ({ kind: "loading"; requestId: number; startedAt: number } & Asked)
+  // `queue` is the question's place in line while it waits (state 5, Q40: data on loading, not
+  // a state of its own). `startedAt` drives the "Still working…" escalation and restarts when
+  // the question reaches the front from further back.
+  | ({ kind: "loading"; requestId: number; startedAt: number; queue: Queue | null } & Asked)
   | ({ kind: "answered"; response: AskResponse } & Asked)
   | ({ kind: "ungrounded"; response: AskResponse } & Asked)
   | ({ kind: "busy"; retryAt: number } & Asked) // 503 busy: manual retry after Retry-After
@@ -59,6 +62,7 @@ export type AskEvent =
   | { type: "send"; requestId: number; at: number } // the waiting question goes out
   | { type: "response"; requestId: number; response: AskResponse }
   | { type: "failure"; requestId: number; failure: Failure; at: number }
+  | { type: "queue_update"; requestId: number; queue: Queue | null; at: number } // a /status poll
   | { type: "switch_repo" };
 
 export const IDLE: Ask = { kind: "idle", settling: null };
@@ -76,13 +80,20 @@ export function askReducer(state: Ask, event: AskEvent): Ask {
       if (!canSubmit(state)) return state; // e.g. Enter while loading does nothing
       const asked = { repo: event.repo, question: event.question };
       return event.serverUp
-        ? { kind: "loading", requestId: event.requestId, startedAt: event.at, ...asked }
+        ? { kind: "loading", requestId: event.requestId, startedAt: event.at, queue: null, ...asked }
         : { kind: "waiting", ...asked };
     }
     case "send":
       if (state.kind !== "waiting") return state;
-      return { kind: "loading", requestId: event.requestId, startedAt: event.at,
+      return { kind: "loading", requestId: event.requestId, startedAt: event.at, queue: null,
                repo: state.repo, question: state.question };
+    case "queue_update": {
+      if (state.kind !== "loading" || state.requestId !== event.requestId) return state; // stale
+      // Restart the escalation clock only when the question reaches the front from further
+      // back: a question that never showed a queue keeps its clock (Q40).
+      const reachedFront = (state.queue?.position ?? 0) >= 2 && event.queue?.position === 1;
+      return { ...state, queue: event.queue, startedAt: reachedFront ? event.at : state.startedAt };
+    }
     case "switch_repo":
       if (state.kind === "loading") return { kind: "idle", settling: state.requestId };
       if (state.kind === "idle") return state;

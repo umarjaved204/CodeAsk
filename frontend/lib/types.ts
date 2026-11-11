@@ -53,7 +53,17 @@ export type Status = {
   model: string;
   model_available: boolean | null; // null = the model check itself failed (Q24)
   prompt_version: number;
+  // PROVISIONAL (Q40; slice 4 confirms): the caller's own place in the /ask queue, found by
+  // their hashed IP. Absent or null when nothing of theirs is waiting. Never read directly:
+  // api.ts readQueue() validates it.
+  queue?: unknown;
 };
+
+/** The wire shape slice 4 is expected to send (Q40); used by the mocks. */
+export type QueueWire = { position: number; wait_s: number };
+
+/** A validated queue place: position 1 = being answered; waitS null = no usable estimate. */
+export type Queue = { position: number; waitS: number | null };
 
 export type Repo = { slug: string; url: string };
 

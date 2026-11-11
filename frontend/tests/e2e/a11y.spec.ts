@@ -22,7 +22,8 @@ import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 
 import {
-  FIRST_UNVERIFIED, NOT_OUR_JSON, UNGROUNDED, apiError, expect, held, test, type MockApi,
+  FIRST_UNVERIFIED, NOT_OUR_JSON, UNGROUNDED, apiError, expect, held, statusWith, test,
+  type MockApi,
 } from "./mocks";
 
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
@@ -61,6 +62,12 @@ const STATES: State[] = [
     api.on("POST /ask", held().handler);
     await askAfterUp(page, api);
     await expect(page.getByText(/^Answering\./)).toBeVisible();
+  } },
+  { name: "queued (state 5, provisional shape)", setup: async (page, api) => {
+    api.on("GET /status", () => statusWith({ position: 2, wait_s: 40 }));
+    api.on("POST /ask", held().handler);
+    await askAfterUp(page, api);
+    await expect(page.getByText("2nd in line, about 40 seconds.")).toBeVisible();
   } },
   { name: "answered, citation 2 highlighted", setup: async (page, api) => {
     await askAfterUp(page, api);
