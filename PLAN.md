@@ -719,6 +719,8 @@ Behaviour added with the inventory:
 | R2-1 (High) | **C6's no-break space failed and regressed:** Chromium may break on either side of a chip (an atomic inline `<button>`), so chips still started lines at 390, and a lone "." sat on its own line after a chip, on the 1440 first screen | **Fixed:** the no-break space is gone; a rehype step in `Answer.tsx` wraps the word before a chip (or an inline `code` before it), the chip, adjacent chips and the punctuation right after into one `whitespace-nowrap` span. `span` is allowed only for this (markdown can't make one; raw HTML isn't parsed). Logic tests; re-judged in round 3 |
 | R2-2 (Med) | 844x390 (landscape phone): the composer took half the height; the first screen showed no answer text | **Fixed:** a `short:` variant (max-height 500px): the composer isn't sticky there and drops its footer note. e2e at 844x390, with a 390x844 control (still sticky) |
 | R2-3 (Low) | Visible Windows scrollbars at 1440: the reading column's bar sits against the panel border; nothing clipped | **Keep** |
+
+**Round 3 (2026-11-11, 106 shots, clean manifest at `6529b72`):** no new findings. Notes: no sideways page, no clipping, no text under 12 px; reading measure unchanged (66-68 desktop/768, 58-59 at 1024, 47-49 phones, 38 at 320). R2-1 confirmed: chips stay with their words and following punctuation at 1440 (`newest" [2].` on one line), 1024, 390 and 320. R2-2 confirmed: at 844x390 the first screen shows the answer, with the composer after it. The three planned rounds are done. **Approved by me after my own look at the round 3 sheets (2026-11-11): step 4 is done.**
 - Axe runs on every state in both themes.
 
 **Done when:**
