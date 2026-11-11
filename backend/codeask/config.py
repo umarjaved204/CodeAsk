@@ -100,3 +100,10 @@ FEATURED_REPOS = ("pallets/itsdangerous", "psf/requests", "expressjs/express")
 # with `python -m codeask.admin`. Groq's free tier gives qwen 200K tokens/day per organization.
 PUBLIC_BUDGET_TOKENS_DEFAULT = 120_000  # ~37 questions; 170K after slice 5, always >= 30K spare
 PER_IP_DAILY_DEFAULT = 5  # prod; the dev database's row is raised so my own checks aren't capped
+# Reserved per question in flight and for the new one at admission (~3,000 measured + margin).
+QUESTION_RESERVE_TOKENS = 3_500
+# Counted when a Groq request was started but no usage came back (timeout, error): Groq may
+# still have spent the tokens. Nothing is counted if Groq was never called.
+UNKNOWN_OUTCOME_TOKENS = 3_300
+# A Groq 429 asking for a longer wait than this is the daily limit, not the per-minute one.
+DAILY_BLOCK_MIN_RETRY_S = 120
