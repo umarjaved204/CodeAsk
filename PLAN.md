@@ -531,7 +531,18 @@ vectors):**
 
   Decision: Q28.
 
-### [ ] Slice 3 (M2b): frontend
+### [x] Slice 3 (M2b): frontend
+**Done (2026-11-11).** Every Done-when item below is met:
+- design: direction A and tokens approved (Q31-Q33);
+- tests: 98 browser tests against the mocked API, 60 logic tests, and axe with no violations;
+- review: three screenshot rounds approved (Q41), and both review passes (step 5);
+- the manual real-backend check passed: CORS JSON error with the request id in the page.
+
+Carried forward:
+- slice 4 confirms the provisional state 5 shape (Q40) and decides the `/ask` fetch timeout;
+- slice 5 brings suggested questions, the example question placeholder and the shareable `?repo=`;
+- slice 6 brings the strict CSP for the theme script, ESLint 10 and TypeScript 7, and the real-phone check.
+
 Install frontend-design + `@playwright/test`. Repo picker (featured), question box (≤ 400
 chars), answer via `react-markdown` without raw HTML or model links/images, citation links +
 code panel (escaped text, line numbers, cited range highlighted, "view on GitHub"),
@@ -767,7 +778,11 @@ Behaviour added with the inventory:
 - the web-design-guidelines review is done and I have decided on its findings;
 - the first screen works with all network requests blocked (static repo list + example);
 - no flash of the wrong theme on load;
-- in a real browser, a forced server error reaches the page as JSON with CORS headers, **and
+- **(done 2026-11-11: with a broken `DATABASE_URL`, `/ask` returned 503 `application/json`;
+  the page showed "The server couldn’t answer (request 97343f19). Try again." in red; headers
+  `Access-Control-Allow-Origin: http://localhost:3000`, `Access-Control-Expose-Headers:
+  X-Request-Id, Retry-After`, `X-Request-Id: 97343f19`, the same id as the page)** in a real
+  browser, a forced server error reaches the page as JSON with CORS headers, **and
   the request id appears in the page** (mocks can't test allow-origin, Q38; the expose list is
   pinned by `test_api.py` and the mocks copy it). `Retry-After` in a real browser is verified in
   slice 4's live busy flow;
