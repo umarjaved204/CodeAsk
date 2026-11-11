@@ -94,3 +94,9 @@ MODEL_CHECK_TTL_S = 600  # re-check that the model still exists at most this oft
 # ---------- API ----------
 # The only repos the public API answers about (Q1, Q12). CodeAsk itself joins once public.
 FEATURED_REPOS = ("pallets/itsdangerous", "psf/requests", "expressjs/express")
+
+# ---------- slice 4: budget and abuse controls (PLAN.md Q42-Q46) ----------
+# Seed values for the usage_settings row only; after setup the database is the truth, changed
+# with `python -m codeask.admin`. Groq's free tier gives qwen 200K tokens/day per organization.
+PUBLIC_BUDGET_TOKENS_DEFAULT = 120_000  # ~37 questions; 170K after slice 5, always >= 30K spare
+PER_IP_DAILY_DEFAULT = 5  # prod; the dev database's row is raised so my own checks aren't capped

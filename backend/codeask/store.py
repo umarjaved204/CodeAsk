@@ -6,6 +6,8 @@ Three tables:
 - embeddings: shared across repos, keyed by (content_hash, space). Identical code in two repos
   shares one vector, switching models needs no re-chunking, and kept orphans make switching
   back to an earlier chunking variant free.
+Plus the API's own `usage_*` tables (slice 4): the budget settings, tokens per hour and outcome
+counts per day. They are the only tables the API's role may write (PLAN.md Q7, Q46).
 
 Every statement names its schema explicitly. DATABASE_URL is Neon's pooled connection
 (PgBouncer, transaction mode), which drops session settings such as search_path after each
@@ -17,6 +19,7 @@ from __future__ import annotations
 import os
 import socket
 from contextlib import contextmanager
+from datetime import date, datetime, timedelta
 from urllib.parse import urlparse
 
 import psycopg
@@ -49,6 +52,14 @@ def store_session(schema: str = "public"):
         yield Store(conn, schema)
     finally:
         conn.close()
+
+
+USAGE_SETTINGS = ("public_budget_tokens", "per_ip_daily", "paused", "blocked_until")
+
+
+def hour_of(moment: datetime) -> datetime:
+    """The start of the hourly bucket a moment falls in."""
+    return moment.replace(minute=0, second=0, microsecond=0)
 
 
 def vector_literal(vector: list[float]) -> str:
@@ -105,6 +116,31 @@ class Store:
                     vector vector({int(self.dim)}) NOT NULL,
                     created_at timestamptz NOT NULL DEFAULT now(),
                     PRIMARY KEY (content_hash, space))"""))
+            # Slice 4 (Q42, Q44, Q46): the API's own tables, the only ones it may write (Q7).
+            # One settings row; tokens per hour (the rolling 24 h budget sums the last 24
+            # buckets; no pruning, ~8,800 rows a year); outcome counts per day. Never question
+            # text or IPs.
+            self.conn.execute(self._q("""
+                CREATE TABLE IF NOT EXISTS {s}.usage_settings (
+                    id boolean PRIMARY KEY DEFAULT true CHECK (id),
+                    public_budget_tokens int NOT NULL,
+                    per_ip_daily int NOT NULL,
+                    paused boolean NOT NULL DEFAULT false,
+                    blocked_until timestamptz)"""))
+            self.conn.execute(self._q(
+                "INSERT INTO {s}.usage_settings (public_budget_tokens, per_ip_daily)"
+                " VALUES (%s, %s) ON CONFLICT (id) DO NOTHING"),
+                (config.PUBLIC_BUDGET_TOKENS_DEFAULT, config.PER_IP_DAILY_DEFAULT))
+            self.conn.execute(self._q("""
+                CREATE TABLE IF NOT EXISTS {s}.usage_hourly (
+                    hour timestamptz PRIMARY KEY,
+                    tokens int NOT NULL)"""))
+            self.conn.execute(self._q("""
+                CREATE TABLE IF NOT EXISTS {s}.usage_daily (
+                    day date NOT NULL,
+                    outcome text NOT NULL,
+                    count int NOT NULL,
+                    PRIMARY KEY (day, outcome))"""))
 
     def drop_schema(self) -> None:
         """Tests only: remove a throwaway schema and everything in it."""
@@ -159,6 +195,50 @@ class Store:
         if row is None:
             return None
         return dict(zip(("id", "slug", "url", "commit_sha", "settings", "ingested_at"), row))
+
+    # ---------- usage (slice 4: Q42, Q44, Q46) ----------
+    def usage(self, now: datetime) -> dict:
+        """The settings row plus the token buckets of the last 24 hours (the current hour and the
+        23 before it), read in one transaction. Raises if the settings row is missing."""
+        since = hour_of(now) - timedelta(hours=23)
+        with self.conn.transaction():
+            row = self.conn.execute(self._q(
+                "SELECT public_budget_tokens, per_ip_daily, paused, blocked_until"
+                " FROM {s}.usage_settings")).fetchone()
+            buckets = self.conn.execute(self._q(
+                "SELECT hour, tokens FROM {s}.usage_hourly WHERE hour >= %s ORDER BY hour"),
+                (since,)).fetchall()
+        if row is None:
+            raise LookupError("usage_settings has no row (run Store.setup)")
+        return {**dict(zip(USAGE_SETTINGS, row)), "buckets": [(h, t) for h, t in buckets]}
+
+    def add_tokens(self, now: datetime, tokens: int) -> None:
+        """Add an answer's real token use to the current hour's bucket."""
+        with self.conn.transaction():
+            self.conn.execute(self._q("""
+                INSERT INTO {s}.usage_hourly (hour, tokens) VALUES (%s, %s)
+                ON CONFLICT (hour) DO UPDATE SET tokens = {s}.usage_hourly.tokens + EXCLUDED.tokens
+            """), (hour_of(now), tokens))
+
+    def count_outcome(self, day: date, outcome: str) -> None:
+        with self.conn.transaction():
+            self.conn.execute(self._q("""
+                INSERT INTO {s}.usage_daily (day, outcome, count) VALUES (%s, %s, 1)
+                ON CONFLICT (day, outcome) DO UPDATE SET count = {s}.usage_daily.count + 1
+            """), (day, outcome))
+
+    def set_usage(self, **changes) -> None:
+        """Update settings fields by name (the admin script, and `blocked_until` from the API)."""
+        unknown = set(changes) - set(USAGE_SETTINGS)
+        if unknown or not changes:
+            raise ValueError(f"unknown or no usage settings: {sorted(unknown)}")
+        assignments = sql.SQL(", ").join(
+            sql.SQL("{} = %s").format(sql.Identifier(name)) for name in changes)
+        with self.conn.transaction():
+            self.conn.execute(
+                sql.SQL("UPDATE {s}.usage_settings SET {a}").format(
+                    s=sql.Identifier(self.schema), a=assignments),
+                list(changes.values()))
 
     def chunk_count(self, slug: str) -> int:
         with self.conn.transaction():

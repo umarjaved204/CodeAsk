@@ -4,6 +4,7 @@ embedder, so they cost no Voyage quota. Run with: pytest -m db
 
 import os
 import uuid
+from datetime import datetime, timedelta, timezone
 
 import psycopg
 import pytest
@@ -188,3 +189,47 @@ def test_file_chunks_lists_only_the_given_files_of_that_repo_in_line_order(store
     assert [r["start_line"] for r in rows] == sorted(r["start_line"] for r in rows)
     assert set(rows[0]) == {"path", "start_line", "end_line", "kind", "name", "breadcrumb",
                             "token_count"}  # metadata only: no content, no vector
+
+
+# ---------- slice 4: the usage tables (PLAN.md Q42, Q44, Q46) ----------
+NOW = datetime(2026, 11, 11, 10, 30, tzinfo=timezone.utc)
+
+
+def test_setup_seeds_one_settings_row_and_is_idempotent(store):
+    assert store.usage(NOW) == {"public_budget_tokens": 120_000, "per_ip_daily": 5,
+                                "paused": False, "blocked_until": None, "buckets": []}
+    store.set_usage(per_ip_daily=100)  # the dev database's raised limit
+    store.setup()  # running setup again keeps the existing row
+    assert store.usage(NOW)["per_ip_daily"] == 100
+
+
+def test_tokens_add_up_per_hour_and_only_the_last_24_hours_count(store):
+    store.add_tokens(NOW - timedelta(hours=24), 999)  # 10:00 yesterday: outside the window
+    store.add_tokens(NOW - timedelta(hours=23), 100)  # 11:00 yesterday: the oldest bucket in it
+    store.add_tokens(NOW, 2_000)
+    store.add_tokens(NOW.replace(minute=59), 500)  # same hour: one bucket
+    buckets = store.usage(NOW)["buckets"]
+    assert [tokens for _, tokens in buckets] == [100, 2_500]
+    assert buckets[-1][0] == datetime(2026, 11, 11, 10, tzinfo=timezone.utc)
+
+
+def test_outcomes_are_counted_per_day(store):
+    for outcome in ("answered", "answered", "per_ip_limit"):
+        store.count_outcome(NOW.date(), outcome)
+    store.count_outcome((NOW + timedelta(days=1)).date(), "answered")
+    rows = store.conn.execute(store._q(
+        "SELECT day, outcome, count FROM {s}.usage_daily ORDER BY day, outcome")).fetchall()
+    assert [(str(d), o, c) for d, o, c in rows] == [
+        ("2026-11-11", "answered", 2), ("2026-11-11", "per_ip_limit", 1),
+        ("2026-11-12", "answered", 1)]
+
+
+def test_set_usage_changes_only_named_settings(store):
+    until = NOW + timedelta(hours=3)
+    store.set_usage(paused=True, blocked_until=until)
+    state = store.usage(NOW)
+    assert state["paused"] is True and state["blocked_until"] == until
+    assert state["public_budget_tokens"] == 120_000
+    for bad in ({"question": "x"}, {}):
+        with pytest.raises(ValueError):
+            store.set_usage(**bad)
