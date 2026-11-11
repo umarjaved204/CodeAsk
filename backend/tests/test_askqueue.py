@@ -275,6 +275,28 @@ def test_voyage_gate_peeks_at_the_limiter(no_busy):
     assert limiter.acquire("query") == 0  # the peek took no slot
 
 
+def test_a_free_voyage_slot_lets_the_head_start_even_if_the_limiters_clock_is_ahead():
+    # Step 9 regression: the limiter read its own clock, a few microseconds after the queue's
+    # now, so "free" always lay just in the future and the head waited until its floor.
+    clock = Clock()
+    limiter = Limiter(per_window=3, window_s=65, clock=lambda: clock.now + 1e-6, sleep=clock.sleep)
+    queue = AskQueue(Pacer(limiter), clock=clock)
+    a = join(queue, clock, "a")
+    assert queue.position("a", clock.now) == (2, 0)
+    assert queue.try_start(a, clock.now)
+
+
+def test_real_clocks_and_a_real_limiter_start_an_empty_line_at_once():
+    queue = AskQueue(Pacer(Limiter()))  # time.monotonic everywhere, read at different moments
+    now = time.monotonic()
+    a = queue.join("a", now + 90, now)
+    assert isinstance(a, Ticket)
+    t0 = time.monotonic()
+    queue.wait_turn(a)
+    assert a.state == RUNNING
+    assert time.monotonic() - t0 < 1
+
+
 def test_the_limiter_never_calls_into_the_queue():
     # Lock order: the queue's lock (the projection included) may take the limiter's, never
     # the reverse.

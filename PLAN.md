@@ -864,7 +864,7 @@ Frontend:
 9. **Screenshots and review:** `design/render-states.mjs` (the same mocks, the matrix above,
    contact sheets built by Playwright), 2–3 review rounds, then the two review-skill passes.
 
-### [ ] Slice 4 (M2c): queue and abuse controls
+### [x] Slice 4 (M2c): queue and abuse controls
 One FIFO over `/ask` paced by Groq headers + own output-token accounting (Q10), position and
 estimated wait in `/status`, busy at ~60 s (or the slice 0 limit), per-IP limits in memory
 with a salted hash (Q6, Q16), length limit, daily cap row in Postgres, daily outcome
@@ -887,6 +887,38 @@ follows from Q42-Q45. It includes the frontend work: the new outcomes, `service`
 the strings in `messages.ts` with exact-text tests, and axe on each new state in both themes. The
 Done-when proof is a deterministic burst test with a fake clock injected into the limiter and the
 budget.
+
+**Done (2026-11-12): built in the Q46 order, steps 1-9.** Done-when, point by point:
+- **A burst beyond capacity gets positions or "busy", never an unexplained error:** the burst
+  test (200 seeds x 4 distributions, fake clock, a fake Groq with the real limits) had 0 Groq
+  rejections, 0 timeouts, FIFO, one question at a time, and a truthful `Retry-After` (Q46 step 5
+  amendments 1-3).
+- **Per-IP and daily-limit refusals are deliberate, friendly, and per-IP is a 429:** in the API
+  tests and the contract file, and live (below). **The kill switch's message:** live (below).
+- **Playwright passes the busy and cap flows:** `limits.spec.ts`, `ask.spec.ts`, axe on 5 new
+  states in both themes; full `check.ps1` green.
+
+**Step 9 live check (real backend, dev database, `npm run dev`; observations):**
+- **A bug the offline suite missed, found and fixed:** the first live question waited in the
+  queue until its floor and returned `timeout` after 66.6 s (0 tokens, refunded).
+  `Limiter.ready_at()` read its own clock, a few microseconds after the pacer's `now`, so a free
+  Voyage slot always looked "just in the future" and the empty line never started (the fake
+  clocks in the tests return the same value, and the real-thread smoke test had no limiter).
+  Fix: the pacer passes its `now` into `ready_at` (pacer and projection). Two regression tests:
+  a limiter clock a hair ahead, and real clocks with a real `Limiter`.
+- **One live question after the fix:** a cited answer; **10,069 ms** end to end (queue, embed,
+  search, Groq), inside the 15 s `S` seed and the 25 s floor (one sample: slice 6 still sets
+  both from the longest measured time); 2,715 tokens counted, Groq's real usage.
+- **Paused** (admin `pause`, ~30 s for the `/status` copy): the composer line with the example
+  sentence; a question refused once under the heading, composer quiet, no retry, "Show the
+  example answer" brought the example and the line back; `resume`.
+- **Per-visitor** (`per-ip 1`): "…Try again in about 24 hours." from the real `Retry-After`
+  through CORS; restored to 50.
+- **Daily limit** (`budget 0`): the long composer line, then the refusal once under the
+  question; restored to 120,000. No limit check cost a token.
+- **Screenshot round s4** (the new states): no new automatic notes. **F1 accepted:** at 320x568
+  the daily-limit line (5 lines) covers the example below its question; it is one scroll away,
+  and the pre-registered rule (<= 40% at 390x844, ask box in view at both sizes) passed.
 
 ### [ ] Slice 5 (M2d): pre-generated answers
 Table + CLI to generate answers for my chosen questions through the live pipeline (Q13), a

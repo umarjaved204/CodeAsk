@@ -124,7 +124,7 @@ class Pacer:
             return None
         # Voyage
         if self.limiter is not None:
-            ready = self.limiter.ready_at("query")
+            ready = self.limiter.ready_at("query", now)  # the same instant as every other gate
             if ready is None:
                 return None
             times.append(ready)
@@ -189,7 +189,7 @@ class AskQueue:
         pacer.limiter = None
         # Voyage bounds only the first start: later projected starts are ~63 s apart (X > 400
         # blocks each next start until it ages out), so they can't fill a 65 s window of 3.
-        voyage = self.pacer.limiter.ready_at("query") if self.pacer.limiter else None
+        voyage = self.pacer.limiter.ready_at("query", now) if self.pacer.limiter else None
         finishes = sorted(t.started_at + service if t.started_at + service > now
                           else now + config.OVERDUE_MARGIN_S  # slow, not finishing "now"
                           for t in self._running)
