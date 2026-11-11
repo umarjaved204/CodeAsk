@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, type MouseEvent, type ReactNode } from "react";
 
 import { safeGithubUrl } from "../lib/markdown";
 import type { AskResponse, Block, Citation } from "../lib/types";
@@ -147,8 +147,19 @@ export function CodeSheet({ open, onClose, children }: {
     if (!open && element?.open) element.close();
   }, [open]);
 
+  // A tap on the dimmed backdrop closes the sheet (author's decision, 2026-11-11). The browser
+  // reports it as a click on the <dialog> itself, outside its box. Both conditions matter: Enter
+  // on a button inside also fires a click, at (0, 0), but its target is that button.
+  function closeOnBackdrop(event: MouseEvent<HTMLDialogElement>) {
+    if (event.target !== event.currentTarget) return;
+    const box = event.currentTarget.getBoundingClientRect();
+    const inside = event.clientX >= box.left && event.clientX <= box.right &&
+                   event.clientY >= box.top && event.clientY <= box.bottom;
+    if (!inside) onClose();
+  }
+
   return (
-    <dialog ref={dialog} onClose={onClose} aria-label="Cited code"
+    <dialog ref={dialog} onClose={onClose} onClick={closeOnBackdrop} aria-label="Cited code"
             className="fixed inset-x-0 top-auto bottom-0 h-[80dvh] w-full max-w-none flex-col
                        rounded-t-sheet bg-panel text-text shadow-sheet backdrop:bg-black/40 open:flex">
       <div className="flex shrink-0 justify-end px-4 pt-3">

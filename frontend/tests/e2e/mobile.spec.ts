@@ -73,6 +73,26 @@ test("while the sheet is open, Tab never reaches the page behind it", async ({ p
   expect(where.lastIndexOf("sheet")).toBeGreaterThan(where.indexOf("outside the page")); // it comes back
 });
 
+test("a tap on the dimmed area closes the sheet; taps and Enter inside it don't", async ({ page }) => {
+  await page.goto("/");
+  await chip2(page).tap();
+  await expect(sheet(page)).toBeVisible();
+
+  // Controls: a tap on the sheet's own text, and Enter on a list item inside, keep it open.
+  await sheet(page).getByText("Cited lines 138–142, shown within 129–213").tap();
+  const third = sheet(page).getByRole("button", { name: /signer\.py, lines 175–180/ });
+  await third.focus();
+  await page.keyboard.press("Enter");
+  await expect(sheet(page)).toContainText("Cited lines 175–180");
+  await expect(sheet(page)).toBeVisible();
+
+  // The backdrop: above the sheet, which covers the bottom 80% of the screen.
+  const box = await sheet(page).boundingBox();
+  await page.touchscreen.tap(195, (box?.y ?? 200) / 2);
+  await expect(sheet(page)).toBeHidden();
+  await expect(chip2(page)).toBeFocused();
+});
+
 test("another citation chosen inside the sheet replaces the lines in place", async ({ page }) => {
   await page.goto("/");
   await chip2(page).tap();
