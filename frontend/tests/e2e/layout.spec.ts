@@ -66,6 +66,29 @@ for (const [width, minReading] of [[1024, 440], [1440, 600]] as const) {
   });
 }
 
+// Round 2, R2-2: on a landscape phone the sticky composer took half the height, so the first
+// screen showed no answer text. Under 500 px tall it isn't sticky and drops its footer note.
+for (const [width, height, short] of [[844, 390, true], [390, 844, false]] as const) {
+  test.describe(`${width}x${height}`, () => {
+    test.use({ viewport: { width, height }, isMobile: true, hasTouch: true });
+
+    test(short ? "short screen: the answer comes first, the composer isn't sticky"
+               : "normal phone (control): the composer stays sticky with its note", async ({ page }) => {
+      await page.goto("/");
+      await expect(page.getByText(/^Example answer/)).toBeVisible();
+      const position = await page.locator("#ask").evaluate((el) => getComputedStyle(el).position);
+      expect(position).toBe(short ? "static" : "sticky");
+      const note = page.getByText(/^Answers use only the code of the featured repos/);
+      if (short) {
+        await expect(note).toBeHidden();
+        await expect(page.locator(".answer p").first()).toBeInViewport();
+      } else {
+        await expect(note).toBeVisible();
+      }
+    });
+  });
+}
+
 test.describe("reflow at 320x568", () => {
   test.use({ viewport: { width: 320, height: 568 }, isMobile: true, hasTouch: true });
 

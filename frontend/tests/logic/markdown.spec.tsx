@@ -59,14 +59,34 @@ test.describe("rendering model text", () => {
   test("a cite: number with no matching citation is plain text", () => {
     const html = render("Z [9](cite:9).");
     expect(html).not.toContain("<button");
-    expect(html).toContain("Z 9."); // the space before a citation is a no-break space (C6)
+    expect(html).toContain("Z 9.");
   });
 
-  test("a chip can't break away from the word before it (round 1, C6)", () => {
-    const html = render("ordered from oldest to newest [1](cite:1). Next [2](cite:2) word.");
-    expect(html).toContain("newest <button");
-    expect(html).toContain("Next <button");
-    expect(html).not.toMatch(/ <button/); // no ordinary space left before any chip
+  test.describe("chips stay with their words (round 1 C6, round 2 R2-1)", () => {
+    const GROUP = '<span class="whitespace-nowrap">';
+
+    test("the word before, the chip and the punctuation after form one no-wrap group", () => {
+      const html = render("ordered from oldest to newest [1](cite:1). Next [2](cite:2) word.");
+      expect(html).toMatch(new RegExp(`ordered from oldest to ${GROUP}newest <button[^]*?</button>\\.</span> `));
+      expect(html).toMatch(new RegExp(`${GROUP}Next <button[^]*?</button></span> word\\.`));
+    });
+
+    test("inline code before a chip joins the group", () => {
+      const html = render("stored in `self.secret_keys` [1](cite:1). The");
+      expect(html).toMatch(new RegExp(`stored in ${GROUP}<code>self.secret_keys</code> <button[^]*?</button>\\.</span> The`));
+    });
+
+    test("adjacent chips share one group, with or without a space", () => {
+      for (const md of ["order [1](cite:1) [2](cite:2) and", "order [1](cite:1)[2](cite:2) and"]) {
+        const html = render(md);
+        expect(html.match(/whitespace-nowrap/g), md).toHaveLength(1);
+        expect(html).toMatch(new RegExp(`${GROUP}order <button[^]*?</button> ?<button[^]*?</button></span> and`));
+      }
+    });
+
+    test("text without citations is untouched", () => {
+      expect(render("Plain text, no citations.")).not.toContain("whitespace-nowrap");
+    });
   });
 
   test("raw HTML is shown as text and never becomes elements", () => {
@@ -95,6 +115,6 @@ test.describe("rendering model text", () => {
 
   test("a citation inside bold or a list item is still a chip", () => {
     const html = render("- **see [1](cite:1)**");
-    expect(html).toMatch(/<li><strong>see <button/);
+    expect(html).toMatch(/<li><strong><span class="whitespace-nowrap">see <button/);
   });
 });

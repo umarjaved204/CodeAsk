@@ -7,7 +7,8 @@ import type { Repo } from "../lib/types";
 const MAX_CHARS = 400;
 const WARN_CHARS = 380;
 
-/** The sticky ask box: always in view, at the bottom of the reading column. */
+/** The sticky ask box: always in view, at the bottom of the reading column. On short screens
+ *  (under 500 px tall) it isn't sticky and drops its footer note, so the answer comes first. */
 export function Composer({ repo, repos, onRepoChange, onAsk, canAsk, asking, status }: {
   repo: string;
   repos: Repo[];
@@ -37,7 +38,8 @@ export function Composer({ repo, repos, onRepoChange, onAsk, canAsk, asking, sta
     <form id="ask" onSubmit={submit}
           className="sticky bottom-0 mt-auto max-w-measure bg-page pt-3 pb-4
                      before:pointer-events-none before:absolute before:inset-x-0 before:-top-6
-                     before:h-6 before:bg-linear-to-t before:from-page before:to-transparent">
+                     before:h-6 before:bg-linear-to-t before:from-page before:to-transparent
+                     short:static short:before:hidden">
       <div role="status" className="min-h-0 text-meta">{status}</div>
       <div className="mt-2 flex items-center justify-between gap-3">
         <label className="sr-only" htmlFor="repo">Repository</label>
@@ -62,7 +64,7 @@ export function Composer({ repo, repos, onRepoChange, onAsk, canAsk, asking, sta
           {asking ? "Asking…" : "Ask"}
         </button>
       </div>
-      <p className="mt-2 text-micro text-text-muted">
+      <p className="mt-2 text-micro text-text-muted short:hidden">
         Answers use only the code of the featured repos and cite the lines they rely on.
         Rate-limited demo; each question is answered on its own.
       </p>

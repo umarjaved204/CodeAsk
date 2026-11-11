@@ -13,6 +13,15 @@ export default defineConfig({
   workers: 1,
   reporter: "list",
   use: { ...devices["Desktop Chrome"], baseURL: APP_ORIGIN },
+  // Three projects: the shots; the same with visible scrollbars (headless hides them; a launch
+  // option, so it needs its own project); then the contact sheets, which depend on both and so
+  // always run last. If any shot fails, Playwright skips the sheets: fix the shot first.
+  projects: [
+    { name: "screens", grepInvert: /__scrollbars|contact sheets/ },
+    { name: "scrollbars", grep: /__scrollbars/,
+      use: { launchOptions: { ignoreDefaultArgs: ["--hide-scrollbars"] } } },
+    { name: "sheets", grep: /contact sheets/, dependencies: ["screens", "scrollbars"] },
+  ],
   webServer: {
     command: `npm run build && npm run start -- --port ${PORT}`,
     url: APP_ORIGIN,

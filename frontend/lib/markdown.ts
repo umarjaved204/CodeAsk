@@ -6,6 +6,9 @@
 export const ALLOWED_ELEMENTS = [
   "p", "strong", "em", "code", "pre", "ul", "ol", "li", "blockquote", "h1", "h2", "h3", "h4",
   "a", "br", "hr",
+  // Only for the no-wrap groups Answer.tsx builds around citation chips (round 2, R2-1).
+  // Markdown has no syntax for a span and raw HTML is never parsed, so model text can't make one.
+  "span",
 ];
 
 const CITE = /^cite:(\d{1,4})$/;

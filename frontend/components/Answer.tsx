@@ -84,11 +84,71 @@ const components: Components = {
   a: CiteLink, p: Paragraph, li: ListItem, h1: heading("h2"), h2: heading("h3"), h3: heading("h4"),
 };
 
-/** The space before a citation becomes a no-break space, so a chip never starts a line apart
- *  from the word it cites (round 1, C6). The gap stays visible. */
-function keepChipsWithTheirWords(markdown: string): string {
-  return markdown.replace(/ (?=\[\d{1,4}\]\(cite:\d{1,4}\))/g, " ");
+// ---------- chips stay with their words (round 1 C6; round 2 R2-1) ----------
+// Chromium may break a line on either side of a chip (a <button> is an atomic inline), even
+// after a no-break space and before punctuation: round 2 showed chips starting lines and a lone
+// "." after a chip. The only reliable fix is a no-wrap group around the word before the chip,
+// the chip, and the punctuation right after it. Adjacent chips join one group, and so does an
+// inline element (e.g. `code`) directly before a chip. Markdown can't create a <span> and raw
+// HTML is never parsed, so the model can't produce one of these.
+type HText = { type: "text"; value: string };
+type HElement = { type: "element"; tagName: string; properties: Record<string, unknown>; children: HNode[] };
+type HNode = HText | HElement | { type: "comment" | "raw" | "doctype"; value?: string };
+
+const isChip = (n: HNode | undefined): n is HElement =>
+  n?.type === "element" && n.tagName === "a" &&
+  citeNumber(typeof n.properties.href === "string" ? n.properties.href : undefined) !== null;
+const TRAILING_PUNCTUATION = /^[.,;:!?)\]}"'’”…]+/;
+
+function groupChips(parent: HElement | { children: HNode[] }) {
+  const groups = new Set<HElement>();
+  const out: HNode[] = [];
+  for (const child of parent.children) {
+    if (child.type === "element" && !isChip(child)) groupChips(child);
+    if (isChip(child)) {
+      const lead: HNode[] = [];
+      let last = out.at(-1);
+      if (last?.type === "text") {
+        const match = /(\S*)(\s*)$/.exec(last.value);
+        const tail = match ? match[0] : "";
+        if (tail) {
+          last.value = last.value.slice(0, last.value.length - tail.length);
+          if (!last.value) out.pop();
+          lead.unshift({ type: "text", value: tail });
+        }
+        // Only whitespace was taken: what precedes it (an earlier group, or `code`) joins too.
+        if (match && !match[1]) last = out.at(-1);
+        else last = undefined;
+      }
+      if (last && last.type === "element" && (groups.has(last) || last.tagName === "code")) {
+        out.pop();
+        lead.unshift(...(groups.has(last) ? last.children : [last]));
+      }
+      const group: HElement = {
+        type: "element", tagName: "span", properties: { className: ["whitespace-nowrap"] },
+        children: [...lead, child],
+      };
+      groups.add(group);
+      out.push(group);
+      continue;
+    }
+    const previous = out.at(-1);
+    if (child.type === "text" && previous?.type === "element" && groups.has(previous)) {
+      const punctuation = TRAILING_PUNCTUATION.exec(child.value)?.[0] ?? "";
+      if (punctuation) {
+        previous.children.push({ type: "text", value: punctuation });
+        const rest = child.value.slice(punctuation.length);
+        if (rest) out.push({ type: "text", value: rest });
+        continue;
+      }
+    }
+    out.push(child);
+  }
+  parent.children = out;
 }
+
+const keepChipsWithTheirWords = () => (tree: { children: HNode[] }) => groupChips(tree);
+const REHYPE = [keepChipsWithTheirWords];
 
 export function Answer({ markdown, citations, openN, onOpen, sheetOpen = false, panelShown = true }: {
   markdown: string;
@@ -105,13 +165,12 @@ export function Answer({ markdown, citations, openN, onOpen, sheetOpen = false, 
     byNumber: new Map(citations.map((c) => [c.n, c])), openN, onOpen, sheetOpen, panelShown, noteN,
     toggleNote: (n: number) => setNote(noteN === n ? null : { markdown, n }),
   }), [citations, openN, onOpen, sheetOpen, panelShown, noteN, markdown]);
-  const text = useMemo(() => keepChipsWithTheirWords(markdown), [markdown]);
   return (
     <CitationsContext value={value}>
       <div className="answer font-serif text-body">
-        <Markdown allowedElements={ALLOWED_ELEMENTS} unwrapDisallowed
+        <Markdown allowedElements={ALLOWED_ELEMENTS} unwrapDisallowed rehypePlugins={REHYPE}
                   urlTransform={citeUrlTransform} components={components}>
-          {text}
+          {markdown}
         </Markdown>
       </div>
     </CitationsContext>

@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "./tokens.css";
 
+/* Short screens (a landscape phone, a short window): the answer comes first (round 2, R2-2). */
+@custom-variant short (@media (max-height: 500px));
+
 /* Colours: Tailwind utilities read the semantic token variables (inline), so the theme
    switches by swapping variables in tokens.css, with no `dark:` classes anywhere. */
 @theme inline {

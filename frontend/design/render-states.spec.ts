@@ -278,16 +278,11 @@ async function shoot(shot: Shot, page: Page, api: MockApi) {
                    `## ${fileName(shot)}\n${notes.map((n) => `- ${n}`).join("\n")}\n`);
 }
 
-for (const shot of shots.filter((s) => s.capture !== "scrollbars")) {
+// Shots named "__scrollbars" run in the config's "scrollbars" project, whose browser shows
+// scrollbars; Playwright allows a different launch only per project, not per describe group.
+for (const shot of shots) {
   test(fileName(shot), async ({ page, api }) => shoot(shot, page, api));
 }
-
-test.describe("with visible scrollbars", () => {
-  test.use({ launchOptions: { ignoreDefaultArgs: ["--hide-scrollbars"] } });
-  for (const shot of shots.filter((s) => s.capture === "scrollbars")) {
-    test(fileName(shot), async ({ page, api }) => shoot(shot, page, api));
-  }
-});
 
 // ---------- contact sheets, notes.md, manifest.json (runs last; plain test: no offsite guard,
 // since the sheets load the PNGs from disk via file://) ----------

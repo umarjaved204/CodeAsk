@@ -711,6 +711,14 @@ Behaviour added with the inventory:
 | C4 | Scrollbars hidden in headless shots | Round 2 adds states 1 and 12 at 1440 with visible scrollbars |
 | C1, C5, C7, C8 | Chip spacing, sheet code area, open-chip highlight, queued sentence at 390 | Keep |
 | C3 | Empty state's empty area | Slice 5 (suggested questions) |
+
+**Round 2 (2026-11-11, 106 shots; the manifest was dirty: the scrollbar-project fix was committed only after the run, findings unaffected; my decisions):** confirmed fixed: F1 (no sideways page and no clipping in any shot; 1024 reads at 58-59 chars/line, was ~27), F2 (66-68 chars/line on desktop and 768, 47-49 on phones, 38 at 320), F4, F5, C2, F6, F7.
+
+| # | Finding | Decision |
+|---|---|---|
+| R2-1 (High) | **C6's no-break space failed and regressed:** Chromium may break on either side of a chip (an atomic inline `<button>`), so chips still started lines at 390, and a lone "." sat on its own line after a chip, on the 1440 first screen | **Fixed:** the no-break space is gone; a rehype step in `Answer.tsx` wraps the word before a chip (or an inline `code` before it), the chip, adjacent chips and the punctuation right after into one `whitespace-nowrap` span. `span` is allowed only for this (markdown can't make one; raw HTML isn't parsed). Logic tests; re-judged in round 3 |
+| R2-2 (Med) | 844x390 (landscape phone): the composer took half the height; the first screen showed no answer text | **Fixed:** a `short:` variant (max-height 500px): the composer isn't sticky there and drops its footer note. e2e at 844x390, with a 390x844 control (still sticky) |
+| R2-3 (Low) | Visible Windows scrollbars at 1440: the reading column's bar sits against the panel border; nothing clipped | **Keep** |
 - Axe runs on every state in both themes.
 
 **Done when:**
