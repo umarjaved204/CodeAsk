@@ -233,3 +233,17 @@ def test_set_usage_changes_only_named_settings(store):
     for bad in ({"question": "x"}, {}):
         with pytest.raises(ValueError):
             store.set_usage(**bad)
+
+
+def test_no_transaction_stays_open_between_store_calls(store):
+    # /ask keeps one session through its queue wait (PLAN.md Q46 step 6, decision 1). On
+    # Neon's pooled endpoint (PgBouncer, transaction mode) an open transaction would pin a
+    # server connection for up to ~90 s; an idle one pins nothing.
+    idle = psycopg.pq.TransactionStatus.IDLE
+    store.usage(NOW)
+    assert store.conn.info.transaction_status == idle
+    store.repo(SLUG)
+    assert store.conn.info.transaction_status == idle
+    store.add_tokens(NOW, 10)
+    store.count_outcome(NOW.date(), "answered")
+    assert store.conn.info.transaction_status == idle

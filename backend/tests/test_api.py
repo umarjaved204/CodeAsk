@@ -3,8 +3,9 @@ logs (PLAN.md slice 2, Q22-Q24, Q16)."""
 
 import logging
 import time
+from collections import Counter
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import psycopg
 import pytest
@@ -13,10 +14,16 @@ from fastapi.testclient import TestClient
 
 from codeask import config
 from codeask.api.app import ModelStatus, create_app
+from codeask.askqueue import AskQueue, Pacer
 from codeask.deadline import DeadlineExceeded
 from codeask.embedder import RateLimited as VoyageRateLimited
 from codeask.llm import GroqError, RateLimited, Reply
+from codeask.visitors import Visitors, client_key
 
+SALT = b"test-salt-0123456789"
+IP, OTHER_IP = "203.0.113.7", "203.0.113.8"
+NOW = datetime(2026, 11, 11, 12, tzinfo=timezone.utc)
+USAGE = {"prompt_tokens": 2_700, "completion_tokens": 300, "total_tokens": 3_000}
 ORIGIN = "http://localhost:3000"
 SLUG, SPACE, MODEL = "pallets/itsdangerous", "voyage:1024:document", "qwen/test"
 QUESTION = "How is the signing key derived? UNIQUE-QUESTION-TEXT"
@@ -30,10 +37,32 @@ ROW = {"path": "signer.py", "start_line": 1, "end_line": 5, "token_count": 10,
 class FakeStore:
     repos = {SLUG: REPO, "other/repo": {**REPO, "slug": "other/repo"}}  # other: not featured
 
+    def __init__(self, **settings):
+        self.settings = {"public_budget_tokens": 120_000, "per_ip_daily": 5, "paused": False,
+                         "blocked_until": None, **settings}
+        self.tokens, self.outcomes = [], Counter()
+        self.usage_error = self.search_error = None
+
     def repo(self, slug):
         return self.repos.get(slug)
 
+    def usage(self, now):
+        if self.usage_error:
+            raise self.usage_error
+        return {**self.settings, "buckets": [(now, sum(self.tokens))] if self.tokens else []}
+
+    def add_tokens(self, now, tokens):
+        self.tokens.append(tokens)
+
+    def count_outcome(self, day, outcome):
+        self.outcomes[outcome] += 1
+
+    def set_usage(self, **changes):
+        self.settings.update(changes)
+
     def search(self, slug, space, vector, k):
+        if self.search_error:
+            raise self.search_error
         return [ROW]
 
     def file_chunks(self, slug, paths):
@@ -65,7 +94,7 @@ class FakeLLM:
         self.deadline = deadline
         if self.error:
             raise self.error
-        return Reply(self.text, None, {}, {}, MODEL, 0.1, 0)
+        return Reply(self.text, None, USAGE, {}, MODEL, 0.1, 0)
 
     def available_models(self):
         if isinstance(self.models, Exception):
@@ -86,17 +115,34 @@ def fake_session():
     yield FakeStore()
 
 
-def client(monkeypatch, embedder=None, llm=None, models=None):
+class OpenPacer(Pacer):
+    """Never paces: the API tests ask several questions within a minute. The real pacing is
+    tested in test_askqueue.py and test_gate.py."""
+
+    def next_start(self, now):
+        return now
+
+
+def client(monkeypatch, embedder=None, llm=None, models=None, store=None, queue=None,
+           visitors=None):
     monkeypatch.setenv("ALLOWED_ORIGINS", ORIGIN)
     monkeypatch.delenv("WEB_CONCURRENCY", raising=False)
     llm = llm or FakeLLM()
-    app = create_app(fake_session, embedder or FakeEmbedder(), llm, models,
-                     featured=(SLUG, "psf/requests"))
+    store = store or FakeStore()
+
+    @contextmanager
+    def session():
+        yield store
+
+    app = create_app(session, embedder or FakeEmbedder(), llm, models,
+                     featured=(SLUG, "psf/requests"), ip_salt=SALT, wall=lambda: NOW,
+                     queue=queue or AskQueue(OpenPacer()), visitors=visitors)
     return TestClient(app, headers={"Origin": ORIGIN})
 
 
-def ask(c, repo=SLUG, question=QUESTION):
-    return c.post("/ask", json={"repo": repo, "question": question})
+def ask(c, repo=SLUG, question=QUESTION, ip=None):
+    headers = {"CF-Connecting-IP": ip} if ip else {}
+    return c.post("/ask", json={"repo": repo, "question": question}, headers=headers)
 
 
 # ---------- errors reach the browser as JSON with CORS headers (Q22) ----------
@@ -250,6 +296,15 @@ def test_more_than_one_worker_refuses_to_start(monkeypatch):
         create_app(fake_session, FakeEmbedder(), FakeLLM())
 
 
+@pytest.mark.parametrize("value", ["", "tooshort-secret"])
+def test_a_missing_or_short_ip_salt_refuses_to_start_without_printing_it(monkeypatch, value):
+    monkeypatch.delenv("WEB_CONCURRENCY", raising=False)
+    monkeypatch.setenv("IP_SALT", value)  # set (even empty), so .env can't override it
+    with pytest.raises(RuntimeError, match="IP_SALT") as err:
+        create_app(fake_session, FakeEmbedder(), FakeLLM())
+    assert not value or value not in str(err.value)
+
+
 def test_one_log_line_per_request_with_id_and_outcome_but_no_question_or_ip(monkeypatch,
                                                                          caplog):
     caplog.set_level(logging.INFO)
@@ -260,3 +315,192 @@ def test_one_log_line_per_request_with_id_and_outcome_but_no_question_or_ip(monk
     assert r.headers["x-request-id"] in lines[0] and "POST /ask 200" in lines[0]
     assert lines[0].endswith("answered")
     assert "UNIQUE-QUESTION-TEXT" not in caplog.text and "testclient" not in caplog.text
+
+
+def test_neither_the_ip_its_hash_nor_the_salt_is_ever_logged(monkeypatch, caplog):
+    caplog.set_level(logging.DEBUG)
+    with client(monkeypatch) as c:
+        ask(c, ip=IP)
+        c.get("/status", headers={"CF-Connecting-IP": IP})
+    for secret in (IP, client_key(IP, SALT), SALT.decode()):
+        assert secret not in caplog.text
+
+
+# ---------- refusals (Q44-Q46, step 6): each code, status and Retry-After ----------
+def test_paused_is_a_503_without_retry_after_and_nothing_runs(monkeypatch):
+    store, embedder = FakeStore(paused=True), FakeEmbedder()
+    with client(monkeypatch, embedder=embedder, store=store) as c:
+        r = ask(c)
+    assert (r.status_code, r.json()["error"]) == (503, "paused")
+    assert "retry-after" not in r.headers
+    assert embedder.calls == 0 and store.tokens == []
+    assert store.outcomes["paused"] == 1
+
+
+def test_a_spent_budget_is_daily_limit_429_with_whole_seconds(monkeypatch):
+    store = FakeStore(public_budget_tokens=config.QUESTION_RESERVE_TOKENS - 1)
+    with client(monkeypatch, store=store) as c:
+        r = ask(c)
+    assert (r.status_code, r.json()["error"]) == (429, "daily_limit")
+    assert r.headers["retry-after"].isdigit() and int(r.headers["retry-after"]) > 0
+
+
+def test_a_daily_block_is_daily_limit_until_it_ends(monkeypatch):
+    store = FakeStore(blocked_until=NOW + timedelta(hours=1))
+    with client(monkeypatch, store=store) as c:
+        r = ask(c)
+    assert (r.status_code, r.headers["retry-after"]) == (429, "3600")
+
+
+def test_per_ip_limit_is_per_visitor(monkeypatch):
+    with client(monkeypatch, store=FakeStore(per_ip_daily=1)) as c:
+        assert ask(c, ip=IP).status_code == 200
+        r = ask(c, ip=IP)
+        assert (r.status_code, r.json()["error"]) == (429, "per_ip_limit")
+        assert r.headers["retry-after"].isdigit()
+        assert ask(c, ip=OTHER_IP).status_code == 200
+
+
+def test_a_question_still_in_flight_is_in_progress_until_its_deadline(monkeypatch):
+    visitors = Visitors()
+    visitors.accept(client_key(IP, SALT), 5, time.monotonic() + 30)
+    with client(monkeypatch, visitors=visitors) as c:
+        r = ask(c, ip=IP)
+    assert (r.status_code, r.json()["error"]) == (429, "in_progress")
+    assert 29 <= int(r.headers["retry-after"]) <= 30
+
+
+def test_a_busy_queue_is_503_busy_and_the_visitor_is_not_charged(monkeypatch):
+    queue, visitors = AskQueue(Pacer()), Visitors()  # the real pacer, one question running
+    now = time.monotonic()
+    queue.try_start(queue.join("someone", now + 90, now), now)
+    with client(monkeypatch, queue=queue, visitors=visitors) as c:
+        r = ask(c, ip=IP)
+    assert (r.status_code, r.json()["error"]) == (503, "busy")
+    assert int(r.headers["retry-after"]) >= 1
+    assert visitors.check(client_key(IP, SALT), 1) is None
+
+
+def test_no_usage_row_fails_closed_before_any_work(monkeypatch):
+    store, embedder = FakeStore(), FakeEmbedder()
+    store.usage_error = psycopg.OperationalError("host=db.secret")
+    with client(monkeypatch, embedder=embedder, store=store) as c:
+        r = ask(c)
+    assert (r.status_code, r.json()["error"]) == (503, "database_unavailable")
+    assert embedder.calls == 0 and "db.secret" not in r.text
+
+
+# ---------- refunds and token counting ----------
+REFUND_CASES = [  # (embedder, llm, search error) -> the code the visitor sees
+    (FakeEmbedder(DeadlineExceeded()), None, None, "timeout"),
+    (FakeEmbedder(VoyageRateLimited("429")), None, None, "busy"),
+    (FakeEmbedder(requests.ConnectionError("x")), None, None, "upstream_error"),
+    (None, FakeLLM(error=GroqError("Groq 500: boom", 500)), None, "upstream_error"),
+    (None, FakeLLM(error=GroqError("Groq 404", 404)), None, "model_unavailable"),
+    (None, FakeLLM(error=RateLimited("429", 12.5)), None, "busy"),
+    (None, FakeLLM(error=RateLimited("429", 3600)), None, "daily_limit"),
+    (None, None, psycopg.OperationalError("x"), "database_unavailable"),
+    (None, FakeLLM(error=ValueError("bug")), None, "internal_error"),
+]
+
+
+@pytest.mark.parametrize("embedder, llm, search_error, code", REFUND_CASES)
+def test_a_failure_on_our_side_after_acceptance_is_refunded(monkeypatch, embedder, llm,
+                                                            search_error, code):
+    store, visitors = FakeStore(per_ip_daily=1), Visitors()
+    store.search_error = search_error
+    with client(monkeypatch, embedder=embedder, llm=llm, store=store, visitors=visitors) as c:
+        r = ask(c, ip=IP)
+    assert r.json()["error"] == code
+    assert visitors.check(client_key(IP, SALT), 1) is None  # the question was given back
+    assert store.outcomes[code] == 1
+
+
+@pytest.mark.parametrize("text, outcome", [("Derived here [signer.py:2-3].", "answered"),
+                                           ("Probably HMAC.", "ungrounded")])
+def test_a_shown_result_is_not_refunded_and_counts_its_real_tokens(monkeypatch, text, outcome):
+    store, visitors = FakeStore(per_ip_daily=1), Visitors()
+    with client(monkeypatch, llm=FakeLLM(text), store=store, visitors=visitors) as c:
+        assert ask(c, ip=IP).status_code == 200
+    assert visitors.check(client_key(IP, SALT), 1).code == "per_ip_limit"
+    assert store.tokens == [3_000]
+    assert store.outcomes[outcome] == 1
+
+
+def test_tokens_are_estimated_only_once_groq_was_called(monkeypatch):
+    after = FakeStore()
+    with client(monkeypatch, llm=FakeLLM(error=GroqError("Groq 500", 500)), store=after) as c:
+        ask(c)
+    assert after.tokens == [config.UNKNOWN_OUTCOME_TOKENS]
+    before = FakeStore()
+    with client(monkeypatch, embedder=FakeEmbedder(VoyageRateLimited("429")), store=before) as c:
+        ask(c)
+    assert before.tokens == []
+
+
+def test_a_long_groq_429_blocks_the_day_and_a_short_one_is_busy(monkeypatch):
+    store = FakeStore()
+    with client(monkeypatch, llm=FakeLLM(error=RateLimited("429", 3600)), store=store) as c:
+        r = ask(c)
+    assert (r.status_code, r.headers["retry-after"]) == (429, "3600")
+    assert store.settings["blocked_until"] == NOW + timedelta(seconds=3600)
+    short = FakeStore()
+    with client(monkeypatch, llm=FakeLLM(error=RateLimited("429", 12.5)), store=short) as c:
+        assert ask(c).status_code == 503
+    assert short.settings["blocked_until"] is None
+
+
+def test_outcomes_count_the_unknown_bucket_but_never_more(monkeypatch):
+    store = FakeStore()
+    with client(monkeypatch, store=store) as c:
+        ask(c)  # no CF-Connecting-IP: the shared bucket
+        ask(c, ip=IP)
+        ask(c, repo="other/repo", ip=OTHER_IP)
+    assert store.outcomes == Counter({"answered": 2, "no_client_ip": 1, "not_found": 1})
+
+
+# ---------- /status from memory (Q40, Q45, Q46 C4) ----------
+def test_status_is_never_cached_and_has_no_queue_without_a_client_ip(monkeypatch):
+    with client(monkeypatch) as c:
+        r = c.get("/status")
+    assert r.headers["cache-control"] == "no-store"
+    assert r.json()["service"] == "ok" and r.json()["queue"] is None
+
+
+@pytest.mark.parametrize("settings, service, retry", [
+    ({"paused": True}, "paused", None),
+    ({"public_budget_tokens": 0}, "daily_limit", 86_400),
+])
+def test_status_service_follows_the_last_usage_read(monkeypatch, settings, service, retry):
+    with client(monkeypatch, store=FakeStore(**settings)) as c:
+        ask(c)  # every /ask reads the row and refreshes the copy
+        body = c.get("/status").json()
+    assert body["service"] == service and body.get("retry_after_s") == retry
+
+
+def test_status_without_the_database_still_answers_ok(monkeypatch):
+    store = FakeStore()
+    store.usage_error = psycopg.OperationalError("host=db.secret")
+    with client(monkeypatch, store=store) as c:
+        r = c.get("/status")
+    assert r.status_code == 200 and r.json()["service"] == "ok"
+
+
+def test_status_gives_the_callers_own_place(monkeypatch):
+    queue, now = AskQueue(OpenPacer()), time.monotonic()
+    queue.try_start(queue.join("someone", now + 90, now), now)
+    queue.join(client_key(IP, SALT), now + 90, now)
+    with client(monkeypatch, queue=queue) as c:
+        mine = c.get("/status", headers={"CF-Connecting-IP": IP}).json()["queue"]
+        other = c.get("/status", headers={"CF-Connecting-IP": OTHER_IP}).json()["queue"]
+        nobody = c.get("/status").json()["queue"]
+    assert mine == {"position": 2, "wait_s": 0} and other is None and nobody is None
+
+
+def test_status_never_waits_on_the_model_check():
+    clock, llm, started = Clock(), FakeLLM(models=()), []
+    status = ModelStatus(llm, ttl_s=600, clock=clock, start=started.append)
+    assert status.peek() is None  # no answer yet, and a check started in the background
+    assert status.peek() is None and len(started) == 1  # one at a time
+    started.pop()()
+    assert status.peek() is False and not started

@@ -109,6 +109,9 @@ UNKNOWN_OUTCOME_TOKENS = 3_300
 DAILY_BLOCK_MIN_RETRY_S = 120
 # Each /ask's whole budget of time, from endpoint entry (Q43): the proxy allows >= 120 s.
 ASK_DEADLINE_S = 90
+# /status serves the usage state from memory; a copy older than this is refreshed (Q46 C4).
+USAGE_MAX_AGE_S = 30
+IP_SALT_MIN_CHARS = 16  # a weak salt would let a stolen hash be reversed by brute force
 
 # ---------- slice 4: the queue and pacer (PLAN.md Q46 and its step 5 amendment) ----------
 GROQ_TOKENS_PER_MINUTE = 8_000  # only until Groq's x-ratelimit-limit-tokens has been seen
