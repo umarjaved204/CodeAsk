@@ -28,7 +28,7 @@ class FakeLLM:
     def __init__(self, text):
         self.text, self.messages = text, None
 
-    def chat(self, messages):
+    def chat(self, messages, deadline=None):
         self.messages = messages
         return Reply(self.text, None, {}, {}, "m", 0.1, 0)
 

@@ -2,6 +2,7 @@
 logs (PLAN.md slice 2, Q22-Q24, Q16)."""
 
 import logging
+import time
 from contextlib import contextmanager
 from datetime import datetime, timezone
 
@@ -10,7 +11,9 @@ import pytest
 import requests
 from fastapi.testclient import TestClient
 
+from codeask import config
 from codeask.api.app import ModelStatus, create_app
+from codeask.deadline import DeadlineExceeded
 from codeask.embedder import RateLimited as VoyageRateLimited
 from codeask.llm import GroqError, RateLimited, Reply
 
@@ -41,10 +44,11 @@ class FakeEmbedder:
     space = SPACE
 
     def __init__(self, error=None):
-        self.error, self.calls = error, 0
+        self.error, self.calls, self.deadline = error, 0, None
 
-    def embed(self, texts, input_type):
+    def embed(self, texts, input_type, deadline=None):
         self.calls += 1
+        self.deadline = deadline
         if self.error:
             raise self.error
         return [[0.0]]
@@ -55,8 +59,10 @@ class FakeLLM:
 
     def __init__(self, text="Derived here [signer.py:2-3].", error=None, models=(MODEL,)):
         self.text, self.error, self.models = text, error, models
+        self.deadline = None
 
-    def chat(self, messages):
+    def chat(self, messages, deadline=None):
+        self.deadline = deadline
         if self.error:
             raise self.error
         return Reply(self.text, None, {}, {}, MODEL, 0.1, 0)
@@ -109,6 +115,7 @@ def test_unhandled_error_is_generic_json_with_cors_and_a_request_id(monkeypatch)
     (None, FakeLLM(error=RateLimited("429", 12.5)), 503, "busy", "13"),
     (FakeEmbedder(VoyageRateLimited("429")), None, 503, "busy", "65"),
     (FakeEmbedder(requests.Timeout("t")), None, 504, "timeout", None),
+    (FakeEmbedder(DeadlineExceeded()), None, 504, "timeout", None),
     (None, FakeLLM(error=GroqError("Groq 500: boom", 500)), 502, "upstream_error", None),
     (FakeEmbedder(psycopg.OperationalError("host=x")), None, 503, "database_unavailable", None),
 ])
@@ -177,6 +184,17 @@ def test_non_featured_or_not_ingested_repos_are_404_before_any_embedding(monkeyp
         r = ask(c, repo=repo)
     assert r.status_code == 404 and r.json()["error"] == "not_found"
     assert embedder.calls == 0
+
+
+# ---------- one deadline per question (Q43) ----------
+def test_ask_passes_one_deadline_from_entry_to_voyage_and_groq(monkeypatch):
+    embedder, llm = FakeEmbedder(), FakeLLM()
+    before = time.monotonic()
+    with client(monkeypatch, embedder=embedder, llm=llm) as c:
+        ask(c)
+    assert embedder.deadline == llm.deadline
+    after = time.monotonic()
+    assert before + config.ASK_DEADLINE_S <= embedder.deadline <= after + config.ASK_DEADLINE_S
 
 
 # ---------- grounding (Q23) ----------

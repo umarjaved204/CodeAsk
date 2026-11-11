@@ -16,6 +16,7 @@ from contextlib import contextmanager
 from typing import Callable
 
 from codeask import config
+from codeask.deadline import DeadlineExceeded, time_left, timeout_for
 
 
 class Limiter:
@@ -43,14 +44,17 @@ class Limiter:
     def _capacity(self, priority: str) -> int:
         return self.per_window - (self.reserved if priority == "ingest" else 0)
 
-    def acquire(self, priority: str = "ingest") -> float:
-        """Block until a slot is free; return the seconds waited."""
+    def acquire(self, priority: str = "ingest", deadline: float | None = None) -> float:
+        """Block until a slot is free; return the seconds waited. Raises DeadlineExceeded as
+        soon as the wait would pass `deadline` (on this limiter's clock)."""
         waited = 0.0
         while True:
             with self._lock:
                 now = self.clock()
                 while self._stamps and self._stamps[0] <= now - self.window_s:
                     self._stamps.popleft()
+                if deadline is not None and now >= deadline:
+                    raise DeadlineExceeded  # never take a slot (a whole window) for nothing
                 if self._in_flight + len(self._stamps) < self._capacity(priority):
                     self._in_flight += 1
                     return waited
@@ -58,6 +62,8 @@ class Limiter:
                 # slot is held by a request still in flight.
                 wait = self._stamps[0] + self.window_s - now if self._stamps else self.poll_s
             wait = max(wait, 0.01)
+            if deadline is not None and now + wait > deadline:
+                raise DeadlineExceeded
             self.sleep(wait)
             waited += wait
 
@@ -67,8 +73,8 @@ class Limiter:
             self._stamps.append(self.clock())
 
     @contextmanager
-    def slot(self, priority: str = "ingest"):
-        waited = self.acquire(priority)
+    def slot(self, priority: str = "ingest", deadline: float | None = None):
+        waited = self.acquire(priority, deadline)
         try:
             yield waited
         finally:
@@ -103,7 +109,7 @@ class VoyageEmbedder:
         self.rate_limited = 0
         self.requests: list[tuple[float, float, int]] = []  # (start, end, n_texts), monotonic
 
-    def _send(self, body: dict):
+    def _send(self, body: dict, timeout: float = REQUEST_TIMEOUT_S):
         if self._post is None:
             import requests
 
@@ -113,26 +119,34 @@ class VoyageEmbedder:
 
             load_dotenv()
             self._api_key = os.environ["VOYAGE_API_KEY"]
-        return self._post(VOYAGE_URL, json=body, timeout=REQUEST_TIMEOUT_S,
+        return self._post(VOYAGE_URL, json=body, timeout=timeout,
                           headers={"Authorization": f"Bearer {self._api_key}"})
 
-    def embed(self, texts: list[str], input_type: str = "document") -> list[list[float]]:
+    def embed(self, texts: list[str], input_type: str = "document",
+              deadline: float | None = None) -> list[list[float]]:
+        """With a `deadline` (an /ask, Q43): at most one retry, and only if a whole window
+        still fits before it."""
         priority = "query" if input_type == "query" else "ingest"
         body = {"input": texts, "model": self.model, "input_type": input_type,
                 "output_dimension": self.dim, "truncation": False}
-        for attempt in range(config.VOYAGE_MAX_RETRIES + 1):
-            with self.limiter.slot(priority):
+        clock = self.limiter.clock  # the deadline is on the limiter's clock
+        retries = config.VOYAGE_MAX_RETRIES if deadline is None else 1
+        for attempt in range(retries + 1):
+            with self.limiter.slot(priority, deadline):
                 start = time.monotonic()
+                timeout = timeout_for(REQUEST_TIMEOUT_S, deadline, clock)
                 self.calls += 1
-                response = self._send(body)
+                response = self._send(body, timeout)
                 if response.status_code != 429:
                     response.raise_for_status()  # anything else is a real error: stop
                     self.requests.append((start, time.monotonic(), len(texts)))
                     data = sorted(response.json()["data"], key=lambda d: d["index"])
                     return [d["embedding"] for d in data]
             self.rate_limited += 1
-            if attempt == config.VOYAGE_MAX_RETRIES:
+            if attempt == retries:
                 raise RateLimited(f"429 on all {attempt + 1} attempts")
+            if time_left(deadline, clock) <= self.limiter.window_s:
+                raise RateLimited("429, and no time left to wait a window")
             self.log(f"  429 from Voyage (attempt {attempt + 1}); waiting "
                      f"{self.limiter.window_s:.0f} s (Voyage sends no Retry-After)")
             self.sleep(self.limiter.window_s)

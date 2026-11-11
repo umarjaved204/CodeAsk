@@ -107,3 +107,5 @@ QUESTION_RESERVE_TOKENS = 3_500
 UNKNOWN_OUTCOME_TOKENS = 3_300
 # A Groq 429 asking for a longer wait than this is the daily limit, not the per-minute one.
 DAILY_BLOCK_MIN_RETRY_S = 120
+# Each /ask's whole budget of time, from endpoint entry (Q43): the proxy allows >= 120 s.
+ASK_DEADLINE_S = 90

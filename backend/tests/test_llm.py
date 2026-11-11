@@ -1,6 +1,7 @@
 import pytest
 
 from codeask import config
+from codeask.deadline import DeadlineExceeded
 from codeask.llm import GroqClient, GroqError, RateLimited
 
 KEY = "gsk_test_secret"
@@ -123,3 +124,46 @@ def test_available_models_lists_ids_with_a_short_timeout_and_the_key_only_in_the
     c = GroqClient(get=lambda url, timeout, headers: FakeResponse(401), api_key=KEY)
     with pytest.raises(GroqError):
         c.available_models()
+
+
+# ---------- with a deadline (an /ask, Q43); the clock is frozen at 0 ----------
+def timed(*responses):
+    post, slept = FakePost(*responses), []
+    return GroqClient(post=post, api_key=KEY, sleep=slept.append, clock=lambda: 0.0), post, slept
+
+
+def test_the_request_timeout_is_capped_at_the_time_left():
+    c, post, _ = timed(ok())
+    c.chat([], deadline=20)
+    assert post.calls[0]["timeout"] == 20
+
+
+def test_no_request_once_the_deadline_has_passed():
+    c, post, _ = timed()
+    with pytest.raises(DeadlineExceeded):
+        c.chat([], deadline=0)
+    assert post.calls == []
+
+
+def test_a_429_wait_longer_than_the_time_left_is_not_waited():
+    c, _, slept = timed(FakeResponse(429, headers={"retry-after": "7"}))
+    with pytest.raises(RateLimited):
+        c.chat([], deadline=5)
+    assert slept == []
+
+
+def test_a_429_is_retried_at_most_once_with_a_deadline():
+    c, post, slept = timed(*[FakeResponse(429, headers={"retry-after": "1"})] * 2)
+    with pytest.raises(RateLimited):
+        c.chat([], deadline=60)
+    assert (len(post.calls), slept) == (2, [1.0])
+
+
+def test_a_groq_5xx_is_retried_once_then_succeeds():
+    c, post, _ = timed(FakeResponse(503, text="overloaded"), ok())
+    assert c.chat([], deadline=60).text == "Answer [a.py:1-2]"
+    assert len(post.calls) == 2
+    c, post, _ = timed(FakeResponse(500, text="a"), FakeResponse(502, text="b"))
+    with pytest.raises(GroqError):
+        c.chat([], deadline=60)
+    assert len(post.calls) == 2

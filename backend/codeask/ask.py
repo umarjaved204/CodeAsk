@@ -22,14 +22,16 @@ from codeask import config
 from codeask.answer import PROMPT_VERSION, build_messages, pack, possibly_relevant, rewrite
 
 
-def ask(store, llm, repo: dict, question: str, vector: list[float]) -> dict:
+def ask(store, llm, repo: dict, question: str, vector: list[float],
+        deadline: float | None = None) -> dict:
     t0 = time.perf_counter()
     rows = store.search(repo["slug"], repo["settings"]["space"], vector, config.RETRIEVE_K)
     file_rows = store.file_chunks(repo["slug"], list(dict.fromkeys(r["path"] for r in rows)))
     packed = pack(rows, file_rows)
     blocks = packed.blocks
     t1 = time.perf_counter()
-    reply = llm.chat(build_messages(question, blocks, secrets.token_hex(8), packed.outlines))
+    reply = llm.chat(build_messages(question, blocks, secrets.token_hex(8), packed.outlines),
+                     deadline=deadline)
     markdown, citations, stats = rewrite(reply.text, blocks, repo["url"], repo["commit_sha"])
     grounded = stats["valid"] > 0  # Q3/Q9: no valid citation = couldn't ground it
     return {

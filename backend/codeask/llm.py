@@ -11,6 +11,7 @@ import time
 from dataclasses import dataclass
 
 from codeask import config
+from codeask.deadline import time_left, timeout_for
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 # Groq docs: *-requests = requests per day, *-tokens = tokens per minute (rolling).
@@ -60,13 +61,12 @@ class GroqClient:
             self._api_key = os.environ["GROQ_API_KEY"]
         return {"Authorization": f"Bearer {self._api_key}"}
 
-    def _send(self, body: dict):
+    def _send(self, body: dict, timeout: float = config.GROQ_TIMEOUT_S):
         if self._post is None:
             import requests
 
             self._post = requests.post
-        return self._post(GROQ_URL, json=body, timeout=config.GROQ_TIMEOUT_S,
-                          headers=self._auth())
+        return self._post(GROQ_URL, json=body, timeout=timeout, headers=self._auth())
 
     def available_models(self) -> set[str]:
         """Model ids Groq currently serves to this key (the startup and TTL check, Q24)."""
@@ -80,22 +80,29 @@ class GroqClient:
             raise GroqError(f"Groq models {response.status_code}", response.status_code)
         return {m["id"] for m in response.json()["data"]}
 
-    def chat(self, messages: list[dict], max_tokens: int = config.ANSWER_MAX_TOKENS) -> Reply:
+    def chat(self, messages: list[dict], max_tokens: int = config.ANSWER_MAX_TOKENS,
+             deadline: float | None = None) -> Reply:
+        """A 429 or 5xx is retried; with a `deadline` (an /ask, Q43) at most once and only if
+        the wait fits before it. A timeout is never retried (requests raises it)."""
         body = {"model": self.model, "messages": messages,
                 "temperature": config.ANSWER_TEMPERATURE,
                 "max_completion_tokens": max_tokens,
                 **config.GROQ_MODEL_OPTIONS.get(self.model, {})}
-        for attempt in range(config.GROQ_MAX_RETRIES + 1):
+        retries = config.GROQ_MAX_RETRIES if deadline is None else 1
+        for attempt in range(retries + 1):
             start = self.clock()
-            response = self._send(body)
+            response = self._send(body, timeout_for(config.GROQ_TIMEOUT_S, deadline, self.clock))
             headers = {k: response.headers[k] for k in RATE_HEADERS if k in response.headers}
             if response.status_code == 429:
                 wait = float(headers.get("retry-after", config.GROQ_MAX_RETRY_WAIT_S + 1))
-                if attempt == config.GROQ_MAX_RETRIES or wait > config.GROQ_MAX_RETRY_WAIT_S:
+                if (attempt == retries or wait > config.GROQ_MAX_RETRY_WAIT_S
+                        or wait >= time_left(deadline, self.clock)):
                     raise RateLimited(f"429 from Groq (retry-after {wait:g} s), headers {headers}",
                                       wait)
                 self.sleep(wait)
                 continue
+            if response.status_code >= 500 and attempt < retries:
+                continue  # Groq's own failure: one more try, if time is left (checked above)
             if response.status_code != 200:
                 # Groq's error body explains the problem (e.g. "Request too large"); it never
                 # echoes the key.

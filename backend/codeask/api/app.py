@@ -34,6 +34,7 @@ from codeask import config
 from codeask.answer import PROMPT_VERSION
 from codeask.ask import ask as run_pipeline
 from codeask.ask import public_view
+from codeask.deadline import DeadlineExceeded
 from codeask.embedder import RateLimited as VoyageRateLimited
 from codeask.llm import GroqError
 from codeask.llm import RateLimited as GroqRateLimited
@@ -63,7 +64,7 @@ def classify(exc: Exception) -> ApiError:
         return ApiError(503, "busy", BUSY, {"Retry-After": str(int(exc.retry_after + 1))})
     if isinstance(exc, VoyageRateLimited):
         return ApiError(503, "busy", BUSY, {"Retry-After": str(config.VOYAGE_WINDOW_SECONDS)})
-    if isinstance(exc, requests.Timeout):
+    if isinstance(exc, (requests.Timeout, DeadlineExceeded)):
         return ApiError(504, "timeout", "An upstream service timed out. Please try again.")
     if isinstance(exc, (GroqError, requests.RequestException)):
         return ApiError(502, "upstream_error", "An upstream service failed. Please try again.")
@@ -200,15 +201,16 @@ def create_app(open_store=None, embedder=None, llm=None, models: ModelStatus | N
 
     @app.post("/ask")
     def ask(body: AskRequest, request: Request):
+        deadline = time.monotonic() + config.ASK_DEADLINE_S  # from entry (Q43, Q46)
         if models.get() is False:
             raise ApiError(503, "model_unavailable", "Live answers are unavailable right now.")
         with open_store() as store:
             repo = featured_repo(store, normalize_slug(body.repo))
             if repo is None:
                 raise HTTPException(404, "Unknown repo.")
-            (vector,) = embedder.embed([body.question], "query")
+            (vector,) = embedder.embed([body.question], "query", deadline=deadline)
             try:
-                result = run_pipeline(store, llm, repo, body.question, vector)
+                result = run_pipeline(store, llm, repo, body.question, vector, deadline)
             except GroqError as exc:
                 if exc.status != 404:
                     raise

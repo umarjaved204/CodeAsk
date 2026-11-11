@@ -1,3 +1,6 @@
+import pytest
+
+from codeask.deadline import DeadlineExceeded
 from codeask.embedder import Limiter
 
 
@@ -75,3 +78,15 @@ def test_slot_context_manager_releases_on_error():
     except RuntimeError:
         pass
     assert limiter._in_flight == 0 and len(limiter._stamps) == 1
+
+
+def test_a_wait_that_would_pass_the_deadline_raises_at_once():
+    limiter, clock = make()
+    for _ in range(3):
+        limiter.acquire()
+        clock.now += 2
+        limiter.release()  # the window frees at t = 67
+    with pytest.raises(DeadlineExceeded):
+        limiter.acquire("query", deadline=clock.now + 30)
+    assert clock.slept == []  # it didn't sleep first
+    assert limiter.acquire("query", deadline=clock.now + 70) == 61
