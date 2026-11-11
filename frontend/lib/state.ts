@@ -2,8 +2,8 @@
 // unions. Time always arrives in the event (`at`, ms), never from Date.now(), so the logic
 // tests can drive them. Everything else in the state inventory (the example answer, waking
 // phases, long answers, truncation, input limits) is a rendering condition, not a state.
-import type { Failure } from "./api";
-import type { AskResponse, Queue } from "./types";
+import { SERVICE_OK, type Failure } from "./api";
+import type { AskResponse, Queue, Service } from "./types";
 
 // ---------- connection: is the API there? ----------
 // A free Render instance sleeps after 15 min idle and takes ~30 s to wake (M2-0), so "no
@@ -53,7 +53,10 @@ export type Ask =
   | ({ kind: "loading"; requestId: number; startedAt: number; queue: Queue | null } & Asked)
   | ({ kind: "answered"; response: AskResponse } & Asked)
   | ({ kind: "ungrounded"; response: AskResponse } & Asked)
-  | ({ kind: "busy"; retryAt: number } & Asked) // 503 busy: manual retry after Retry-After
+  // A wait the visitor can retry through, after Retry-After: the queue was full (503 busy), or
+  // their own previous question is still running (429 in_progress, e.g. asked again after a
+  // reload; that earlier answer is abandoned and can't be shown again).
+  | ({ kind: "busy"; retryAt: number; reason: "busy" | "in_progress" } & Asked)
   | ({ kind: "error"; failure: Failure } & Asked);
 
 export type AskEvent =
@@ -111,11 +114,32 @@ export function askReducer(state: Ask, event: AskEvent): Ask {
           : { kind: "ungrounded", response: event.response, ...asked };
       }
       const f = event.failure;
-      if (f.kind === "api" && f.code === "busy") {
+      if (f.kind === "api" && (f.code === "busy" || f.code === "in_progress")) {
         return { kind: "busy", retryAt: event.at + (f.retryAfterS ?? BUSY_DEFAULT_RETRY_S) * 1000,
-                 ...asked };
+                 reason: f.code, ...asked };
       }
       return { kind: "error", failure: f, ...asked };
     }
   }
+}
+
+// ---------- service: are live questions open? (Q45, step 8) ----------
+// Set from every /status reply the page already makes, and from /ask: a paused or daily_limit
+// refusal sets it, an answer means it's open. Never polled while idle (Q14).
+export const SERVICE_REFRESH_AFTER_MS = 60_000;
+
+export function serviceAfterFailure(service: Service, failure: Failure): Service {
+  if (failure.kind !== "api") return service;
+  if (failure.code === "paused") return { status: "paused", retryAfterS: null };
+  if (failure.code === "daily_limit") return { status: "daily_limit", retryAfterS: failure.retryAfterS };
+  return service;
+}
+
+export function serviceAfterAnswer(): Service {
+  return SERVICE_OK; // the server just answered a live question, so they are open
+}
+
+/** On return to the tab: one /status fetch, only when the line could be stale (step 8). */
+export function shouldRefreshService(service: Service, lastFetchAt: number, now: number): boolean {
+  return service.status !== "ok" && now - lastFetchAt > SERVICE_REFRESH_AFTER_MS;
 }

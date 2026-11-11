@@ -1,10 +1,11 @@
 import { expect, test } from "@playwright/test";
 
-import type { Failure } from "../../lib/api";
+import { SERVICE_OK, type Failure } from "../../lib/api";
 import {
-  IDLE, WAKING_GIVE_UP_MS, askReducer, canSubmit, connectionReducer, type Ask, type AskEvent,
+  IDLE, WAKING_GIVE_UP_MS, askReducer, canSubmit, connectionReducer, serviceAfterAnswer,
+  serviceAfterFailure, shouldRefreshService, type Ask, type AskEvent,
 } from "../../lib/state";
-import type { AskResponse } from "../../lib/types";
+import type { AskResponse, Service } from "../../lib/types";
 
 const grounded: AskResponse = {
   grounded: true, answer: "It does X [1](cite:1).", blocks: [], possibly_relevant: [],
@@ -96,9 +97,27 @@ test.describe("ask", () => {
     const busy = (retryAfterS: number | null): Failure => ({
       kind: "api", status: 503, code: "busy", message: "", requestId: "r1", retryAfterS });
     expect(run([submit(1), { type: "failure", requestId: 1, at: 2_000, failure: busy(13) }]))
-      .toMatchObject({ kind: "busy", retryAt: 15_000 });
+      .toMatchObject({ kind: "busy", retryAt: 15_000, reason: "busy" });
     expect(run([submit(1), { type: "failure", requestId: 1, at: 2_000, failure: busy(null) }]))
-      .toMatchObject({ kind: "busy", retryAt: 62_000 });
+      .toMatchObject({ kind: "busy", retryAt: 62_000, reason: "busy" });
+  });
+
+  test("a previous question still in flight reuses the busy countdown, with its own reason", () => {
+    const inProgress: Failure = { kind: "api", status: 429, code: "in_progress", message: "",
+                                  requestId: "r1", retryAfterS: 40 };
+    const s = run([submit(1), { type: "failure", requestId: 1, at: 2_000, failure: inProgress }]);
+    expect(s).toMatchObject({ kind: "busy", retryAt: 42_000, reason: "in_progress" });
+    expect(canSubmit(s)).toBe(true);
+  });
+
+  test("the other limits are errors, and Ask stays enabled (Q46 C7)", () => {
+    for (const code of ["paused", "daily_limit", "per_ip_limit"] as const) {
+      const failure: Failure = { kind: "api", status: 429, code, message: "", requestId: "r",
+                                 retryAfterS: 60 };
+      const s = run([submit(1), { type: "failure", requestId: 1, at: 2_000, failure }]);
+      expect(s, code).toMatchObject({ kind: "error", failure });
+      expect(canSubmit(s), code).toBe(true);
+    }
   });
 
   test("other failures are errors that keep the failure for the message", () => {
@@ -112,5 +131,37 @@ test.describe("ask", () => {
     const s = run([submit(1), { type: "response", requestId: 1, response: grounded }]);
     expect(canSubmit(s)).toBe(true);
     expect(askReducer(s, submit(2)).kind).toBe("loading");
+  });
+});
+
+// ---------- service (Q45, step 8) ----------
+test.describe("service", () => {
+  const paused: Service = { status: "paused", retryAfterS: null };
+  const daily: Service = { status: "daily_limit", retryAfterS: 7_200 };
+  const refusal = (code: string, retryAfterS: number | null = null): Failure =>
+    ({ kind: "api", status: 429, code, message: "", requestId: "r", retryAfterS }) as Failure;
+
+  test("a paused or daily-limit refusal sets it, so the line follows the newest value", () => {
+    expect(serviceAfterFailure(SERVICE_OK, refusal("paused"))).toEqual(paused);
+    expect(serviceAfterFailure(paused, refusal("daily_limit", 7_200))).toEqual(daily);
+    expect(serviceAfterFailure(daily, refusal("paused"))).toEqual(paused);
+  });
+
+  test("other failures leave it as it was", () => {
+    for (const failure of [refusal("per_ip_limit", 60), refusal("busy", 13), refusal("internal_error"),
+                           { kind: "unreachable" } as Failure]) {
+      expect(serviceAfterFailure(paused, failure)).toEqual(paused);
+    }
+  });
+
+  test("an answer means live questions are open", () => {
+    expect(serviceAfterAnswer()).toEqual(SERVICE_OK);
+  });
+
+  test("a return to the tab refreshes only a closed service, at most once a minute", () => {
+    expect(shouldRefreshService(SERVICE_OK, 0, 10 * 60_000)).toBe(false); // open: never
+    expect(shouldRefreshService(paused, 0, 60_000)).toBe(false); // 60 s: not yet
+    expect(shouldRefreshService(paused, 0, 60_001)).toBe(true);
+    expect(shouldRefreshService(daily, 100_000, 130_000)).toBe(false);
   });
 });

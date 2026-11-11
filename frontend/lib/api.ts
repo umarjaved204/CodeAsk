@@ -1,7 +1,7 @@
 // Talking to the API. Every outcome is classified, never thrown: the UI must tell "the server
 // answered with an error" from "the server isn't there" (asleep on Render's free tier, down,
 // or the visitor is offline). `fetch` is injected so the logic tests need no network.
-import type { ApiErrorCode, AskResponse, Queue, Repo, Status } from "./types";
+import type { ApiErrorCode, AskResponse, Queue, Repo, Service, Status } from "./types";
 
 export type Failure =
   // The API answered with its JSON error shape (Q22).
@@ -11,7 +11,7 @@ export type Failure =
       code: ApiErrorCode;
       message: string;
       requestId: string | null;
-      retryAfterS: number | null; // from the Retry-After header (busy)
+      retryAfterS: number | null; // the Retry-After header (busy and the three 429s)
     }
   // No usable answer: the request failed, or the reply wasn't our JSON (e.g. Render's HTML page
   // while the instance wakes). The connection logic decides between waking, down and offline.
@@ -22,8 +22,9 @@ export type Result<T> = { ok: true; data: T } | { ok: false; failure: Failure };
 type Fetch = typeof fetch;
 
 const KNOWN_CODES = new Set<string>([
-  "busy", "daily_cap", "model_unavailable", "database_unavailable", "timeout", "upstream_error",
-  "internal_error", "not_found", "invalid_request", "method_not_allowed",
+  "busy", "paused", "daily_limit", "per_ip_limit", "in_progress", "model_unavailable",
+  "database_unavailable", "timeout", "upstream_error", "internal_error", "not_found",
+  "invalid_request", "method_not_allowed",
 ]);
 
 function retryAfter(header: string | null): number | null {
@@ -82,12 +83,27 @@ export function readQueue(raw: unknown): Queue | null {
   return { position, waitS };
 }
 
-/** Where the caller's question is in line, while it waits: a validated place, null when
- *  nothing is queued, or a failed poll (which the page ignores; the /ask reply decides). */
+export const SERVICE_OK: Service = { status: "ok", retryAfterS: null };
+
+/** The one place `service` from /status is checked (Q45): parsed tolerantly, so anything
+ *  unknown counts as ok (the /ask reply still decides) and never breaks the rest of /status. */
+export function readService(status: unknown): Service {
+  if (typeof status !== "object" || status === null) return SERVICE_OK;
+  const { service, retry_after_s: retry } = status as Record<string, unknown>;
+  if (service === "paused") return { status: "paused", retryAfterS: null };
+  if (service !== "daily_limit") return SERVICE_OK;
+  const retryAfterS = typeof retry === "number" && Number.isFinite(retry) && retry >= 0 ? retry : null;
+  return { status: "daily_limit", retryAfterS };
+}
+
+/** Where the caller's question is in line, while it waits, plus the service state the same
+ *  reply carries: validated, or a failed poll (which the page ignores; /ask decides). */
 export async function pollQueue(fetchFn: Fetch, base: string, signal?: AbortSignal):
-    Promise<{ ok: true; queue: Queue | null } | { ok: false }> {
+    Promise<{ ok: true; queue: Queue | null; service: Service } | { ok: false }> {
   const result = await getStatus(fetchFn, base, signal);
-  return result.ok ? { ok: true, queue: readQueue(result.data.queue) } : { ok: false };
+  return result.ok
+    ? { ok: true, queue: readQueue(result.data.queue), service: readService(result.data) }
+    : { ok: false };
 }
 
 export function getRepos(fetchFn: Fetch, base: string): Promise<Result<Repo[]>> {

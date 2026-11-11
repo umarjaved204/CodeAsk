@@ -4,15 +4,19 @@ import {
   useCallback, useEffect, useReducer, useRef, useState, useSyncExternalStore, type ReactNode,
 } from "react";
 
-import { getRepos, getStatus, pollQueue, postAsk } from "../lib/api";
+import { SERVICE_OK, getRepos, getStatus, pollQueue, postAsk, readService } from "../lib/api";
 import { DEFAULT_REPO, EXAMPLES, FEATURED } from "../lib/featured";
 import { safeGithubUrl } from "../lib/markdown";
 import {
-  BUSY_MESSAGE, BUSY_OVER_MESSAGE, SETTLING_MESSAGE, WAITING_MESSAGE, canRetry, connectionNote,
-  errorMessage, isAlarm, isQueued, loadingMessage, provenance, queuedAnnouncement, queuedMessage,
+  BUSY_MESSAGE, BUSY_OVER_MESSAGE, IN_PROGRESS_MESSAGE, SETTLING_MESSAGE, WAITING_MESSAGE,
+  canRetry, connectionNote, errorMessage, isAlarm, isQueued, loadingMessage, provenance,
+  queuedAnnouncement, queuedMessage, serviceNote,
 } from "../lib/messages";
-import { IDLE, askReducer, canSubmit, connectionReducer, type Ask } from "../lib/state";
-import type { AskResponse, Repo } from "../lib/types";
+import {
+  IDLE, askReducer, canSubmit, connectionReducer, serviceAfterAnswer, serviceAfterFailure,
+  shouldRefreshService, type Ask,
+} from "../lib/state";
+import type { AskResponse, Repo, Service } from "../lib/types";
 import { Answer } from "./Answer";
 import { Composer } from "./Composer";
 import { CodeSheet, EvidencePanel } from "./EvidencePanel";
@@ -125,7 +129,8 @@ function AskStatus({ ask, now, online, onRetry, onShowExample }: {
       break;
     case "busy": {
       const seconds = Math.max(0, Math.ceil((ask.retryAt - now) / 1000));
-      message = seconds > 0 ? BUSY_MESSAGE : BUSY_OVER_MESSAGE;
+      const waiting = ask.reason === "in_progress" ? IN_PROGRESS_MESSAGE : BUSY_MESSAGE;
+      message = seconds > 0 ? waiting : BUSY_OVER_MESSAGE;
       action = (
         <RetryButton disabled={seconds > 0} onClick={onRetry}>
           {seconds > 0 ? `Try again in ${seconds} s` : "Try again"}
@@ -175,6 +180,10 @@ export function App() {
   const [chosenN, setChosenN] = useState<number | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [now, setNow] = useState(0);
+  // Are live questions open (Q45)? From every /status reply the page already makes and from
+  // /ask; never polled while idle (Q14). lastStatusAt: when /status last answered.
+  const [service, setService] = useState<Service>(SERVICE_OK);
+  const lastStatusAt = useRef(0);
   const lastRequest = useRef(0);
   const sentWaiting = useRef<Ask | null>(null);
   const unmount = useRef<AbortController | null>(null);
@@ -195,6 +204,10 @@ export function App() {
       if (cancelled) return;
       // Any JSON from the API, even an error, means the server is awake.
       if (result.ok || result.failure.kind === "api") {
+        if (result.ok) {
+          setService(readService(result.data));
+          lastStatusAt.current = Date.now();
+        }
         dispatchConnection({ type: "status_ok" });
         return;
       }
@@ -232,11 +245,15 @@ export function App() {
   const send = useCallback(async (requestId: number, target: string, question: string) => {
     const result = await postAsk(fetch, API, target, question, unmount.current?.signal);
     if (result.ok) {
+      setService(serviceAfterAnswer());
       dispatchAsk({ type: "response", requestId, response: result.data });
       return;
     }
     const at = Date.now();
     setNow(at);
+    // Set together with the ask state, so the composer line and the question's own status never
+    // show the same refusal, or neither (one owner per message, Q46 C7).
+    setService((current) => serviceAfterFailure(current, result.failure));
     dispatchAsk({ type: "failure", requestId, failure: result.failure, at });
     if (result.failure.kind === "unreachable") {
       dispatchConnection({ type: "status_failed", at, online: navigator.onLine });
@@ -260,6 +277,8 @@ export function App() {
       const result = await pollQueue(fetch, API, controller.signal);
       if (controller.signal.aborted) return;
       if (result.ok) {
+        setService(result.service);
+        lastStatusAt.current = Date.now();
         dispatchAsk({ type: "queue_update", requestId, queue: result.queue, at: Date.now() });
       }
       timer = setTimeout(poll, QUEUE_POLL_MS);
@@ -270,6 +289,23 @@ export function App() {
       clearTimeout(timer);
     };
   }, [loadingId, atFront]);
+
+  // A paused or daily-limit line may be stale when the visitor comes back to the tab hours
+  // later: one /status fetch on return, only if it isn't ok and the last reply is over 60 s old
+  // (step 8). Visitor-initiated, like a reload, so it is no keep-alive (Q14).
+  useEffect(() => {
+    if (service.status === "ok") return;
+    function onVisible() {
+      if (document.visibilityState !== "visible") return;
+      if (!shouldRefreshService(service, lastStatusAt.current, Date.now())) return;
+      lastStatusAt.current = Date.now(); // one fetch per return, even if it fails
+      void getStatus(fetch, API).then((result) => {
+        if (result.ok) setService(readService(result.data));
+      });
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [service]);
 
   // A question asked while the server woke goes out once, when the server is up.
   useEffect(() => {
@@ -314,7 +350,10 @@ export function App() {
 
   // One owner per message (round 1, F4): connectionNote() decides, from the state, whether the
   // composer's connection line speaks. Only "down" is red; waking and offline are calm (F5).
+  // The connection wins over the service line: while the server can't be reached, the page
+  // can't know whether live questions are open.
   const connectionLine = connectionNote(connection, ask, now);
+  const serviceLine = connection.kind === "up" ? serviceNote(service, ask, example !== undefined) : null;
   const composerStatus = connectionLine ? (
     <p className={connection.kind === "down" ? "text-error" : "text-text-muted"}>
       {connectionLine}{" "}
@@ -325,6 +364,8 @@ export function App() {
         </button>
       )}
     </p>
+  ) : serviceLine ? (
+    <p className="text-text-muted">{serviceLine}</p>
   ) : ask.kind === "idle" && ask.settling !== null ? (
     <p className="text-text-muted">{SETTLING_MESSAGE}</p>
   ) : null;

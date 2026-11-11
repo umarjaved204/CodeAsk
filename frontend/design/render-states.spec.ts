@@ -20,7 +20,8 @@ import {
   type MockApi, type Reply,
 } from "../tests/e2e/mocks";
 import {
-  CANT_REACH_MESSAGE, DAILY_CAP_MESSAGE, OFFLINE_MESSAGE, serverErrorMessage,
+  CANT_REACH_MESSAGE, IN_PROGRESS_MESSAGE, OFFLINE_MESSAGE, dailyLimitMessage, pausedMessage,
+  perVisitorMessage, serverErrorMessage,
 } from "../lib/messages";
 import { LONG_ANSWER, LONG_LINES, MANY_CITATIONS, SPECIMEN } from "./screen-fixtures";
 
@@ -105,12 +106,28 @@ const STATES: Record<string, Setup> = {
   "04c-cant-reach": waking(95_000, CANT_REACH_MESSAGE),
   "05-queued": async (page, api) => {
     api.on("GET /status", () => statusWith({ position: 2, wait_s: 40 }));
-    await loading(1_000, "2nd in line, about 40 seconds.")(page, api, 0);
+    await loading(1_000, "Next in line, up to about 40 seconds.")(page, api, 0);
   },
   "06-busy": replying(apiError(503, "busy", "The service is busy.", { "Retry-After": "30" }),
                       /^The demo is at capacity\./),
-  "07-daily-cap": replying(apiError(429, "daily_cap", "Daily limit reached."),
-                           DAILY_CAP_MESSAGE),
+  // Slice 4 (Q45, step 8): the refusals from /ask, and the service line on load.
+  "07-daily-limit": replying(apiError(429, "daily_limit", "Used up.", { "Retry-After": "7200" }),
+                             dailyLimitMessage(7_200, false)),
+  "07b-per-visitor": replying(apiError(429, "per_ip_limit", "Limit.", { "Retry-After": "10800" }),
+                              perVisitorMessage(10_800, false)),
+  "07c-in-progress": replying(apiError(429, "in_progress", "Still answering.", { "Retry-After": "40" }),
+                              IN_PROGRESS_MESSAGE),
+  "07d-paused-refused": replying(apiError(503, "paused", "Paused."), pausedMessage(false)),
+  "20-paused-on-load": async (page, api) => {
+    api.on("GET /status", () => statusWith(null, "paused"));
+    await load(page, api);
+    await expect(page.getByText(pausedMessage(true))).toBeVisible();
+  },
+  "21-daily-limit-on-load": async (page, api) => { // the longest line in the sticky composer
+    api.on("GET /status", () => statusWith(null, "daily_limit", 7_200));
+    await load(page, api);
+    await expect(page.getByText(dailyLimitMessage(7_200, true))).toBeVisible();
+  },
   "08-model-unavailable": replying(apiError(503, "model_unavailable", "Unavailable."),
                                    /^Live answers are unavailable right now\./),
   "09-server-error": replying(apiError(500, "internal_error", "Something went wrong."),
@@ -173,6 +190,9 @@ for (const state of ["12-long-answer", "13-long-lines", "14-many-citations"]) {
 }
 add("01-first-screen", 320, "light");
 add("14-many-citations", 320, "light");
+// Step 8 (mentor): the longest service line where the sticky composer is tightest.
+add("21-daily-limit-on-load", 320, "light");
+add("21-daily-limit-on-load", 390, "dark");
 add("01-first-screen", 1920, "light");
 // Round 2 additions (mentor, round 1): a short landscape phone, and visible scrollbars.
 for (const state of ["01-first-screen", "12-long-answer"]) {

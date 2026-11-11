@@ -25,7 +25,9 @@ import {
   FIRST_UNVERIFIED, NOT_OUR_JSON, UNGROUNDED, apiError, expect, held, statusWith, test,
   type MockApi,
 } from "./mocks";
-import { DAILY_CAP_MESSAGE, serverErrorMessage } from "../../lib/messages";
+import {
+  IN_PROGRESS_MESSAGE, dailyLimitMessage, pausedMessage, perVisitorMessage, serverErrorMessage,
+} from "../../lib/messages";
 
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 const Q = "How are signatures verified?";
@@ -64,11 +66,11 @@ const STATES: State[] = [
     await askAfterUp(page, api);
     await expect(page.getByText(/^Answering\./)).toBeVisible();
   } },
-  { name: "queued (state 5, provisional shape)", setup: async (page, api) => {
+  { name: "queued (state 5)", setup: async (page, api) => {
     api.on("GET /status", () => statusWith({ position: 2, wait_s: 40 }));
     api.on("POST /ask", held().handler);
     await askAfterUp(page, api);
-    await expect(page.getByText("2nd in line, about 40 seconds.")).toBeVisible();
+    await expect(page.getByText("Next in line, up to about 40 seconds.")).toBeVisible();
   } },
   { name: "answered, citation 2 highlighted", setup: async (page, api) => {
     await askAfterUp(page, api);
@@ -93,8 +95,23 @@ const STATES: State[] = [
   } },
   { name: "busy", setup: failing(apiError(503, "busy", "The service is busy.", { "Retry-After": "30" }),
                                  /^The demo is at capacity\./) },
-  { name: "daily cap", setup: failing(apiError(429, "daily_cap", "Daily limit reached."),
-                                      DAILY_CAP_MESSAGE) },
+  // Slice 4 (Q45): the service line on load, and each refusal from /ask.
+  { name: "paused, on load", setup: async (page, api) => {
+    api.on("GET /status", () => statusWith(null, "paused"));
+    await page.goto("/");
+    await expect(page.getByText(pausedMessage(true))).toBeVisible();
+  } },
+  { name: "daily limit, on load (the longest line)", setup: async (page, api) => {
+    api.on("GET /status", () => statusWith(null, "daily_limit", 7_200));
+    await page.goto("/");
+    await expect(page.getByText(dailyLimitMessage(7_200, true))).toBeVisible();
+  } },
+  { name: "daily limit, refused", setup: failing(
+    apiError(429, "daily_limit", "Used up.", { "Retry-After": "7200" }), dailyLimitMessage(7_200, false)) },
+  { name: "per-visitor limit, refused", setup: failing(
+    apiError(429, "per_ip_limit", "Limit.", { "Retry-After": "10800" }), perVisitorMessage(10_800, false)) },
+  { name: "previous question in progress", setup: failing(
+    apiError(429, "in_progress", "Still answering.", { "Retry-After": "40" }), IN_PROGRESS_MESSAGE) },
   { name: "model unavailable", setup: failing(apiError(503, "model_unavailable", "Unavailable."),
                                               /^Live answers are unavailable right now\./) },
   { name: "server error", setup: failing(apiError(500, "internal_error", "Something went wrong."),

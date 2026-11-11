@@ -13,7 +13,7 @@ test("only failures on our side are alarms; limits, a removed repo and offline a
   for (const code of ["internal_error", "upstream_error", "timeout", "database_unavailable", "error"]) {
     expect(isAlarm(api(code), true), code).toBe(true);
   }
-  for (const code of ["daily_cap", "model_unavailable", "not_found"]) {
+  for (const code of ["paused", "daily_limit", "per_ip_limit", "model_unavailable", "not_found"]) {
     expect(isAlarm(api(code), true), code).toBe(false);
   }
   expect(isAlarm(unreachable, true)).toBe(true); // can't reach the server

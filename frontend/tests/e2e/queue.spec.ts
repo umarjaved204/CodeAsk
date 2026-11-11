@@ -1,4 +1,4 @@
-// State 5, queued (PLAN.md Q40; the /status `queue` shape is PROVISIONAL until slice 4).
+// State 5, queued (PLAN.md Q40; the /status `queue` shape is final in Q45; wording: step 8).
 // Polling is measured inside the page: an init script logs the page's own (fake) clock time of
 // every /status fetch at the moment it is called, so counts and spacing are exact and "no more
 // polls" needs no real-time waiting. Everything else uses the mocks.
@@ -76,12 +76,12 @@ test("polling: none while idle; first at +1 s, then every 3 s; stops at the fron
   await page.clock.runFor(999);
   expect(await since()).toEqual([]);
   await page.clock.runFor(1);
-  await expect(page.getByText("3rd in line, about 50 seconds.")).toBeVisible();
+  await expect(page.getByText("3rd in line, up to about 50 seconds.")).toBeVisible();
   expect(await since()).toEqual([1_000]);
 
   script.place = { position: 2, wait_s: 20 };
   await page.clock.runFor(3_000);
-  await expect(page.getByText("2nd in line, about 20 seconds.")).toBeVisible();
+  await expect(page.getByText("Next in line, up to about 20 seconds.")).toBeVisible();
   expect(await since()).toEqual([1_000, 4_000]);
 
   // Reaching the front: "Answering…" again, and the 12 s escalation counts from here (+7 s).
@@ -109,7 +109,7 @@ test("polling stops when the question ends in an error", async ({ page, api }) =
   script.place = { position: 3, wait_s: 50 };
   await ask(page);
   await page.clock.runFor(1_000);
-  await expect(page.getByText("3rd in line, about 50 seconds.")).toBeVisible();
+  await expect(page.getByText("3rd in line, up to about 50 seconds.")).toBeVisible();
   const calls = (await logged(page)).statusCalls.length;
 
   answer.release(apiError(500, "internal_error", "Something went wrong on the server."));
@@ -137,20 +137,20 @@ test("the live region announces position changes only; the visible line keeps it
 
   script.place = { position: 3, wait_s: 40 }; // only the seconds change
   await page.clock.runFor(3_000);
-  await expect(page.getByText("3rd in line, about 40 seconds.")).toBeVisible();
+  await expect(page.getByText("3rd in line, up to about 40 seconds.")).toBeVisible();
   script.place = { position: 3, wait_s: 30 };
   await page.clock.runFor(3_000);
-  await expect(page.getByText("3rd in line, about 30 seconds.")).toBeVisible();
+  await expect(page.getByText("3rd in line, up to about 30 seconds.")).toBeVisible();
   expect(await live()).toEqual([]); // nothing announced
 
   script.place = { position: 2, wait_s: 20 }; // the position changes
   await page.clock.runFor(3_000);
-  await expect(page.getByText("2nd in line, about 20 seconds.")).toBeVisible();
+  await expect(page.getByText("Next in line, up to about 20 seconds.")).toBeVisible();
   await expect.poll(live).not.toEqual([]);
-  expect(new Set(await live())).toEqual(new Set(["2nd in line."]));
+  expect(new Set(await live())).toEqual(new Set(["Next in line."]));
 
   // The visible line is not a live region.
-  await expect(page.getByText("2nd in line, about 20 seconds.")).toHaveAttribute("aria-live", "off");
+  await expect(page.getByText("Next in line, up to about 20 seconds.")).toHaveAttribute("aria-live", "off");
 });
 
 test("a poll that returns after the answer never shows a queue", async ({ page, api }) => {
@@ -202,7 +202,7 @@ test("a repo switch while queued: the queue line goes, polling stops, Ask waits 
   script.place = { position: 2, wait_s: 40 };
   await ask(page);
   await page.clock.runFor(1_000);
-  await expect(page.getByText("2nd in line, about 40 seconds.")).toBeVisible();
+  await expect(page.getByText("Next in line, up to about 40 seconds.")).toBeVisible();
 
   await page.getByRole("combobox", { name: "Repository" }).selectOption("psf/requests");
   await expect(page.getByRole("heading", { level: 1 }))

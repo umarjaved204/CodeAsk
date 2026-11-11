@@ -1,0 +1,125 @@
+{
+  "ask busy": {
+    "body": {
+      "error": "busy",
+      "message": "The service is busy. Please try again in a minute.",
+      "request_id": "a1b2c3d4"
+    },
+    "headers": {
+      "access-control-expose-headers": "X-Request-Id, Retry-After",
+      "retry-after": "19"
+    },
+    "status": 503
+  },
+  "ask daily_limit": {
+    "body": {
+      "error": "daily_limit",
+      "message": "Live questions are used up for now.",
+      "request_id": "a1b2c3d4"
+    },
+    "headers": {
+      "access-control-expose-headers": "X-Request-Id, Retry-After",
+      "retry-after": "86400"
+    },
+    "status": 429
+  },
+  "ask in_progress": {
+    "body": {
+      "error": "in_progress",
+      "message": "Your previous question is still being answered.",
+      "request_id": "a1b2c3d4"
+    },
+    "headers": {
+      "access-control-expose-headers": "X-Request-Id, Retry-After",
+      "retry-after": "30"
+    },
+    "status": 429
+  },
+  "ask paused": {
+    "body": {
+      "error": "paused",
+      "message": "Live questions are paused right now.",
+      "request_id": "a1b2c3d4"
+    },
+    "headers": {
+      "access-control-expose-headers": "X-Request-Id, Retry-After"
+    },
+    "status": 503
+  },
+  "ask per_ip_limit": {
+    "body": {
+      "error": "per_ip_limit",
+      "message": "You've reached the daily limit of live questions for one visitor.",
+      "request_id": "a1b2c3d4"
+    },
+    "headers": {
+      "access-control-expose-headers": "X-Request-Id, Retry-After",
+      "retry-after": "86400"
+    },
+    "status": 429
+  },
+  "status daily_limit": {
+    "body": {
+      "model": "qwen/test",
+      "model_available": true,
+      "ok": true,
+      "prompt_version": 3,
+      "queue": null,
+      "retry_after_s": 86400,
+      "service": "daily_limit"
+    },
+    "headers": {
+      "access-control-expose-headers": "X-Request-Id, Retry-After",
+      "cache-control": "no-store"
+    },
+    "status": 200
+  },
+  "status ok": {
+    "body": {
+      "model": "qwen/test",
+      "model_available": true,
+      "ok": true,
+      "prompt_version": 3,
+      "queue": null,
+      "service": "ok"
+    },
+    "headers": {
+      "access-control-expose-headers": "X-Request-Id, Retry-After",
+      "cache-control": "no-store"
+    },
+    "status": 200
+  },
+  "status paused": {
+    "body": {
+      "model": "qwen/test",
+      "model_available": true,
+      "ok": true,
+      "prompt_version": 3,
+      "queue": null,
+      "service": "paused"
+    },
+    "headers": {
+      "access-control-expose-headers": "X-Request-Id, Retry-After",
+      "cache-control": "no-store"
+    },
+    "status": 200
+  },
+  "status queue": {
+    "body": {
+      "model": "qwen/test",
+      "model_available": true,
+      "ok": true,
+      "prompt_version": 3,
+      "queue": {
+        "position": 2,
+        "wait_s": 0
+      },
+      "service": "ok"
+    },
+    "headers": {
+      "access-control-expose-headers": "X-Request-Id, Retry-After",
+      "cache-control": "no-store"
+    },
+    "status": 200
+  }
+}

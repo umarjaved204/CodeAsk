@@ -1,11 +1,14 @@
 """The API with fakes (no network): errors inside CORS, featured-only, grounding, model check,
 logs (PLAN.md slice 2, Q22-Q24, Q16)."""
 
+import json
 import logging
+import os
 import time
 from collections import Counter
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import psycopg
 import pytest
@@ -495,6 +498,67 @@ def test_status_gives_the_callers_own_place(monkeypatch):
         other = c.get("/status", headers={"CF-Connecting-IP": OTHER_IP}).json()["queue"]
         nobody = c.get("/status").json()["queue"]
     assert mine == {"position": 2, "wait_s": 0} and other is None and nobody is None
+
+
+# ---------- the frontend contract (step 8): real replies, not hand-written mocks ----------
+CONTRACT = Path(__file__).resolve().parents[2] / "frontend" / "tests" / "contract" / "backend-replies.json"
+CONTRACT_HEADERS = ("retry-after", "access-control-expose-headers", "cache-control")
+
+
+def contract_replies(monkeypatch) -> dict:
+    """Each refusal the page handles and each /status shape, as the real app sends them."""
+    replies = {}
+
+    def record(name, r):
+        body = r.json()
+        if isinstance(body, dict) and "request_id" in body:
+            body["request_id"] = "a1b2c3d4"  # random per request; the page only shows it
+        replies[name] = {"status": r.status_code, "body": body,
+                         "headers": {h: r.headers[h] for h in CONTRACT_HEADERS if h in r.headers}}
+
+    key = client_key(IP, SALT)
+
+    def in_flight():
+        visitors = Visitors(clock=lambda: 1_000.0)
+        visitors.accept(key, 5, 1_030.0)  # a question in flight with 30 s left
+        return {"visitors": visitors}
+
+    def line(pacer, mine=False):
+        queue, now = AskQueue(pacer), time.monotonic()
+        queue.try_start(queue.join("someone", now + 90, now), now)
+        if mine:
+            queue.join(key, now + 90, now)
+        return {"queue": queue}
+
+    cases = [  # built just before each request, so time-based values don't drift
+        ("ask paused", lambda: {"store": FakeStore(paused=True)}, "ask"),
+        ("ask daily_limit", lambda: {"store": FakeStore(public_budget_tokens=0)}, "ask"),
+        ("ask per_ip_limit", lambda: {"store": FakeStore(per_ip_daily=0)}, "ask"),
+        ("ask in_progress", in_flight, "ask"),
+        ("ask busy", lambda: line(Pacer()), "ask"),  # projected 78 s: busy, Retry-After 19
+        ("status ok", dict, "status"),
+        ("status paused", lambda: {"store": FakeStore(paused=True)}, "ask+status"),
+        ("status daily_limit", lambda: {"store": FakeStore(public_budget_tokens=0)}, "ask+status"),
+        ("status queue", lambda: line(OpenPacer(), mine=True), "status"),
+    ]
+    for name, deps, calls in cases:
+        with client(monkeypatch, **deps()) as c:
+            if "ask" in calls:
+                r = ask(c, ip=IP)
+            if "status" in calls:
+                r = c.get("/status", headers={"CF-Connecting-IP": IP})
+            record(name, r)
+    return replies
+
+
+def test_the_frontend_contract_file_is_current(monkeypatch):
+    text = json.dumps(contract_replies(monkeypatch), indent=2, sort_keys=True) + "\n"
+    if os.environ.get("UPDATE_CONTRACT") == "1":
+        CONTRACT.parent.mkdir(parents=True, exist_ok=True)
+        CONTRACT.write_text(text, encoding="utf-8")
+    assert CONTRACT.exists() and CONTRACT.read_text(encoding="utf-8") == text, (
+        "the backend's replies changed: rerun this test with UPDATE_CONTRACT=1 and commit "
+        "frontend/tests/contract/backend-replies.json (the frontend logic tests read it)")
 
 
 def test_status_never_waits_on_the_model_check():

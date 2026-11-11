@@ -32,10 +32,14 @@ export type AskResponse = {
   prompt_version: number;
 };
 
-// Error codes the API sends (Q22). "daily_cap" is provisional until slice 4 builds the cap.
+// Error codes the API sends (Q22; slice 4: Q45, Q46 C6). The three 429s carry a whole-seconds
+// Retry-After; paused (503) has none. tests/contract/backend-replies.json holds the real bodies.
 export type ApiErrorCode =
   | "busy"
-  | "daily_cap"
+  | "paused" // the kill switch (503)
+  | "daily_limit" // the day's token budget is spent, or Groq's own daily limit (429)
+  | "per_ip_limit" // this visitor's questions for the last 24 h (429)
+  | "in_progress" // this visitor's previous question is still running (429)
   | "model_unavailable"
   | "database_unavailable"
   | "timeout"
@@ -53,17 +57,24 @@ export type Status = {
   model: string;
   model_available: boolean | null; // null = the model check itself failed (Q24)
   prompt_version: number;
-  // PROVISIONAL (Q40; slice 4 confirms): the caller's own place in the /ask queue, found by
-  // their hashed IP. Absent or null when nothing of theirs is waiting. Never read directly:
-  // api.ts readQueue() validates it.
+  // The caller's own place in the /ask queue, found by their hashed IP (Q40, final in Q45).
+  // Null when nothing of theirs is waiting. Never read directly: api.ts readQueue() checks it.
   queue?: unknown;
+  // Whether live questions are open (Q45): "ok" | "paused" | "daily_limit", with
+  // retry_after_s for daily_limit. Never read directly: api.ts readService() checks it.
+  service?: unknown;
+  retry_after_s?: unknown;
 };
 
-/** The wire shape slice 4 is expected to send (Q40); used by the mocks. */
-export type QueueWire = { position: number; wait_s: number };
+/** The queue's wire shape (app.py status()); used by the mocks. */
+export type QueueWire = { position: number; wait_s: number | null };
 
-/** A validated queue place: position 1 = being answered; waitS null = no usable estimate. */
+/** A validated queue place: position 1 = being answered; waitS null = no usable estimate.
+ *  waitS is an upper bound (the queue projects the slowest recent answer, Q46). */
 export type Queue = { position: number; waitS: number | null };
+
+/** A validated service state. retryAfterS: seconds from the reply, for daily_limit only. */
+export type Service = { status: "ok" | "paused" | "daily_limit"; retryAfterS: number | null };
 
 export type Repo = { slug: string; url: string };
 

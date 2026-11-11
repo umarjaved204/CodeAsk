@@ -15,7 +15,7 @@ import {
   type MockApi, type Reply,
 } from "./mocks";
 import {
-  CANT_REACH_MESSAGE, DAILY_CAP_MESSAGE, OFFLINE_MESSAGE, serverErrorMessage,
+  CANT_REACH_MESSAGE, OFFLINE_MESSAGE, dailyLimitMessage, serverErrorMessage,
 } from "../../lib/messages";
 
 const Q = "How are signatures verified?";
@@ -254,9 +254,10 @@ for (const [expose, countdown] of [[true, "Try again in 5 s"], [false, "Try agai
 }
 
 const FAILURES: { name: string; reply: Reply; text: string; action: string }[] = [
-  // Provisional: slice 4 builds the cap and confirms its status code.
-  { name: "daily cap", reply: apiError(429, "daily_cap", "Daily limit reached."),
-    text: DAILY_CAP_MESSAGE,
+  // app.py refused(): the day's token budget is spent (slice 4; the other refusals: limits.spec).
+  { name: "daily limit",
+    reply: apiError(429, "daily_limit", "Live questions are used up for now.", { "Retry-After": "7200" }),
+    text: dailyLimitMessage(7_200, false),
     action: "Show the example answer" },
   // app.py ask(): the model check failed.
   { name: "model unavailable",

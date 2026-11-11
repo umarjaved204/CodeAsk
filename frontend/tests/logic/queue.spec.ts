@@ -1,8 +1,8 @@
-// State 5, queued (PLAN.md Q40, provisional shape): the boundary validation, the wording and
-// the reducer's queue rules. Pure functions, no page.
+// State 5, queued (PLAN.md Q40, final in Q45; wording: step 8) and the service state /status
+// carries: the boundary validation, the wording and the reducer's queue rules. No page.
 import { expect, test } from "@playwright/test";
 
-import { pollQueue, readQueue } from "../../lib/api";
+import { SERVICE_OK, pollQueue, readQueue, readService } from "../../lib/api";
 import { isQueued, ordinal, queuedAnnouncement, queuedMessage, roundedWait } from "../../lib/messages";
 import { IDLE, askReducer, type Ask, type AskEvent } from "../../lib/state";
 
@@ -36,14 +36,21 @@ test.describe("pollQueue", () => {
 
   test("returns the validated place, or null when nothing waits", async () => {
     expect(await pollQueue(reply({ ...status, queue: { position: 2, wait_s: 40 } }), "http://api"))
-      .toEqual({ ok: true, queue: { position: 2, waitS: 40 } });
-    expect(await pollQueue(reply(status), "http://api")).toEqual({ ok: true, queue: null });
-    expect(await pollQueue(reply({ ...status, queue: null }), "http://api")).toEqual({ ok: true, queue: null });
+      .toEqual({ ok: true, queue: { position: 2, waitS: 40 }, service: SERVICE_OK });
+    expect(await pollQueue(reply(status), "http://api"))
+      .toEqual({ ok: true, queue: null, service: SERVICE_OK });
+    expect(await pollQueue(reply({ ...status, queue: null }), "http://api"))
+      .toEqual({ ok: true, queue: null, service: SERVICE_OK });
   });
 
   test("a malformed queue never breaks the rest of /status", async () => {
     expect(await pollQueue(reply({ ...status, queue: { position: "soon" } }), "http://api"))
-      .toEqual({ ok: true, queue: null });
+      .toEqual({ ok: true, queue: null, service: SERVICE_OK });
+  });
+
+  test("the same reply carries the service state", async () => {
+    expect(await pollQueue(reply({ ...status, queue: null, service: "paused" }), "http://api"))
+      .toEqual({ ok: true, queue: null, service: { status: "paused", retryAfterS: null } });
   });
 
   test("no usable reply is a failed poll", async () => {
@@ -51,6 +58,25 @@ test.describe("pollQueue", () => {
       .toEqual({ ok: false });
     expect(await pollQueue(async () => new Response("<html>", { status: 502 }), "http://api"))
       .toEqual({ ok: false });
+  });
+});
+
+test.describe("readService: tolerant, so anything unknown is ok (Q45)", () => {
+  test("paused and daily_limit are read; only daily_limit keeps its seconds", () => {
+    expect(readService({ service: "paused", retry_after_s: 60 })).toEqual({ status: "paused", retryAfterS: null });
+    expect(readService({ service: "daily_limit", retry_after_s: 7_200 }))
+      .toEqual({ status: "daily_limit", retryAfterS: 7_200 });
+    expect(readService({ service: "ok" })).toEqual(SERVICE_OK);
+  });
+
+  test("an unknown or missing value is ok; a bad wait keeps the limit without seconds", () => {
+    for (const raw of [{}, { service: "closed" }, { service: 1 }, null, undefined, "paused", []]) {
+      expect(readService(raw), JSON.stringify(raw)).toEqual(SERVICE_OK);
+    }
+    for (const retry_after_s of [undefined, null, -1, Number.NaN, Infinity, "7200"]) {
+      expect(readService({ service: "daily_limit", retry_after_s }), String(retry_after_s))
+        .toEqual({ status: "daily_limit", retryAfterS: null });
+    }
   });
 });
 
@@ -69,14 +95,16 @@ test.describe("wording", () => {
     for (const [seconds, shown] of cases) expect(roundedWait(seconds)).toBe(shown);
   });
 
-  test("the visible line has the seconds; without an estimate, just the place", () => {
-    expect(queuedMessage({ position: 2, waitS: 40 })).toBe("2nd in line, about 40 seconds.");
-    expect(queuedMessage({ position: 3, waitS: 41 })).toBe("3rd in line, about 50 seconds.");
-    expect(queuedMessage({ position: 2, waitS: null })).toBe("2nd in line.");
+  test("the visible line has the seconds, as an upper bound; without an estimate, just the place", () => {
+    expect(queuedMessage({ position: 2, waitS: 40 })).toBe("Next in line, up to about 40 seconds.");
+    expect(queuedMessage({ position: 3, waitS: 41 })).toBe("3rd in line, up to about 50 seconds.");
+    expect(queuedMessage({ position: 12, waitS: 5 })).toBe("12th in line, up to about 10 seconds.");
+    expect(queuedMessage({ position: 2, waitS: null })).toBe("Next in line.");
   });
 
   test("the announcement depends only on the position, never the seconds", () => {
-    expect(queuedAnnouncement({ position: 2, waitS: 40 })).toBe("2nd in line.");
+    expect(queuedAnnouncement({ position: 2, waitS: 40 })).toBe("Next in line.");
+    expect(queuedAnnouncement({ position: 3, waitS: 40 })).toBe("3rd in line.");
     expect(queuedAnnouncement({ position: 2, waitS: 10 })).toBe(queuedAnnouncement({ position: 2, waitS: 40 }));
     expect(queuedAnnouncement({ position: 3, waitS: 40 })).not.toBe(queuedAnnouncement({ position: 2, waitS: 40 }));
   });

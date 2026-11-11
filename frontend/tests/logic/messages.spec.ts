@@ -2,13 +2,14 @@ import { expect, test } from "@playwright/test";
 
 import type { Failure } from "../../lib/api";
 import {
-  LOADING_SLOW_MS, WAKING_SLOW_MS, canRetry, connectionMessage, errorMessage, loadingMessage,
-  provenance,
+  LOADING_SLOW_MS, WAKING_SLOW_MS, aboutTime, canRetry, connectionMessage, dailyLimitMessage,
+  errorMessage, loadingMessage, pausedMessage, perVisitorMessage, provenance, serviceNote,
 } from "../../lib/messages";
-import type { Example } from "../../lib/types";
+import type { Ask } from "../../lib/state";
+import type { Example, Service } from "../../lib/types";
 
-function api(code: string, requestId: string | null = "a1b2c3d4"): Failure {
-  return { kind: "api", status: 503, code, message: "", requestId, retryAfterS: null } as Failure;
+function api(code: string, requestId: string | null = "a1b2c3d4", retryAfterS: number | null = null): Failure {
+  return { kind: "api", status: 503, code, message: "", requestId, retryAfterS } as Failure;
 }
 
 const example = {
@@ -56,7 +57,8 @@ test("no response is offline or unreachable, by the browser's own state", () => 
 
 // Step 5, W9: the page's own wording uses curly apostrophes, never straight ones.
 test("UI wording uses curly apostrophes", () => {
-  const failures = ["internal_error", "daily_cap"].map((code) => errorMessage(api(code), "a/b", true));
+  const failures = ["internal_error", "paused", "daily_limit", "per_ip_limit"]
+    .map((code) => errorMessage(api(code, "a1b2c3d4", 3_600), "a/b", true));
   const offline = errorMessage({ kind: "unreachable" }, "a/b", false);
   const unreachable = errorMessage({ kind: "unreachable" }, "a/b", true);
   for (const text of [...failures, offline, unreachable]) expect(text, text).not.toContain("'");
@@ -69,7 +71,73 @@ test("not found names the repo", () => {
 test("retry is offered only where it can help", () => {
   expect(canRetry(api("internal_error"))).toBe(true);
   expect(canRetry({ kind: "unreachable" })).toBe(true);
-  for (const code of ["daily_cap", "model_unavailable", "not_found"]) {
-    expect(canRetry(api(code))).toBe(false);
+  for (const code of ["paused", "daily_limit", "per_ip_limit", "model_unavailable", "not_found"]) {
+    expect(canRetry(api(code)), code).toBe(false);
   }
+});
+
+// ---------- slice 4: the Q45 messages (exact text) and "about N" (step 8) ----------
+test("about N: up to the next 5 minutes under an hour, then the nearest hour, at least 1", () => {
+  const cases: [number, string][] = [
+    [0, "about 5 minutes"], [1, "about 5 minutes"], [300, "about 5 minutes"],
+    [301, "about 10 minutes"], [3_299, "about 55 minutes"], [3_301, "about 1 hour"],
+    [3_599, "about 1 hour"], [3_600, "about 1 hour"], [3_660, "about 1 hour"],
+    [5_399, "about 1 hour"], [5_400, "about 2 hours"], [7_200, "about 2 hours"],
+    [86_400, "about 24 hours"],
+  ];
+  for (const [seconds, text] of cases) expect(aboutTime(seconds), String(seconds)).toBe(text);
+});
+
+const DAILY = "Live questions are used up for now. Try again in about 2 hours. This demo runs on a " +
+  "free API tier, so live questions are capped each day.";
+const EXAMPLE_TAIL = " The example answer above still works.";
+
+test("each message says the example still works only when an example is on screen", () => {
+  expect(pausedMessage(false)).toBe("Live questions are paused right now.");
+  expect(pausedMessage(true)).toBe(`Live questions are paused right now.${EXAMPLE_TAIL}`);
+  expect(dailyLimitMessage(7_200, false)).toBe(DAILY);
+  expect(dailyLimitMessage(7_200, true)).toBe(DAILY + EXAMPLE_TAIL);
+  expect(perVisitorMessage(1_800, false)).toBe(
+    "You’ve reached the daily limit of live questions for one visitor. Try again in about 30 minutes.");
+  expect(perVisitorMessage(1_800, true)).toBe(
+    "You’ve reached the daily limit of live questions for one visitor. Try again in about 30 minutes." +
+    EXAMPLE_TAIL);
+  // Without a usable Retry-After, no time is promised.
+  expect(dailyLimitMessage(null, false)).toBe("Live questions are used up for now. This demo runs " +
+    "on a free API tier, so live questions are capped each day.");
+});
+
+test("a refusal never says the example still works: the asked question has replaced it", () => {
+  expect(errorMessage(api("paused"), "a/b", true)).toBe("Live questions are paused right now.");
+  expect(errorMessage(api("daily_limit", "r", 7_200), "a/b", true)).toBe(DAILY);
+  expect(errorMessage(api("per_ip_limit", "r", 10_800), "a/b", true)).toBe(
+    "You’ve reached the daily limit of live questions for one visitor. Try again in about 3 hours.");
+});
+
+test.describe("the composer's service line: one owner per message", () => {
+  const asked = { repo: "a/b", question: "q?" };
+  const idle: Ask = { kind: "idle", settling: null };
+  const paused: Service = { status: "paused", retryAfterS: null };
+  const daily: Service = { status: "daily_limit", retryAfterS: 7_200 };
+  const refused = (code: string): Ask => ({ kind: "error", failure: api(code, "r", 7_200), ...asked });
+
+  test("open means no line", () => {
+    expect(serviceNote({ status: "ok", retryAfterS: null }, idle, true)).toBeNull();
+  });
+
+  test("on load it speaks, with the example sentence only when an example is shown", () => {
+    expect(serviceNote(paused, idle, true)).toBe(pausedMessage(true));
+    expect(serviceNote(paused, idle, false)).toBe(pausedMessage(false));
+    expect(serviceNote(daily, idle, true)).toBe(DAILY + EXAMPLE_TAIL);
+  });
+
+  test("quiet while the question's own status shows the same refusal, never both", () => {
+    expect(serviceNote(paused, refused("paused"), false)).toBeNull();
+    expect(serviceNote(daily, refused("daily_limit"), false)).toBeNull();
+  });
+
+  test("a different failure doesn't silence it, so the line is never lost", () => {
+    expect(serviceNote(paused, refused("internal_error"), false)).toBe(pausedMessage(false));
+    expect(serviceNote(paused, refused("per_ip_limit"), false)).toBe(pausedMessage(false));
+  });
 });

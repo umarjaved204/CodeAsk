@@ -37,10 +37,8 @@ export const EXPOSED_HEADERS = "X-Request-Id, Retry-After";
 
 function defaults(): Map<string, Handler> {
   return new Map<string, Handler>([
-    // app.py status()
-    ["GET /status", () => ({
-      json: { ok: true, model: EXAMPLE.model, model_available: true, prompt_version: 3 },
-    })],
+    // app.py status(): service from the usage copy, queue null without a place in line
+    ["GET /status", () => statusWith(null)],
     // app.py repos()
     ["GET /repos", () => ({
       json: FEATURED.map((r) => ({ ...r, commit_sha: EXAMPLE.commit_sha,
@@ -64,10 +62,12 @@ export function apiError(status: number, code: string, message: string,
   return { status, json: { error: code, message, request_id: "a1b2c3d4" }, headers };
 }
 
-/** PROVISIONAL (Q40; slice 4 confirms the shape): a /status reply carrying the caller's place
- *  in the /ask queue, as app.py status() is expected to send it. */
-export function statusWith(queue: QueueWire | null): Reply {
-  const body: Status = { ok: true, model: EXAMPLE.model, model_available: true, prompt_version: 3, queue };
+/** A /status reply as app.py status() sends it: the caller's place in the /ask queue and the
+ *  service state (retry_after_s only for daily_limit). tests/contract/ holds real ones. */
+export function statusWith(queue: QueueWire | null, service: "ok" | "paused" | "daily_limit" = "ok",
+                           retryAfterS?: number): Reply {
+  const body: Status = { ok: true, model: EXAMPLE.model, model_available: true, prompt_version: 3,
+                         service, queue, ...(retryAfterS === undefined ? {} : { retry_after_s: retryAfterS }) };
   return { json: body };
 }
 
