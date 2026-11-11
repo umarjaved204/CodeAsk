@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 
 import type { Repo } from "../lib/types";
 
@@ -20,6 +20,29 @@ export function Composer({ repo, repos, onRepoChange, onAsk, canAsk, asking, sta
 }) {
   const [question, setQuestion] = useState("");
   const ready = canAsk && question.trim().length > 0;
+  const form = useRef<HTMLFormElement>(null);
+
+  // Step 5, W1 (WCAG 2.4.11): publish the composer's height, plus the fade above it, so the
+  // page's scroll padding keeps a focused element out from under it. The height changes (the
+  // status line, wrapping at narrow widths), and it is 0 where the composer isn't sticky.
+  useEffect(() => {
+    const element = form.current;
+    if (!element) return;
+    const root = document.documentElement;
+    const publish = () => {
+      const sticky = getComputedStyle(element).position === "sticky";
+      root.style.setProperty("--composer-height", sticky ? `${element.offsetHeight + 24}px` : "0px");
+    };
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(element);
+    window.addEventListener("resize", publish);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", publish);
+      root.style.removeProperty("--composer-height");
+    };
+  }, []);
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -35,7 +58,7 @@ export function Composer({ repo, repos, onRepoChange, onAsk, canAsk, asking, sta
   }
 
   return (
-    <form id="ask" onSubmit={submit}
+    <form id="ask" ref={form} onSubmit={submit}
           className="sticky bottom-0 mt-auto max-w-measure bg-page pt-3 pb-4
                      before:pointer-events-none before:absolute before:inset-x-0 before:-top-6
                      before:h-6 before:bg-linear-to-t before:from-page before:to-transparent
@@ -43,24 +66,26 @@ export function Composer({ repo, repos, onRepoChange, onAsk, canAsk, asking, sta
       <div role="status" className="min-h-0 text-meta">{status}</div>
       <div className="mt-2 flex items-center justify-between gap-3">
         <label className="sr-only" htmlFor="repo">Repository</label>
-        <select id="repo" value={repo} onChange={(e) => onRepoChange(e.target.value)}
+        <select id="repo" name="repo" autoComplete="off" translate="no" value={repo}
+                onChange={(e) => onRepoChange(e.target.value)}
                 className="rounded-control border border-control-edge bg-page px-2.5 py-1.5 text-meta">
           {repos.map((r) => <option key={r.slug} value={r.slug}>{r.slug}</option>)}
         </select>
-        <span className={`text-micro ${question.length >= WARN_CHARS ? "text-unverified" : "text-text-muted"}`}>
+        <span className={`text-micro tabular-nums ${question.length >= WARN_CHARS ? "text-unverified" : "text-text-muted"}`}>
           {question.length} / {MAX_CHARS}
         </span>
       </div>
       <div className="mt-2 flex items-stretch gap-2.5">
         <label className="sr-only" htmlFor="question-box">Question</label>
-        <textarea id="question-box" rows={2} maxLength={MAX_CHARS} value={question}
-                  onChange={(e) => setQuestion(e.target.value)} onKeyDown={onKeyDown}
-                  placeholder={`Ask about the code in ${repo}`}
+        <textarea id="question-box" name="question" autoComplete="off" rows={2} maxLength={MAX_CHARS}
+                  value={question} onChange={(e) => setQuestion(e.target.value)} onKeyDown={onKeyDown}
+                  placeholder={`Ask about the code in ${repo}…`}
                   className="min-w-0 flex-1 resize-none rounded-control border border-control-edge
                              bg-transparent px-3 py-2 text-ui placeholder:text-text-muted" />
         <button type="submit" disabled={!ready}
                 className="cursor-pointer rounded-control bg-action px-5 text-ui font-semibold
-                           text-on-action disabled:cursor-not-allowed disabled:opacity-60">
+                           text-on-action enabled:hover:bg-action-hover disabled:cursor-not-allowed
+                           disabled:opacity-60">
           {asking ? "Asking…" : "Ask"}
         </button>
       </div>

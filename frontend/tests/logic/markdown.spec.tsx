@@ -73,7 +73,7 @@ test.describe("rendering model text", () => {
 
     test("inline code before a chip joins the group", () => {
       const html = render("stored in `self.secret_keys` [1](cite:1). The");
-      expect(html).toMatch(new RegExp(`stored in ${GROUP}<code>self.secret_keys</code> <button[^]*?</button>\\.</span> The`));
+      expect(html).toMatch(new RegExp(`stored in ${GROUP}<code translate="no">self.secret_keys</code> <button[^]*?</button>\\.</span> The`));
     });
 
     test("adjacent chips share one group, with or without a space", () => {
@@ -109,8 +109,8 @@ test.describe("rendering model text", () => {
     const html = render("# T\n\n- **b** and `c`\n\n```\nx = 1\n```\n");
     expect(html).toContain("<h2>T</h2>");
     expect(html).toContain("<strong>b</strong>");
-    expect(html).toContain("<code>c</code>");
-    expect(html).toContain("<pre><code>x = 1");
+    expect(html).toContain('<code translate="no">c</code>'); // never machine-translated (W5)
+    expect(html).toContain('<pre><code translate="no">x = 1');
   });
 
   test("a citation inside bold or a list item is still a chip", () => {

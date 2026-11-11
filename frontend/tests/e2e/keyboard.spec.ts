@@ -61,6 +61,35 @@ test("keyboard only: skip link -> question box -> ask -> chip -> evidence, focus
   await expect(panel(page)).toContainText("Cited lines 175–180");
 });
 
+// Step 5, W1 (WCAG 2.2 SC 2.4.11, which axe doesn't check): a focused chip low in the answer
+// must never sit under the sticky composer. Tab only, from the top, to the example's last chip.
+for (const [width, height] of [[1440, 900], [390, 844], [320, 568]] as const) {
+  test(`focus is never hidden under the sticky composer at ${width}x${height}`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await page.goto("/");
+    const last = page.locator('.answer button[aria-label^="Citation 7:"]');
+    await tabTo(page, last);
+    const [chip, composer] = await Promise.all([last.boundingBox(), page.locator("#ask").boundingBox()]);
+    expect(chip && composer).toBeTruthy();
+    expect(chip!.y + chip!.height).toBeLessThanOrEqual(composer!.y);
+    expect(chip!.y).toBeGreaterThanOrEqual(0);
+  });
+}
+
+// Step 5 (mentor): Enter that confirms an IME composition (CJK and other input methods) must
+// not submit the question; only a real Enter does.
+test("Enter during IME composition doesn't submit", async ({ page, api }) => {
+  await page.goto("/");
+  await expect.poll(() => api.count("GET /repos")).toBeGreaterThan(0);
+  await box(page).fill("签名是怎么验证的");
+  await box(page).evaluate((el) => {
+    el.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", isComposing: true, bubbles: true, cancelable: true }));
+  });
+  await expect(box(page)).toHaveValue("签名是怎么验证的"); // not submitted, not cleared
+  await box(page).press("Enter");
+  await expect.poll(() => api.count("POST /ask")).toBe(1);
+});
+
 test("controls: the theme toggle by keyboard and pointer, and the choice survives a reload", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/");

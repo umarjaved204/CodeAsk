@@ -29,7 +29,7 @@ function ThemeToggle() {
 
   return (
     <button type="button" onClick={toggle} aria-label={`Switch to ${next} theme`}
-            className="grid size-9 cursor-pointer place-items-center text-text-muted">
+            className="grid size-9 cursor-pointer place-items-center text-text-muted hover:text-text">
       <svg viewBox="0 0 24 24" aria-hidden="true" className="size-5">
         <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="1.8" />
         <path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" />
@@ -45,7 +45,7 @@ export function Header() {
         <svg viewBox="0 0 24 24" aria-hidden="true" className="size-5.5 text-citation">
           <path d="M8 3H4v18h4M16 3h4v18h-4" fill="none" stroke="currentColor" strokeWidth="2.2" />
         </svg>
-        <span className="font-serif text-lead font-semibold tracking-tight">CodeAsk</span>
+        <span className="font-serif text-lead font-semibold tracking-tight" translate="no">CodeAsk</span>
       </span>
       <nav aria-label="Site" className="flex items-center gap-4">
         <a href={README} className="text-meta text-text-muted no-underline hover:underline">

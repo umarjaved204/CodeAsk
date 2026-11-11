@@ -82,6 +82,8 @@ function heading(Tag: "h2" | "h3" | "h4") {
 
 const components: Components = {
   a: CiteLink, p: Paragraph, li: ListItem, h1: heading("h2"), h2: heading("h3"), h3: heading("h4"),
+  // Code and identifiers must survive browser translation unchanged (step 5, W5).
+  code: ({ children }) => <code translate="no">{children}</code>,
 };
 
 // ---------- chips stay with their words (round 1 C6; round 2 R2-1) ----------

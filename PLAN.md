@@ -721,6 +721,28 @@ Behaviour added with the inventory:
 | R2-3 (Low) | Visible Windows scrollbars at 1440: the reading column's bar sits against the panel border; nothing clipped | **Keep** |
 
 **Round 3 (2026-11-11, 106 shots, clean manifest at `6529b72`):** no new findings. Notes: no sideways page, no clipping, no text under 12 px; reading measure unchanged (66-68 desktop/768, 58-59 at 1024, 47-49 phones, 38 at 320). R2-1 confirmed: chips stay with their words and following punctuation at 1440 (`newest" [2].` on one line), 1024, 390 and 320. R2-2 confirmed: at 844x390 the first screen shows the answer, with the composer after it. The three planned rounds are done. **Approved by me after my own look at the round 3 sheets (2026-11-11): step 4 is done.**
+
+**Step 5, pass 1: `web-design-guidelines`** (2026-11-11; rules fetched fresh from vercel-labs/web-interface-guidelines; mentor-reviewed; my decisions):
+- **Fixed:**
+  - **W1 (High, WCAG 2.4.11, which axe doesn't check):** a focused element could sit under the sticky composer. `Composer.tsx` measures its height (plus the fade; 0 where it isn't sticky) into `--composer-height`, used as `scroll-padding-bottom` on `html` and the reading column. e2e: Tab to the last chip at 1440, 390 and 320x568.
+  - **W2:** quiet hover states on Ask (new token `action-hover`, its label pair added to `check-contrast.mjs`), the outline buttons, chips, citation rows and the theme toggle. Tailwind 4's `hover:` applies only where hover exists.
+  - **W3:** balanced h1.
+  - **W4:** `theme-color` per system theme (follows the system, not the toggle; accepted).
+  - **W5:** `translate="no"` on the code panel, its path, inline answer code, the wordmark and the repo picker.
+  - **W6:** `name` and `autocomplete="off"` on the select and textarea.
+  - **W8 (a):** the placeholder ends with "…" (an example question waits for slice 5's tested set).
+  - **W10:** `overscroll-contain` on the panel's scroll areas.
+  - Tabular digits on the counter, retry countdown and queue line.
+  - Two new e2e checks: IME composition (Enter mid-composition doesn't submit) and the WCAG 1.4.12 text-spacing override (nothing clipped or overlapping at 1440, 390 and 390 with the sheet).
+- **Next, as its own commit:** **W9**, curly quotes and apostrophes in UI prose only (never model text or code-like strings); exact-text tests import from `messages.ts` where the wording isn't what they pin.
+- **Kept:**
+  - W7, the hand-built UTC date: `Intl` output can differ between Node's and the browser's ICU, which risks a hydration mismatch.
+  - K1, Ask disabled while empty (`disabled`, not `aria-disabled`).
+  - K2, sentence case.
+  - K4, every code line rendered (bounded by the evidence cap).
+  - K5, no `touch-action`.
+- **Deferred:** K3, the URL reflecting state (a shareable `?repo=` in slice 5 or 6).
+- **Not done (noted):** `prefers-contrast` and print styles; forced-colors is covered.
 - Axe runs on every state in both themes.
 
 **Done when:**

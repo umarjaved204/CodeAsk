@@ -21,6 +21,7 @@
   --color-unverified: var(--unverified);
   --color-error: var(--error);
   --color-action: var(--action);
+  --color-action-hover: var(--action-hover);
   --color-on-action: var(--on-action);
   --shadow-sheet: var(--elevation-sheet);
   /* Families come from next/font (app/fonts.ts), self-hosted at build time. */
@@ -62,6 +63,10 @@
   code, pre { font-variant-ligatures: none; }
   /* The page behind the open mobile sheet must not scroll. */
   html:has(dialog[open]) { overflow: hidden; }
+  /* A focused element must never sit under the sticky composer (WCAG 2.4.11; step 5, W1).
+     Composer.tsx measures its height (0 where it isn't sticky) into --composer-height. On
+     phones the page scrolls; from lg up the reading column does (App.tsx). */
+  html, .reading-scroll { scroll-padding-bottom: var(--composer-height, 0px); }
 }
 
 /* The answer is model-written markdown, so its elements can't carry utility classes. */

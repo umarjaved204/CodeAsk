@@ -5,6 +5,15 @@ import "./globals.css";
 
 export const metadata = { title: "CodeAsk" };
 
+// The browser bar matches the page (step 5, W4): the `page` token of each theme. It follows the
+// system setting, not the theme toggle; accepted as cosmetic (mentor review).
+export const viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F5F6F3" },
+    { media: "(prefers-color-scheme: dark)", color: "#1A212A" },
+  ],
+};
+
 // Runs before first paint, so the page never flashes the wrong theme: the saved choice
 // ("light" / "dark"), else the system setting. localStorage can throw (privacy modes,
 // blocked storage), so it is wrapped. A static string: no user input reaches it.

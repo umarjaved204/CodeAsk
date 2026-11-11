@@ -23,6 +23,7 @@ const PAIRS = [
   ["unverified", "panel", 4.5, "unverified entry in the panel's citation list"],
   ["error", "page", 4.5, "error text"],
   ["on-action", "action", 4.5, "button label"],
+  ["on-action", "action-hover", 4.5, "button label under the pointer (step 5, W2)"],
   // UI parts: 3:1 (WCAG 1.4.11)
   ["control-edge", "page", 3, "input and select borders"],
   ["control-edge", "panel", 3, "controls in the panel"],

@@ -89,6 +89,43 @@ for (const [width, height, short] of [[844, 390, true], [390, 844, false]] as co
   });
 }
 
+// Step 5 (mentor): WCAG 1.4.12 text spacing. With the user-override spacing applied, nothing
+// may be clipped, overflow sideways or overlap, on the key states.
+const TEXT_SPACING = "* { line-height: 1.5 !important; letter-spacing: 0.12em !important; " +
+  "word-spacing: 0.16em !important; } p { margin-bottom: 2em !important; }";
+
+for (const [width, height, withSheet] of [[1440, 900, false], [390, 844, false], [390, 844, true]] as const) {
+  test(`text spacing override at ${width}x${height}${withSheet ? ", sheet open" : ""}: nothing clipped or overlapping`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await page.goto("/");
+    await expect(page.getByText(/^Example answer/)).toBeVisible();
+    await page.addStyleTag({ content: TEXT_SPACING });
+    if (withSheet) {
+      await chip2(page).click();
+      await expect(sheet(page)).toBeVisible();
+    }
+    const problems = await page.evaluate(() => {
+      const found: string[] = [];
+      const doc = document.documentElement;
+      if (doc.scrollWidth > doc.clientWidth) found.push(`page scrolls sideways (${doc.scrollWidth}px)`);
+      for (const el of document.querySelectorAll<HTMLElement>("body *")) {
+        if (el.closest(".sr-only") || !el.textContent?.trim()) continue;
+        const s = getComputedStyle(el);
+        const clips = (v: string) => v === "hidden" || v === "clip";
+        if (clips(s.overflowX) && el.scrollWidth > el.clientWidth + 1) found.push(`clipped sideways: ${el.tagName}`);
+        if (clips(s.overflowY) && el.scrollHeight > el.clientHeight + 1) found.push(`clipped vertically: ${el.tagName}`);
+      }
+      const box = (sel: string) => document.querySelector(sel)?.getBoundingClientRect();
+      const overlap = (a?: DOMRect, b?: DOMRect) =>
+        !!a && !!b && a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+      if (overlap(box("#question-box"), box("#ask button[type='submit']"))) found.push("question box overlaps Ask");
+      if (overlap(box("#repo"), box("#ask .tabular-nums"))) found.push("repo picker overlaps the counter");
+      return found;
+    });
+    expect(problems).toEqual([]);
+  });
+}
+
 test.describe("reflow at 320x568", () => {
   test.use({ viewport: { width: 320, height: 568 }, isMobile: true, hasTouch: true });
 

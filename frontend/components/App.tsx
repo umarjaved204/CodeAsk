@@ -40,7 +40,7 @@ function RetryButton({ onClick, disabled = false, children }: {
   return (
     <button type="button" onClick={onClick} disabled={disabled}
             className="mt-3 cursor-pointer rounded-control border border-control-edge px-3 py-1.5 text-meta
-                       disabled:cursor-not-allowed disabled:opacity-60">
+                       tabular-nums enabled:hover:bg-panel disabled:cursor-not-allowed disabled:opacity-60">
       {children}
     </button>
   );
@@ -104,7 +104,7 @@ function AskStatus({ ask, now, online, onRetry, onShowExample }: {
         // The seconds update every poll in a line that is NOT announced; the live region gets
         // only the place, so a screen reader hears it once per position change (Q40).
         visible = (
-          <p aria-live="off" className="flex items-center gap-2 text-ui text-text-muted">
+          <p aria-live="off" className="flex items-center gap-2 text-ui text-text-muted tabular-nums">
             {pulse}{queuedMessage(ask.queue)}
           </p>
         );
@@ -346,10 +346,10 @@ export function App() {
           answer; at 1440 a 300-character line made the page scroll sideways). */}
       <main className="grid flex-1 lg:min-h-0 lg:grid-cols-[minmax(0,53fr)_minmax(0,47fr)]">
         <section aria-labelledby="question"
-                 className="flex min-w-0 flex-col px-5 lg:min-h-0 lg:overflow-y-auto lg:px-14">
+                 className="reading-scroll flex min-w-0 flex-col px-5 lg:min-h-0 lg:overflow-y-auto lg:px-14">
           <div className="max-w-measure pt-2 pb-8">
             {example && <p className="mb-3 text-meta text-text-muted">{provenance(example)}</p>}
-            <h1 id="question" className="font-serif text-title-sm font-medium lg:text-title">
+            <h1 id="question" className="font-serif text-title-sm font-medium text-balance lg:text-title">
               {question ?? `Ask a question about the code in ${repo}.`}
             </h1>
             {!question && (

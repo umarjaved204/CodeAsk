@@ -22,6 +22,7 @@
   --unverified: #8A5300;    /* unverified citations (always with an icon and the word) */
   --error: #A3302A;         /* errors (always with text that says what happened) */
   --action: #1C2838;        /* primary button */
+  --action-hover: #33445C;  /* primary button under the pointer (step 5, W2) */
   --on-action: #F5F6F3;
   --elevation-sheet: 0 -8px 24px rgb(28 40 56 / .14);  /* only the mobile bottom sheet floats */
 }
@@ -43,6 +44,7 @@
   --unverified: #E2AE62;
   --error: #F0A39C;
   --action: #E5E7E1;
+  --action-hover: #C9CEC6;
   --on-action: #1A212A;
   --elevation-sheet: 0 -8px 24px rgb(0 0 0 / .45);
 }

@@ -35,7 +35,8 @@ function CodeLines({ block, citation }: { block: Block; citation: Citation }) {
   const lines = block.content.split("\n");
   return (
     <div ref={scroller} tabIndex={0} role="region" aria-label={`Code from ${block.path}`}
-         className="relative min-h-0 flex-1 overflow-auto font-mono text-code">
+         translate="no" // code is evidence: never machine-translated (step 5, W5)
+         className="relative min-h-0 flex-1 overflow-auto overscroll-contain font-mono text-code">
       <pre className="w-max min-w-full py-2"><code className="block">
         {lines.map((text, i) => {
           const number = block.start + i;
@@ -66,7 +67,7 @@ function CitationList({ citations, openN, onOpen }: {
 }) {
   return (
     <nav aria-label="Citations in this answer"
-         className="max-h-[40%] shrink-0 overflow-y-auto border-t border-rule px-6 py-3">
+         className="max-h-[40%] shrink-0 overflow-y-auto overscroll-contain border-t border-rule px-6 py-3">
       <ol>
         {citations.map((c) => {
           const label = `${c.path.split("/").pop()}, lines ${c.start}–${c.end}`;
@@ -82,7 +83,7 @@ function CitationList({ citations, openN, onOpen }: {
           return (
             <li key={c.n}>
               <button type="button" onClick={() => onOpen(c.n)} aria-current={open ? "true" : undefined}
-                      className={`flex w-full cursor-pointer gap-2.5 py-1 text-left text-meta ${
+                      className={`flex w-full cursor-pointer gap-2.5 py-1 text-left text-meta hover:bg-page ${
                         open ? "font-semibold" : ""}`}>
                 <span className={`w-6 rounded-cite text-center font-semibold ${
                   open ? "bg-evidence text-on-evidence" : "text-citation"}`}>{c.n}</span>
@@ -113,7 +114,7 @@ export function EvidencePanel({ response, openN, onOpen }: {
       <div className="shrink-0 px-6 pt-5 pb-3">
         <p className="flex items-baseline gap-2.5 text-ui font-semibold">
           <span className="font-serif text-lead font-medium text-citation">{citation.n}</span>
-          <span className="break-all">{citation.path}</span>
+          <span className="break-all" translate="no">{citation.path}</span>
         </p>
         <p className="mt-0.5 text-meta text-text-muted">
           {block && !whole
@@ -164,7 +165,8 @@ export function CodeSheet({ open, onClose, children }: {
                        rounded-t-sheet bg-panel text-text shadow-sheet backdrop:bg-black/40 open:flex">
       <div className="flex shrink-0 justify-end px-4 pt-3">
         <button type="button" onClick={onClose}
-                className="cursor-pointer rounded-control border border-control-edge px-3 py-1 text-meta">
+                className="cursor-pointer rounded-control border border-control-edge px-3 py-1 text-meta
+                           hover:bg-page">
           Close
         </button>
       </div>

@@ -28,7 +28,8 @@ function VerifiedChip({ citation, open, onOpen, sheetOpen, panelShown }: {
   panelShown: boolean;
 }) {
   const where = `${citation.path}, lines ${citation.start} to ${citation.end}`;
-  const style = !open ? "text-citation" : sheetOpen ? HIGHLIGHT : HIGHLIGHT_WITH_PANEL;
+  // Hover (step 5, W2): a quiet panel tint, only while the chip isn't the open one.
+  const style = !open ? "text-citation hover:bg-panel" : sheetOpen ? HIGHLIGHT : HIGHLIGHT_WITH_PANEL;
   return (
     <button
       type="button"
@@ -58,7 +59,7 @@ function UnverifiedChip({ citation, noteOpen, onToggleNote }: {
       aria-expanded={noteOpen}
       aria-controls={noteOpen ? noteId(citation.n) : undefined}
       onClick={() => onToggleNote(citation.n)}
-      className={`${BASE} text-unverified underline decoration-dashed underline-offset-2`}
+      className={`${BASE} text-unverified underline decoration-dashed underline-offset-2 hover:bg-panel`}
     >
       {/* A plain "?" (round 1, F6): the drawn icon read like a no-entry sign at this size. */}
       [{citation.n}?]
