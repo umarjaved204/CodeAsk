@@ -118,18 +118,17 @@ the `secret_key` property and the whole of `derive_key`; the rest of serializer.
 `Serializer.__init__` and its `secret_key` property. `get_signature` and `sign` (signer.py
 215-225) were not supplied.
 
-## Grade (by Claude; author spot-check pending)
+## Grade (by Claude; spot-checked and agreed by the author)
 - correct: **correct**
 - grounded: **yes**
 - citations valid: 7/7 strict
 - graded by / date: **Claude**, in the mentor review chat, at the author's request, 2026-11-03.
-  **Not graded by the author.** In the fixture: `grade.reviewer: "claude"`.
-- author spot-check: **pending**. The three checks: the `reversed(self.secret_keys)` loop
-  ([5], line 236), the "oldest to newest" comment ([2], lines 138-139) and
-  `return self.secret_keys[-1]` ([3], line 180).
+- author spot-check: **done, 2026-11-11, Umar Javed; agrees with the grade.** The three checks,
+  against the code at `672971d`: the `reversed(self.secret_keys)` loop ([5], lines 236-240),
+  the "oldest to newest" comment ([2], lines 138-142) and `return self.secret_keys[-1]`
+  ([3], lines 175-180). In the fixture: `grade.reviewer: "author"`.
 - note: every claim checked against the four supplied blocks. The answer explains the
   mechanism fully but omits the practical rotation step (add the new key last, remove old
   ones later), so it is slightly incomplete. Attempts 1 and 2 differ only in
   minor ways, not materially (same claims; the closing paragraph is dropped and citation 5 is
-  broader). Until the author's spot-check is done, the page says "Checked against the cited
-  code by Claude; not yet reviewed by the author", never "checked by the author".
+  broader). Since the author's spot-check (2026-11-11), the page says "Checked by the author."
