@@ -160,6 +160,9 @@ def create_app(open_store=None, embedder=None, llm=None, models: ModelStatus | N
                        if o.strip()],
         allow_methods=["GET", "POST"],
         allow_headers=["Content-Type"],
+        # The headers the page may read. Pinned by tests/test_api.py
+        # test_the_browser_may_read_the_request_id_and_retry_after, and mirrored by
+        # EXPOSED_HEADERS in frontend/tests/e2e/mocks.ts. Change all three together.
         expose_headers=["X-Request-Id", "Retry-After"],
     )
 

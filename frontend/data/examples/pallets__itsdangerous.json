@@ -35,10 +35,9 @@
   "correct": "correct",
   "grounded": "yes",
   "citations_valid": "7/7 strict",
-  "by": "Claude, in the mentor review chat, at the author's request",
+  "reviewer": "claude",
   "date": "2026-11-03",
-  "author_checked": false,
-  "note": "Graded by Claude, not by the author. Author spot-check pending: the reversed(self.secret_keys) loop, the \"oldest to newest\" comment and return self.secret_keys[-1]. Every claim checked against the four supplied blocks. The answer explains the mechanism fully but omits the practical rotation step (add the new key last, remove old ones later), so it is slightly incomplete. Attempts 1 and 2 differ only in minor ways, not materially (same claims; the closing paragraph is dropped and citation 5 is broader)."
+  "note": "Graded by Claude in the mentor review chat, at the author's request; not by the author. Author spot-check pending: the reversed(self.secret_keys) loop, the \"oldest to newest\" comment and return self.secret_keys[-1]. Every claim checked against the four supplied blocks. The answer explains the mechanism fully but omits the practical rotation step (add the new key last, remove old ones later), so it is slightly incomplete. Attempts 1 and 2 differ only in minor ways, not materially (same claims; the closing paragraph is dropped and citation 5 is broader)."
  },
  "response": {
   "grounded": true,

@@ -4,10 +4,13 @@
 //   with no handler is aborted and fails the test.
 // - Any request to a host other than the app itself also fails the test: the page must make no
 //   third-party calls (fonts are self-hosted, Q32). data: and blob: URLs are allowed.
-// - These mocks say NOTHING about CORS. Measured 2026-11-11 (Playwright 1.64.1, Chromium): a
-//   page.route reply with no CORS headers still reaches the page, for a GET and for a JSON POST,
-//   and the preflight never reaches page.route. So CORS and the exposed headers (X-Request-Id,
-//   Retry-After) are checked only by hand against the real backend, with a forced server error.
+// - CORS, measured 2026-11-11 (Playwright 1.64.1, Chromium): a page.route reply with no CORS
+//   headers still reaches the page (GET and JSON POST), and the preflight never reaches
+//   page.route, so the mocks can't test Access-Control-Allow-Origin. But Chromium still HIDES
+//   response headers that aren't exposed: without Access-Control-Expose-Headers the busy test
+//   read no Retry-After. So every reply sends the expose list app.py sends, and a missing
+//   entry there is pinned by backend/tests/test_api.py. Allow-origin stays a manual check
+//   against the real backend.
 // - Shapes come from the backend, never from memory: each default names its source.
 import { test as base, expect, type Page, type Request } from "@playwright/test";
 
@@ -20,10 +23,16 @@ export const API = "http://api.test";
 export const EXAMPLE = EXAMPLES["pallets/itsdangerous"];
 
 export type Reply =
-  | { status?: number; json: unknown; headers?: Record<string, string> }
+  // expose: false leaves out Access-Control-Expose-Headers (a backend that forgot the list)
+  | { status?: number; json: unknown; headers?: Record<string, string>; expose?: boolean }
   | { status: number; body: string; contentType: string } // not our JSON (Render's HTML page)
   | "abort"; // no response at all
 export type Handler = (request: Request) => Reply | Promise<Reply>;
+
+// The response headers the page may read. MIRRORS backend/codeask/api/app.py create_app()
+// (CORSMiddleware expose_headers), which backend/tests/test_api.py
+// test_the_browser_may_read_the_request_id_and_retry_after pins. Change all three together.
+export const EXPOSED_HEADERS = "X-Request-Id, Retry-After";
 
 function defaults(): Map<string, Handler> {
   return new Map<string, Handler>([
@@ -40,6 +49,61 @@ function defaults(): Map<string, Handler> {
     ["POST /ask", () => ({ json: EXAMPLE.response })],
   ]);
 }
+
+/** A reply the test sends when it chooses: for loading states and races. */
+export function held() {
+  let release!: (reply: Reply) => void;
+  const reply = new Promise<Reply>((resolve) => { release = resolve; });
+  return { handler: () => reply, release };
+}
+
+/** app.py error_json(): ApiError's status and headers, body {error, message, request_id}. */
+export function apiError(status: number, code: string, message: string,
+                         headers?: Record<string, string>): Reply {
+  return { status, json: { error: code, message, request_id: "a1b2c3d4" }, headers };
+}
+
+/** What Render serves while the instance wakes (M2-0): HTML, not our JSON. */
+export const NOT_OUR_JSON: Reply = { status: 502, body: "<html>Bad gateway</html>",
+                                     contentType: "text/html" };
+
+// ---------- /ask variants, each shaped like ask.py public_view() ----------
+const R = EXAMPLE.response;
+const PERMALINK = `https://github.com/pallets/itsdangerous/blob/${EXAMPLE.commit_sha}`;
+
+/** Citation 1 unverified. As in evidence(): no url or block, and block 0 (which only citation 1
+ *  used) is not sent, so the other citations' block indices shift down by one. */
+export const FIRST_UNVERIFIED = {
+  ...R,
+  blocks: R.blocks.slice(1),
+  citations: R.citations.map((c) => c.n === 1
+    ? { ...c, valid: false, url: null, block: null }
+    : { ...c, block: (c.block ?? 0) - 1 }),
+};
+
+/** No valid citation (Q23): text, citations and blocks withheld; answer.py possibly_relevant(). */
+export const UNGROUNDED = {
+  grounded: false, answer: null, citations: [], blocks: [],
+  possibly_relevant: [
+    { path: "src/itsdangerous/signer.py", start: 227, end: 242,
+      url: `${PERMALINK}/src/itsdangerous/signer.py#L227-L242` },
+    { path: "src/itsdangerous/serializer.py", start: 190, end: 241,
+      url: `${PERMALINK}/src/itsdangerous/serializer.py#L190-L241` },
+    { path: "src/itsdangerous/timed.py", start: 1, end: 30,
+      url: `${PERMALINK}/src/itsdangerous/timed.py#L1-L30` },
+  ],
+  model: R.model, prompt_version: R.prompt_version,
+};
+
+/** A block over the panel's 300-line cap, cited at 250-252 (inside the shown part). */
+export const TRUNCATED = {
+  ...R,
+  answer: "The long block [1](cite:1).",
+  citations: [{ n: 1, path: "src/long.py", start: 250, end: 252, valid: true,
+                url: `${PERMALINK}/src/long.py#L250-L252`, block: 0 }],
+  blocks: [{ path: "src/long.py", start: 1, end: 320,
+             content: Array.from({ length: 320 }, (_, i) => `line ${i + 1}`).join("\n") }],
+};
 
 export class MockApi {
   private readonly handlers = defaults();
@@ -73,7 +137,9 @@ export class MockApi {
       }
       return route.fulfill({
         status: reply.status ?? 200, contentType: "application/json",
-        body: JSON.stringify(reply.json), headers: reply.headers,
+        body: JSON.stringify(reply.json),
+        headers: { ...(reply.expose === false ? {} : { "access-control-expose-headers": EXPOSED_HEADERS }),
+                   ...reply.headers },
       });
     });
   }

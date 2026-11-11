@@ -121,6 +121,18 @@ def test_upstream_failures_map_to_generic_errors(monkeypatch, embedder, llm, sta
     assert r.headers["access-control-allow-origin"] == ORIGIN
 
 
+def test_the_browser_may_read_the_request_id_and_retry_after(monkeypatch):
+    # A cross-origin page can read a response header only if it is exposed. This pins the
+    # backend's list (app.py create_app). The browser tests copy it as EXPOSED_HEADERS in
+    # frontend/tests/e2e/mocks.ts and show what the page does without it (Q38). Change all
+    # three together.
+    with client(monkeypatch, llm=FakeLLM(error=RateLimited("429", 12.5))) as c:
+        r = ask(c)
+    assert r.status_code == 503 and "retry-after" in r.headers and "x-request-id" in r.headers
+    exposed = {h.strip().lower() for h in r.headers["access-control-expose-headers"].split(",")}
+    assert {"x-request-id", "retry-after"} <= exposed
+
+
 def test_too_long_question_is_422_without_echoing_or_logging_it(monkeypatch, caplog):
     caplog.set_level(logging.INFO)
     with client(monkeypatch) as c:

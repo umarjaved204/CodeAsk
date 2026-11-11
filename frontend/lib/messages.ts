@@ -2,20 +2,23 @@
 // tests can pin the wording and the timing rules.
 import type { Failure } from "./api";
 import type { Connection } from "./state";
-import type { Example } from "./types";
+import type { Example, Grade } from "./types";
 
 export const WAKING_SLOW_MS = 35_000;
 export const LOADING_SLOW_MS = 12_000;
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+const CHECKED: Record<Grade["reviewer"], string> = {
+  claude: " Checked against the cited code by Claude; not yet reviewed by the author.",
+  author: " Checked by the author.",
+};
+
 export function provenance(example: Example): string {
   const date = new Date(example.generated_at); // UTC, so server and browser render the same text
   const day = `${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
   const model = example.model.split("/").pop();
-  const checked = !example.grade ? ""
-    : example.grade.author_checked ? " Checked by the author."
-    : " Checked against the cited code by Claude; not yet reviewed by the author.";
+  const checked = !example.grade ? "" : CHECKED[example.grade.reviewer];
   return `Example answer, generated ${day} with ${model} on commit ` +
     `${example.commit_sha.slice(0, 7)}.${checked}`;
 }

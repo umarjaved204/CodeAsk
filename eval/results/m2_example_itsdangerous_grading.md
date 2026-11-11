@@ -123,7 +123,7 @@ the `secret_key` property and the whole of `derive_key`; the rest of serializer.
 - grounded: **yes**
 - citations valid: 7/7 strict
 - graded by / date: **Claude**, in the mentor review chat, at the author's request, 2026-11-03.
-  **Not graded by the author.**
+  **Not graded by the author.** In the fixture: `grade.reviewer: "claude"`.
 - author spot-check: **pending**. The three checks: the `reversed(self.secret_keys)` loop
   ([5], line 236), the "oldest to newest" comment ([2], lines 138-139) and
   `return self.secret_keys[-1]` ([3], line 180).

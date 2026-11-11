@@ -61,9 +61,10 @@ export type Grade = {
   correct: string;
   grounded: string;
   citations_valid: string;
-  by: string;
+  // Who checked it (Q37). One typed field, so the label can't contradict the record; who,
+  // where and what is still pending goes in `note`, which the label never shows.
+  reviewer: "claude" | "author";
   date: string;
-  author_checked: boolean; // false: graded by Claude, the author's spot-check is still pending
   note: string;
 };
 
@@ -76,6 +77,6 @@ export type Example = {
   generated_at: string; // ISO 8601, UTC
   model: string;
   prompt_version: number;
-  grade: Grade | null; // "checked by the author" only when author_checked is true
+  grade: Grade | null; // "checked by the author" only when reviewer is "author"
   response: AskResponse;
 };

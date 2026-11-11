@@ -20,8 +20,8 @@ test("ask -> answer through the mock, as a JSON POST with repo and question", as
   await page.goto("/");
   await expect.poll(() => api.count("GET /repos")).toBeGreaterThan(0); // the server is up
   const sent = page.waitForRequest((r) => r.url().endsWith("/ask") && r.method() === "POST");
-  await page.getByLabel("Question").fill("How are signatures verified?");
-  await page.getByLabel("Question").press("Enter");
+  await page.getByRole("textbox", { name: "Question" }).fill("How are signatures verified?");
+  await page.getByRole("textbox", { name: "Question" }).press("Enter");
   expect((await sent).postDataJSON())
     .toEqual({ repo: "pallets/itsdangerous", question: "How are signatures verified?" });
 
@@ -41,8 +41,8 @@ test("page.clock drives the timers exactly: loading escalates at 12 s, not 11 s"
   // Freeze time, so the submit time and every 1 s tick land on exact values.
   await page.clock.pauseAt(new Date(t0.getTime() + 60_000));
 
-  await page.getByLabel("Question").fill("How are signatures verified?");
-  await page.getByLabel("Question").press("Enter");
+  await page.getByRole("textbox", { name: "Question" }).fill("How are signatures verified?");
+  await page.getByRole("textbox", { name: "Question" }).press("Enter");
   await expect(page.getByText("Answering. This usually takes a few seconds.")).toBeVisible();
   await page.clock.runFor(11_000);
   await expect(page.getByText("Answering. This usually takes a few seconds.")).toBeVisible();

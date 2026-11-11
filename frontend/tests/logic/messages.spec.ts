@@ -18,11 +18,12 @@ const example = {
 
 test("the pre-generated label is a sentence, in UTC, and names who checked it", () => {
   const base = "Example answer, generated 2 Nov 2026 with qwen3.8-27b on commit 672971d.";
-  const grade = (author_checked: boolean) => ({ author_checked }) as Example["grade"];
+  const grade = (reviewer: "claude" | "author") =>
+    ({ reviewer, note: "never shown in the label" }) as Example["grade"];
   expect(provenance(example)).toBe(base);
-  expect(provenance({ ...example, grade: grade(false) })).toBe(
+  expect(provenance({ ...example, grade: grade("claude") })).toBe(
     `${base} Checked against the cited code by Claude; not yet reviewed by the author.`);
-  expect(provenance({ ...example, grade: grade(true) })).toBe(`${base} Checked by the author.`);
+  expect(provenance({ ...example, grade: grade("author") })).toBe(`${base} Checked by the author.`);
 });
 
 test("waking changes its wording after 35 seconds", () => {
