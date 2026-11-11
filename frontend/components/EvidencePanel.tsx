@@ -5,7 +5,9 @@ import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 import { safeGithubUrl } from "../lib/markdown";
 import type { AskResponse, Block, Citation } from "../lib/types";
 
-const MAX_LINES = 300; // a defensive cap: the context budget keeps blocks far below it
+// No line cap here: a cited line must never be hidden (mentor review of step 2, 2026-11-11).
+// The size bound is the backend's (ask.py evidence(), EVIDENCE_MAX_CHARS): a block over it is
+// not sent, and the panel says so and links to GitHub instead.
 
 function GithubLink({ url, children }: { url: string | null; children: ReactNode }) {
   const safe = safeGithubUrl(url);
@@ -31,38 +33,29 @@ function CodeLines({ block, citation }: { block: Block; citation: Citation }) {
   }, [citation.n, block]);
 
   const lines = block.content.split("\n");
-  const shown = lines.slice(0, MAX_LINES);
   return (
-    <>
-      <div ref={scroller} tabIndex={0} role="region" aria-label={`Code from ${block.path}`}
-           className="relative min-h-0 flex-1 overflow-auto font-mono text-code">
-        <pre className="w-max min-w-full py-2"><code className="block">
-          {shown.map((text, i) => {
-            const number = block.start + i;
-            const cited = number >= citation.start && number <= citation.end;
-            return (
-              <span key={number} ref={number === citation.start ? firstCited : undefined}
-                    // The bar is a border, which survives forced-colors mode; a background doesn't.
-                    className={`flex ${cited
-                      ? "border-l-[3px] border-evidence-bar bg-evidence text-on-evidence"
-                      : "pl-[3px]"}`}>
-                <span className={`sticky left-0 w-[7ch] shrink-0 select-none pr-[2ch] text-right ${
-                  cited ? "bg-evidence font-semibold" : "bg-panel text-text-muted"}`}>
-                  {number}
-                </span>
-                <span className="whitespace-pre pr-6">{text}</span>
+    <div ref={scroller} tabIndex={0} role="region" aria-label={`Code from ${block.path}`}
+         className="relative min-h-0 flex-1 overflow-auto font-mono text-code">
+      <pre className="w-max min-w-full py-2"><code className="block">
+        {lines.map((text, i) => {
+          const number = block.start + i;
+          const cited = number >= citation.start && number <= citation.end;
+          return (
+            <span key={number} ref={number === citation.start ? firstCited : undefined}
+                  // The bar is a border, which survives forced-colors mode; a background doesn't.
+                  className={`flex ${cited
+                    ? "border-l-[3px] border-evidence-bar bg-evidence text-on-evidence"
+                    : "pl-[3px]"}`}>
+              <span className={`sticky left-0 w-[7ch] shrink-0 select-none pr-[2ch] text-right ${
+                cited ? "bg-evidence font-semibold" : "bg-panel text-text-muted"}`}>
+                {number}
               </span>
-            );
-          })}
-        </code></pre>
-      </div>
-      {lines.length > MAX_LINES && (
-        <p className="shrink-0 px-6 py-2 text-meta text-text-muted">
-          Showing lines {block.start}–{block.start + MAX_LINES - 1} of {block.start}–{block.end}.{" "}
-          <GithubLink url={citation.url}>View the rest on GitHub</GithubLink>
-        </p>
-      )}
-    </>
+              <span className="whitespace-pre pr-6">{text}</span>
+            </span>
+          );
+        })}
+      </code></pre>
+    </div>
   );
 }
 

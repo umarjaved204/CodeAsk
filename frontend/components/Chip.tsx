@@ -7,6 +7,9 @@ import type { Citation } from "../lib/types";
 const BASE =
   "relative ml-0.5 rounded-cite px-0.5 align-[.45em] font-ui text-micro font-semibold " +
   "not-italic leading-none cursor-pointer " +
+  // The highlight must cover the glyphs' whole text box (measured 3px short without this; Q38).
+  // The negative margin cancels the padding in layout, so the line around the chip doesn't move.
+  "py-[0.25em] -my-[0.25em] " +
   // A 24 px touch target (WCAG 2.5.8) without making the figure look any bigger.
   "after:absolute after:-inset-x-1.5 after:-inset-y-2 after:content-['']";
 

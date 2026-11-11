@@ -11,7 +11,7 @@
 import type { Locator, Page } from "@playwright/test";
 
 import {
-  EXAMPLE, FIRST_UNVERIFIED, NOT_OUR_JSON, TRUNCATED, UNGROUNDED, apiError, expect, held, test,
+  EXAMPLE, FIRST_UNVERIFIED, LONG_BLOCK, NOT_OUR_JSON, UNGROUNDED, apiError, expect, held, test,
   type MockApi, type Reply,
 } from "./mocks";
 
@@ -243,7 +243,7 @@ for (const [expose, countdown] of [[true, "Try again in 5 s"], [false, "Try agai
   });
 }
 
-const FAILURES:{ name: string; reply: Reply; text: string; action: string }[] = [
+const FAILURES: { name: string; reply: Reply; text: string; action: string }[] = [
   // Provisional: slice 4 builds the cap and confirms its status code.
   { name: "daily cap", reply: apiError(429, "daily_cap", "Daily limit reached."),
     text: "Today's live questions are used up. The limit resets daily; the example answers still work.",
@@ -306,18 +306,29 @@ test("offline after load: the example stays; asking says offline and offers a re
   await expect(page.getByRole("button", { name: "Try again", exact: true })).toBeVisible();
 });
 
-test("a block over the 300-line cap: first 300 lines, scrolled to the cited range, rest on GitHub", async ({ page, api }) => {
-  api.on("POST /ask", () => ({ json: TRUNCATED }));
+test("no cited line is ever hidden: a 400-line block cited at 350-352 shows and scrolls to them", async ({ page, api }) => {
+  api.on("POST /ask", () => ({ json: LONG_BLOCK }));
   await page.goto("/");
   await serverUp(api);
   await ask(page);
-  await expect(panel(page)).toContainText("Cited lines 250–252, shown within 1–320");
+  await expect(panel(page)).toContainText("Cited lines 350–352, shown within 1–400");
   const region = panel(page).getByRole("region", { name: "Code from src/long.py" });
   const lines = await shownLines(region);
-  expect(lines).toHaveLength(300);
-  expect(lines.filter((l) => l.cited).map((l) => l.n)).toEqual([250, 251, 252]);
-  await expect(region.locator("pre code > span").nth(249)).toBeInViewport();
-  await expect(panel(page)).toContainText("Showing lines 1–300 of 1–320. View the rest on GitHub");
-  await expect(panel(page).getByRole("link", { name: "View the rest on GitHub" }))
-    .toHaveAttribute("href", TRUNCATED.citations[0].url);
+  expect(lines.map((l) => l.n)).toEqual(Array.from({ length: 400 }, (_, i) => i + 1));
+  expect(lines.filter((l) => l.cited).map((l) => l.n)).toEqual([350, 351, 352]);
+  for (const i of [349, 350, 351]) {
+    await expect(region.locator("pre code > span").nth(i)).toBeInViewport();
+  }
+});
+
+test("a block the backend didn't send (over its size cap): says so and links to GitHub", async ({ page, api }) => {
+  // ask.py evidence(): a block past EVIDENCE_MAX_CHARS is left out and its citation gets block null.
+  api.on("POST /ask", () => ({ json: { ...LONG_BLOCK, blocks: [],
+    citations: LONG_BLOCK.citations.map((c) => ({ ...c, block: null })) } }));
+  await page.goto("/");
+  await serverUp(api);
+  await ask(page);
+  await expect(panel(page)).toContainText("This code is too long to show here. It is on GitHub.");
+  await expect(panel(page).getByRole("link", { name: "View on GitHub" }))
+    .toHaveAttribute("href", LONG_BLOCK.citations[0].url);
 });

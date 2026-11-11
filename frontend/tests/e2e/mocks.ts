@@ -95,14 +95,15 @@ export const UNGROUNDED = {
   model: R.model, prompt_version: R.prompt_version,
 };
 
-/** A block over the panel's 300-line cap, cited at 250-252 (inside the shown part). */
-export const TRUNCATED = {
+/** A 400-line block cited near its end (350-352): more lines than the old 300-line cap, which
+ *  hid exactly this case (removed 2026-11-11, "no cited line is ever hidden"). */
+export const LONG_BLOCK = {
   ...R,
   answer: "The long block [1](cite:1).",
-  citations: [{ n: 1, path: "src/long.py", start: 250, end: 252, valid: true,
-                url: `${PERMALINK}/src/long.py#L250-L252`, block: 0 }],
-  blocks: [{ path: "src/long.py", start: 1, end: 320,
-             content: Array.from({ length: 320 }, (_, i) => `line ${i + 1}`).join("\n") }],
+  citations: [{ n: 1, path: "src/long.py", start: 350, end: 352, valid: true,
+                url: `${PERMALINK}/src/long.py#L350-L352`, block: 0 }],
+  blocks: [{ path: "src/long.py", start: 1, end: 400,
+             content: Array.from({ length: 400 }, (_, i) => `line ${i + 1}`).join("\n") }],
 };
 
 export class MockApi {
