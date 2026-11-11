@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  createContext, use, useMemo, useState, type ComponentProps, type ReactNode,
+  createContext, memo, use, useMemo, useState, type ComponentProps, type ReactNode,
 } from "react";
 import Markdown, { type Components, type ExtraProps } from "react-markdown";
 
@@ -102,6 +102,17 @@ const isChip = (n: HNode | undefined): n is HElement =>
   citeNumber(typeof n.properties.href === "string" ? n.properties.href : undefined) !== null;
 const TRAILING_PUNCTUATION = /^[.,;:!?)\]}"'’”…]+/;
 
+/** Where the last word (plus trailing whitespace) of a text starts. A linear scan from the end:
+ *  the regex it replaces could backtrack super-linearly on long model text. */
+function lastWord(text: string): { start: number; hasWord: boolean } {
+  const isSpace = (c: string) => /\s/.test(c);
+  let i = text.length;
+  while (i > 0 && isSpace(text[i - 1])) i--;
+  const wordEnd = i;
+  while (i > 0 && !isSpace(text[i - 1])) i--;
+  return { start: i, hasWord: i < wordEnd };
+}
+
 function groupChips(parent: HElement | { children: HNode[] }) {
   const groups = new Set<HElement>();
   const out: HNode[] = [];
@@ -111,16 +122,15 @@ function groupChips(parent: HElement | { children: HNode[] }) {
       const lead: HNode[] = [];
       let last = out.at(-1);
       if (last?.type === "text") {
-        const match = /(\S*)(\s*)$/.exec(last.value);
-        const tail = match ? match[0] : "";
+        const { start, hasWord } = lastWord(last.value);
+        const tail = last.value.slice(start);
         if (tail) {
-          last.value = last.value.slice(0, last.value.length - tail.length);
+          last.value = last.value.slice(0, start);
           if (!last.value) out.pop();
           lead.unshift({ type: "text", value: tail });
         }
         // Only whitespace was taken: what precedes it (an earlier group, or `code`) joins too.
-        if (match && !match[1]) last = out.at(-1);
-        else last = undefined;
+        last = hasWord ? undefined : out.at(-1);
       }
       if (last && last.type === "element" && (groups.has(last) || last.tagName === "code")) {
         out.pop();
@@ -152,7 +162,11 @@ function groupChips(parent: HElement | { children: HNode[] }) {
 const keepChipsWithTheirWords = () => (tree: { children: HNode[] }) => groupChips(tree);
 const REHYPE = [keepChipsWithTheirWords];
 
-export function Answer({ markdown, citations, openN, onOpen, sheetOpen = false, panelShown = true }: {
+// memo (step 5, R1): App re-renders every second while its clock ticks (waking, loading,
+// busy); the answer's props don't change then, so it skips re-parsing the markdown.
+export const Answer = memo(function Answer({
+  markdown, citations, openN, onOpen, sheetOpen = false, panelShown = true,
+}: {
   markdown: string;
   citations: Citation[];
   openN: number | null;
@@ -177,4 +191,4 @@ export function Answer({ markdown, citations, openN, onOpen, sheetOpen = false, 
       </div>
     </CitationsContext>
   );
-}
+});

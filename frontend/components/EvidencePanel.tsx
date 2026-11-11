@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, type MouseEvent, type ReactNode } from "react";
+import { memo, useEffect, useLayoutEffect, useRef, type MouseEvent, type ReactNode } from "react";
 
 import { safeGithubUrl } from "../lib/markdown";
 import type { AskResponse, Block, Citation } from "../lib/types";
@@ -98,7 +98,8 @@ function CitationList({ citations, openN, onOpen }: {
 }
 
 /** The cited code. The same panel renders inline on desktop and in the sheet on mobile. */
-export function EvidencePanel({ response, openN, onOpen }: {
+// memo (step 5, R1): skips the per-second re-renders of App's clock; its props are stable then.
+export const EvidencePanel = memo(function EvidencePanel({ response, openN, onOpen }: {
   response: AskResponse | null;
   openN: number | null;
   onOpen: (n: number) => void;
@@ -131,7 +132,7 @@ export function EvidencePanel({ response, openN, onOpen }: {
       <CitationList citations={response.citations} openN={openN} onOpen={onOpen} />
     </div>
   );
-}
+});
 
 /** The mobile bottom sheet: a native dialog handles the focus trap, Esc and returning focus. */
 export function CodeSheet({ open, onClose, children }: {

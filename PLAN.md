@@ -743,6 +743,16 @@ Behaviour added with the inventory:
   - K5, no `touch-action`.
 - **Deferred:** K3, the URL reflecting state (a shareable `?repo=` in slice 5 or 6).
 - **Not done (noted):** `prefers-contrast` and print styles; forced-colors is covered.
+
+**Step 5, pass 2: `vercel-react-best-practices`** (2026-11-11; 70 rules against `components/`, `app/`, `lib/`; my decisions):
+- **Fixed, R1 (Medium):** App's 1-second clock (waking, loading, busy) re-rendered the whole page every second, re-parsing the answer's markdown and rebuilding the code panel. `Answer` and `EvidencePanel` are now `React.memo`; their props are already stable then.
+- **Kept:**
+  - R2: the example fixture ships whole (11.9 KB, 1.7 KB of it record-keeping);
+  - R3: small static SVGs inside components;
+  - R4: every code line rendered, without `content-visibility`.
+- **Also fixed, flagged by the IDE, not the review:** the chip-grouping step's `/(\S*)(\s*)$/` could backtrack super-linearly on long model text. It's replaced by a linear scan (`lastWord()`), and the grouping tests cover it.
+- **Passes:** no request waterfalls, no barrel imports, flicker-free theme script, primitive effect dependencies, no components defined inside components, every listener cleaned up.
+- **Step 5 is done.**
 - Axe runs on every state in both themes.
 
 **Done when:**
