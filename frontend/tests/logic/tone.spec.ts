@@ -2,7 +2,7 @@
 import { expect, test } from "@playwright/test";
 
 import type { Failure } from "../../lib/api";
-import { connectionNote, isAlarm } from "../../lib/messages";
+import { OFFLINE_MESSAGE, connectionNote, isAlarm } from "../../lib/messages";
 import type { Ask } from "../../lib/state";
 
 const api = (code: string): Failure =>
@@ -26,7 +26,7 @@ test("the composer's connection line is quiet when the question's own status exp
   const failedOffline: Ask = { kind: "error", failure: unreachable, ...asked };
   const failedOnServer: Ask = { kind: "error", failure: api("internal_error"), ...asked };
   expect(connectionNote(offline, failedOffline, 0)).toBeNull();
-  expect(connectionNote(offline, failedOnServer, 0)).toMatch(/^You're offline/);
-  expect(connectionNote(offline, { kind: "idle", settling: null }, 0)).toMatch(/^You're offline/);
+  expect(connectionNote(offline, failedOnServer, 0)).toBe(OFFLINE_MESSAGE);
+  expect(connectionNote(offline, { kind: "idle", settling: null }, 0)).toBe(OFFLINE_MESSAGE);
   expect(connectionNote({ kind: "up" }, failedOnServer, 0)).toBeNull();
 });

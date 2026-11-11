@@ -734,7 +734,7 @@ Behaviour added with the inventory:
   - **W10:** `overscroll-contain` on the panel's scroll areas.
   - Tabular digits on the counter, retry countdown and queue line.
   - Two new e2e checks: IME composition (Enter mid-composition doesn't submit) and the WCAG 1.4.12 text-spacing override (nothing clipped or overlapping at 1440, 390 and 390 with the sheet).
-- **Next, as its own commit:** **W9**, curly quotes and apostrophes in UI prose only (never model text or code-like strings); exact-text tests import from `messages.ts` where the wording isn't what they pin.
+- **Done, as its own commit: W9.** Curly apostrophes in the page's own wording only: five messages in `messages.ts` and the ungrounded text in `App.tsx`. Model answers and code-like strings are never touched, and no UI string uses double quotes. The messages are named exports (`CANT_REACH_MESSAGE`, `OFFLINE_MESSAGE`, `DAILY_CAP_MESSAGE`, `serverErrorMessage()`) that the browser tests and screenshot states import. The logic tests that pin the wording keep it written out, plus one test that no message contains a straight `'`.
 - **Kept:**
   - W7, the hand-built UTC date: `Intl` output can differ between Node's and the browser's ICU, which risks a hydration mismatch.
   - K1, Ask disabled while empty (`disabled`, not `aria-disabled`).

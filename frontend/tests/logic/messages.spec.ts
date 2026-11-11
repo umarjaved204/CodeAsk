@@ -44,14 +44,22 @@ test("loading escalates after 12 seconds", () => {
 
 test("server errors give the request id, generically", () => {
   expect(errorMessage(api("internal_error"), "a/b", true))
-    .toBe("The server couldn't answer (request a1b2c3d4). Try again.");
+    .toBe("The server couldn’t answer (request a1b2c3d4). Try again.");
   expect(errorMessage(api("timeout", null), "a/b", true))
-    .toBe("The server couldn't answer. Try again.");
+    .toBe("The server couldn’t answer. Try again.");
 });
 
 test("no response is offline or unreachable, by the browser's own state", () => {
-  expect(errorMessage({ kind: "unreachable" }, "a/b", false)).toMatch(/^You're offline/);
-  expect(errorMessage({ kind: "unreachable" }, "a/b", true)).toBe("Can't reach the server.");
+  expect(errorMessage({ kind: "unreachable" }, "a/b", false)).toMatch(/^You’re offline/);
+  expect(errorMessage({ kind: "unreachable" }, "a/b", true)).toBe("Can’t reach the server.");
+});
+
+// Step 5, W9: the page's own wording uses curly apostrophes, never straight ones.
+test("UI wording uses curly apostrophes", () => {
+  const failures = ["internal_error", "daily_cap"].map((code) => errorMessage(api(code), "a/b", true));
+  const offline = errorMessage({ kind: "unreachable" }, "a/b", false);
+  const unreachable = errorMessage({ kind: "unreachable" }, "a/b", true);
+  for (const text of [...failures, offline, unreachable]) expect(text, text).not.toContain("'");
 });
 
 test("not found names the repo", () => {

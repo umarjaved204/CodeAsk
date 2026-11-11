@@ -25,6 +25,7 @@ import {
   FIRST_UNVERIFIED, NOT_OUR_JSON, UNGROUNDED, apiError, expect, held, statusWith, test,
   type MockApi,
 } from "./mocks";
+import { DAILY_CAP_MESSAGE, serverErrorMessage } from "../../lib/messages";
 
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 const Q = "How are signatures verified?";
@@ -93,11 +94,11 @@ const STATES: State[] = [
   { name: "busy", setup: failing(apiError(503, "busy", "The service is busy.", { "Retry-After": "30" }),
                                  /^The demo is at capacity\./) },
   { name: "daily cap", setup: failing(apiError(429, "daily_cap", "Daily limit reached."),
-                                      /^Today's live questions are used up\./) },
+                                      DAILY_CAP_MESSAGE) },
   { name: "model unavailable", setup: failing(apiError(503, "model_unavailable", "Unavailable."),
                                               /^Live answers are unavailable right now\./) },
   { name: "server error", setup: failing(apiError(500, "internal_error", "Something went wrong."),
-                                         /^The server couldn't answer/) },
+                                         serverErrorMessage("a1b2c3d4")) },
   { name: "not found", setup: failing(apiError(404, "not_found", "Unknown repo."),
                                       "pallets/itsdangerous is no longer available here.") },
   { name: "mobile sheet open, citation 2 highlighted", setup: async (page) => {

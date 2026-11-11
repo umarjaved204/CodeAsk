@@ -30,9 +30,9 @@ export function connectionMessage(connection: Connection, now: number): string |
         ? "Waking up the server. This takes about 30 seconds after a quiet spell."
         : "Still starting. This is taking longer than usual.";
     case "down":
-      return "Can't reach the server.";
+      return CANT_REACH_MESSAGE;
     case "offline":
-      return "You're offline. Check your connection and try again.";
+      return OFFLINE_MESSAGE;
     default:
       return null;
   }
@@ -75,7 +75,21 @@ export function isQueued(queue: Queue | null): queue is Queue {
   return queue !== null && queue.position >= 2;
 }
 
-export const WAITING_MESSAGE ="Your question will be sent when the server is ready.";
+// UI prose uses curly apostrophes (step 5, W9). Only the page's own wording: model answers and
+// code-like strings (paths, cite: markers) are never touched. Tests that only need the message
+// import these; tests that pin the wording keep it written out.
+export const CANT_REACH_MESSAGE = "Can’t reach the server.";
+export const OFFLINE_MESSAGE = "You’re offline. Check your connection and try again.";
+export const DAILY_CAP_MESSAGE =
+  "Today’s live questions are used up. The limit resets daily; the example answers still work.";
+
+export function serverErrorMessage(requestId: string | null): string {
+  return requestId
+    ? `The server couldn’t answer (request ${requestId}). Try again.`
+    : "The server couldn’t answer. Try again.";
+}
+
+export const WAITING_MESSAGE = "Your question will be sent when the server is ready.";
 export const SETTLING_MESSAGE = "Finishing the previous question.";
 export const BUSY_MESSAGE =
   "The demo is at capacity. This demo runs on free tiers, so only a few questions fit per minute.";
@@ -83,19 +97,17 @@ export const BUSY_OVER_MESSAGE = "You can try again now.";
 
 export function errorMessage(failure: Failure, repo: string, online: boolean): string {
   if (failure.kind === "unreachable") {
-    return online ? "Can't reach the server." : "You're offline. Check your connection and try again.";
+    return online ? CANT_REACH_MESSAGE : OFFLINE_MESSAGE;
   }
   switch (failure.code) {
     case "daily_cap":
-      return "Today's live questions are used up. The limit resets daily; the example answers still work.";
+      return DAILY_CAP_MESSAGE;
     case "model_unavailable":
       return "Live answers are unavailable right now. The example answers still work.";
     case "not_found":
       return `${repo} is no longer available here.`;
     default:
-      return failure.requestId
-        ? `The server couldn't answer (request ${failure.requestId}). Try again.`
-        : "The server couldn't answer. Try again.";
+      return serverErrorMessage(failure.requestId);
   }
 }
 

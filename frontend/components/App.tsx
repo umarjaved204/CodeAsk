@@ -51,7 +51,7 @@ function Ungrounded({ repo, response }: { repo: string; response: AskResponse })
     <div className="text-ui">
       <h2 className="font-serif text-lead font-medium">No cited answer for this question</h2>
       <p className="mt-2">
-        The answer couldn&apos;t be tied to lines in {repo}, so it isn&apos;t shown. These files
+        The answer couldn’t be tied to lines in {repo}, so it isn’t shown. These files
         came closest:
       </p>
       <ul className="mt-2">

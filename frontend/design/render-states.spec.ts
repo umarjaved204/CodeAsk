@@ -19,6 +19,9 @@ import {
   FIRST_UNVERIFIED, LONG_BLOCK, NOT_OUR_JSON, UNGROUNDED, apiError, expect, held, statusWith, test,
   type MockApi, type Reply,
 } from "../tests/e2e/mocks";
+import {
+  CANT_REACH_MESSAGE, DAILY_CAP_MESSAGE, OFFLINE_MESSAGE, serverErrorMessage,
+} from "../lib/messages";
 import { LONG_ANSWER, LONG_LINES, MANY_CITATIONS, SPECIMEN } from "./screen-fixtures";
 
 const ROUND = process.env.ROUND ?? "1";
@@ -73,7 +76,7 @@ const loading = (runMs: number, ready: string | RegExp): Setup => async (page, a
   await expect(page.getByText(ready)).toBeVisible();
 };
 
-const waking = (runMs: number, ready: RegExp): Setup => async (page, api) => {
+const waking = (runMs: number, ready: string | RegExp): Setup => async (page, api) => {
   api.on("GET /status", () => NOT_OUR_JSON);
   await load(page, api, false);
   // The first failed /status must have landed (connection "waking", its clock started) before
@@ -99,7 +102,7 @@ const STATES: Record<string, Setup> = {
   "04b-still-starting": waking(35_000, /^Still starting\./),
   // 95 s: "down" needs a failed poll >= 90 s after the first failure, which may have landed
   // just after the freeze.
-  "04c-cant-reach": waking(95_000, /^Can't reach the server\./),
+  "04c-cant-reach": waking(95_000, CANT_REACH_MESSAGE),
   "05-queued": async (page, api) => {
     api.on("GET /status", () => statusWith({ position: 2, wait_s: 40 }));
     await loading(1_000, "2nd in line, about 40 seconds.")(page, api, 0);
@@ -107,17 +110,17 @@ const STATES: Record<string, Setup> = {
   "06-busy": replying(apiError(503, "busy", "The service is busy.", { "Retry-After": "30" }),
                       /^The demo is at capacity\./),
   "07-daily-cap": replying(apiError(429, "daily_cap", "Daily limit reached."),
-                           /^Today's live questions are used up\./),
+                           DAILY_CAP_MESSAGE),
   "08-model-unavailable": replying(apiError(503, "model_unavailable", "Unavailable."),
                                    /^Live answers are unavailable right now\./),
   "09-server-error": replying(apiError(500, "internal_error", "Something went wrong."),
-                              /^The server couldn't answer/),
+                              serverErrorMessage("a1b2c3d4")),
   "09b-offline": async (page, api) => {
     api.on("POST /ask", () => "abort");
     await load(page, api);
     await page.context().setOffline(true);
     await ask(page);
-    await expect(page.getByText(/^You're offline\./).first()).toBeVisible();
+    await expect(page.getByText(OFFLINE_MESSAGE).first()).toBeVisible();
   },
   "10-ungrounded": answered(UNGROUNDED, false, "No cited answer for this question."),
   "11-unverified-note": async (page, api, width) => {

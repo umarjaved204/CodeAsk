@@ -14,6 +14,9 @@ import {
   EXAMPLE, FIRST_UNVERIFIED, LONG_BLOCK, NOT_OUR_JSON, UNGROUNDED, apiError, expect, held, test,
   type MockApi, type Reply,
 } from "./mocks";
+import {
+  CANT_REACH_MESSAGE, DAILY_CAP_MESSAGE, OFFLINE_MESSAGE, serverErrorMessage,
+} from "../../lib/messages";
 
 const Q = "How are signatures verified?";
 const LABEL = /^Example answer, generated 2 Nov 2026/;
@@ -191,7 +194,7 @@ test("waking: 'Still starting' from 35 s and 'Can't reach' from 90 s, each on bo
   await page.goto("/");
   const waking = page.getByText(/^Waking up the server\./);
   const starting = page.getByText("Still starting. This is taking longer than usual.");
-  const down = page.getByText(/^Can't reach the server\./); // the line also holds "Try again"
+  const down = page.getByText(CANT_REACH_MESSAGE); // the line also holds "Try again"
   await expect(waking).toBeVisible();
 
   await page.clock.setFixedTime(T0 + 34_000);
@@ -253,7 +256,7 @@ for (const [expose, countdown] of [[true, "Try again in 5 s"], [false, "Try agai
 const FAILURES: { name: string; reply: Reply; text: string; action: string }[] = [
   // Provisional: slice 4 builds the cap and confirms its status code.
   { name: "daily cap", reply: apiError(429, "daily_cap", "Daily limit reached."),
-    text: "Today's live questions are used up. The limit resets daily; the example answers still work.",
+    text: DAILY_CAP_MESSAGE,
     action: "Show the example answer" },
   // app.py ask(): the model check failed.
   { name: "model unavailable",
@@ -262,8 +265,8 @@ const FAILURES: { name: string; reply: Reply; text: string; action: string }[] =
     action: "Show the example answer" },
   // app.py classify(): anything unexpected.
   { name: "server error", reply: apiError(500, "internal_error", "Something went wrong on the server."),
-    text: "The server couldn't answer (request a1b2c3d4). Try again.", action: "Try again" },
-  { name: "a reply that isn't our JSON", reply: NOT_OUR_JSON, text: "Can't reach the server.",
+    text: serverErrorMessage("a1b2c3d4"), action: "Try again" },
+  { name: "a reply that isn't our JSON", reply: NOT_OUR_JSON, text: CANT_REACH_MESSAGE,
     action: "Try again" },
   // app.py ask(): HTTPException(404) for a repo that is no longer featured.
   { name: "not found", reply: apiError(404, "not_found", "Unknown repo."),
@@ -309,7 +312,7 @@ test("offline after load: the example stays; asking says offline and offers a re
   await expect(page.getByText(LABEL)).toBeVisible();
   await ask(page);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(Q);
-  await expect(page.getByText("You're offline. Check your connection and try again.").first()).toBeVisible();
+  await expect(page.getByText(OFFLINE_MESSAGE).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Try again", exact: true })).toBeVisible();
 });
 

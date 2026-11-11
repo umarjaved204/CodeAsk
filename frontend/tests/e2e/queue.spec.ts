@@ -7,6 +7,7 @@ import type { Page } from "@playwright/test";
 import {
   EXAMPLE, apiError, expect, held, statusWith, test, type MockApi,
 } from "./mocks";
+import { serverErrorMessage } from "../../lib/messages";
 import type { QueueWire } from "../../lib/types";
 
 const Q = "How are signatures verified?";
@@ -112,7 +113,7 @@ test("polling stops when the question ends in an error", async ({ page, api }) =
   const calls = (await logged(page)).statusCalls.length;
 
   answer.release(apiError(500, "internal_error", "Something went wrong on the server."));
-  await expect(page.getByText(/^The server couldn't answer/)).toBeVisible();
+  await expect(page.getByText(serverErrorMessage("a1b2c3d4"))).toBeVisible();
   await page.clock.runFor(30_000);
   expect((await logged(page)).statusCalls).toHaveLength(calls);
 });
