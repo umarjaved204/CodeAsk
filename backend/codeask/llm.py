@@ -30,9 +30,10 @@ class GroqError(Exception):
 
 
 class RateLimited(GroqError):
-    def __init__(self, message: str, retry_after: float):
+    def __init__(self, message: str, retry_after: float, headers: dict | None = None):
         super().__init__(message, 429)
         self.retry_after = retry_after
+        self.headers = headers or {}  # the 429's rate-limit headers, for the pacer (Q46)
 
 
 @dataclass
@@ -98,7 +99,7 @@ class GroqClient:
                 if (attempt == retries or wait > config.GROQ_MAX_RETRY_WAIT_S
                         or wait >= time_left(deadline, self.clock)):
                     raise RateLimited(f"429 from Groq (retry-after {wait:g} s), headers {headers}",
-                                      wait)
+                                      wait, headers)
                 self.sleep(wait)
                 continue
             if response.status_code >= 500 and attempt < retries:

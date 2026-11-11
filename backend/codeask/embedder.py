@@ -67,6 +67,20 @@ class Limiter:
             self.sleep(wait)
             waited += wait
 
+    def ready_at(self, priority: str = "ingest") -> float | None:
+        """When acquire() could take a slot without waiting: now if one is free, else when
+        enough completed requests leave the window; None while the slots are held by requests
+        still in flight. Read-only: the /ask queue's pacer peeks with it (PLAN.md Q46)."""
+        with self._lock:
+            now = self.clock()
+            stamps = [s for s in self._stamps if s > now - self.window_s]
+            free = self._capacity(priority) - self._in_flight - len(stamps)
+            if free > 0:
+                return now
+            if 1 - free > len(stamps):
+                return None
+            return stamps[-free] + self.window_s  # the (1 - free)th oldest leaves the window
+
     def release(self) -> None:
         with self._lock:
             self._in_flight -= 1

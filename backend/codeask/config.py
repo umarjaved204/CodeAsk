@@ -109,3 +109,21 @@ UNKNOWN_OUTCOME_TOKENS = 3_300
 DAILY_BLOCK_MIN_RETRY_S = 120
 # Each /ask's whole budget of time, from endpoint entry (Q43): the proxy allows >= 120 s.
 ASK_DEADLINE_S = 90
+
+# ---------- slice 4: the queue and pacer (PLAN.md Q46 and its step 5 amendment) ----------
+GROQ_TOKENS_PER_MINUTE = 8_000  # only until Groq's x-ratelimit-limit-tokens has been seen
+GROQ_OUTPUT_TOKENS_PER_MINUTE = 1_000  # qwen's output limit; not in the headers (Q10)
+OUTPUT_WINDOW_S = 63  # our output tokens count for 60 s + 3 s skew (Groq's clock isn't ours)
+# The wait projection assumes each unfinished answer takes S seconds and X output tokens: the
+# maxima of recent answers, not means, so the estimate is an upper bound (step 5 amendment 2).
+PROJECTED_OUTPUT_SEED = 460  # the measured maximum; X never goes below it (or above 600)
+# S never goes below this seed (or above the max). It must be a real upper bound on answer time:
+# slice 6 sets it from the longest measured live service time plus a margin.
+PROJECTED_SERVICE_SEED_S = 15
+PROJECTED_SERVICE_MAX_S = 60
+PROJECTION_HISTORY = 20  # how many recent answers the maxima look at
+OVERDUE_MARGIN_S = 5  # a running answer already past S is assumed to need this much more
+QUEUE_BUSY_WAIT_S = 60  # a newcomer whose estimated wait is longer gets "busy"
+QUEUE_MAX_TICKETS = 10  # waiting + running; a backstop well under the 40-thread pool
+MIN_TIME_TO_START_S = 25  # a question with less time left gives up before spending tokens
+WAIT_POLL_CAP_S = 5  # a waiting thread re-checks at least this often (missed-wakeup net)

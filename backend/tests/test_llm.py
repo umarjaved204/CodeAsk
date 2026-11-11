@@ -104,6 +104,7 @@ def test_rate_limit_and_status_are_carried_on_the_exceptions():
     with pytest.raises(RateLimited) as err:
         c.chat([])  # 45 s > GROQ_MAX_RETRY_WAIT_S: returned, not waited out
     assert (err.value.retry_after, err.value.status) == (45.0, 429)
+    assert err.value.headers == {"retry-after": "45"}  # for the queue's pacer
     c, _, _ = client(FakeResponse(404, text='{"error": "model_not_found"}'))
     with pytest.raises(GroqError) as err:
         c.chat([])
