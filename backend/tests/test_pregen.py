@@ -3,6 +3,7 @@ The rules under test: no re-rolls, at most 2 re-runs of a run with no answer tex
 token guard and pacing (Q53), and the frozen, pinned questions file (Q48, Q52)."""
 
 import json
+import os
 from datetime import datetime, timezone
 
 import pytest
@@ -10,7 +11,7 @@ import pytest
 from codeask import config
 from codeask.askqueue import Pacer
 from codeask.llm import GroqError, RateLimited, Reply
-from codeask.pregen import Paths, Stop, generate, load_questions
+from codeask.pregen import Paths, Stop, check_record, generate, load_questions, verify
 
 SHA = "a" * 40
 REPO = {"slug": "o/r", "url": "https://github.com/o/r", "commit_sha": SHA,
@@ -193,3 +194,77 @@ def test_load_questions_accepts_a_confirmed_pinned_file(tmp_path):
 def test_load_questions_refuses(tmp_path, changes, pins, message):
     with pytest.raises(Stop, match=message):
         load_questions(questions_file(tmp_path, **changes), REPO, pins)
+
+
+# ---------- verify (build step 5, Q51): stored blocks against the real files ----------
+def checkout(tmp_path):
+    root = tmp_path / "clone"
+    (root / "src").mkdir(parents=True)
+    (root / "src" / "a.py").write_bytes(b"one\ntwo\nthree\nfour\n")
+    return root
+
+
+def answer(*blocks, sha=SHA):
+    return {"commit_sha": sha, "response": {"blocks": [
+        {"path": p, "start": s, "end": e, "content": c} for p, s, e, c in blocks]}}
+
+
+def test_blocks_equal_to_the_file_lines_pass(tmp_path):
+    root = checkout(tmp_path)
+    assert check_record(answer(("src/a.py", 2, 3, "two\nthree"), ("src/a.py", 1, 1, "one")),
+                        root, SHA) == []
+
+
+def test_crlf_and_a_bom_are_read_as_ingest_reads_them(tmp_path):
+    root = checkout(tmp_path)
+    (root / "src" / "w.py").write_bytes(b"\xef\xbb\xbfone\r\ntwo\r\n")
+    assert check_record(answer(("src/w.py", 1, 2, "one\ntwo")), root, SHA) == []
+
+
+@pytest.mark.parametrize("block, problem", [
+    (("src/a.py", 2, 3, "two\nTHREE"), "content differs"),
+    (("src/a.py", 2, 3, "two\nthree\n"), "content differs"),  # exact: no trailing newline
+    (("src/a.py", 4, 9, "four"), "outside the file"),
+    (("src/a.py", 0, 1, "one"), "outside the file"),
+    (("src/b.py", 1, 1, "one"), "file missing"),
+    (("../clone/src/a.py", 1, 1, "one"), "unsafe"),
+    (("src/./a.py", 1, 1, "one"), "unsafe"),
+    (("src\a.py", 1, 1, "one"), "unsafe"),
+    (("/src/a.py", 1, 1, "one"), "unsafe"),
+    (("src", 1, 1, "one"), "unsafe"),  # a directory
+])
+def test_a_wrong_block_is_a_problem(tmp_path, block, problem):
+    (found,) = check_record(answer(block), checkout(tmp_path), SHA)
+    assert problem in found
+
+
+def test_a_symlink_is_never_followed(tmp_path):
+    root = checkout(tmp_path)
+    try:
+        os.symlink(root / "src" / "a.py", root / "src" / "link.py")
+    except OSError:
+        pytest.skip("creating symlinks needs Developer Mode or admin on Windows")
+    (found,) = check_record(answer(("src/link.py", 1, 1, "one")), root, SHA)
+    assert "unsafe" in found
+
+
+def test_an_answer_for_another_commit_fails(tmp_path):
+    (found,) = check_record(answer(("src/a.py", 1, 1, "one"), sha="b" * 40),
+                            checkout(tmp_path), SHA)
+    assert "answer is for bbbbbbb" in found
+
+
+def test_verify_writes_the_result_into_each_answer(tmp_path):
+    root, paths = checkout(tmp_path), Paths("o/r", root=tmp_path)
+    paths.answers.mkdir(parents=True)
+    good = {"question": "g?", **answer(("src/a.py", 1, 2, "one\ntwo"))}
+    bad = {"question": "b?", **answer(("src/a.py", 1, 2, "one\n2"))}
+    (paths.answers / "q1.json").write_text(json.dumps(good), encoding="utf-8")
+    (paths.answers / "q2.json").write_text(json.dumps(bad), encoding="utf-8")
+    results = verify(paths, root, SHA, NOW)
+    assert results == {"q1": [], "q2": ["src/a.py:1-2: content differs from the file"]}
+    q1, q2 = read(paths.answers / "q1.json"), read(paths.answers / "q2.json")
+    assert q1["lines_check"] == {"ok": True, "commit_sha": SHA,
+                                 "checked_at": "2026-11-13T10:00:00+00:00", "blocks": 1,
+                                 "problems": []}
+    assert q1["question"] == "g?" and q2["lines_check"]["ok"] is False

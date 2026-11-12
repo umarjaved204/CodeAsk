@@ -1037,6 +1037,18 @@ config gains a pinned SHA per repo, and the drift guard compares slug and SHA (Q
    pinned SHA (`ingest.clone`, no symlinks followed); every block's lines must equal the file's
    lines `start..end` exactly (split on `"\n"`); the result (ok, SHA, date) is written into each
    JSON. Re-run on all stored answers after any chunker, packer or prompt code change (Q50).
+   **Built 2026-11-12.**
+   - **Independent of the DB:** it uses no API and no database. The clone goes into a
+     temporary folder, deleted afterwards, and must come back at exactly the pin.
+   - **What it checks:** each shown block (`response.blocks`, the shipped evidence) and the
+     record's `commit_sha`.
+   - **How files are read:** as ingest reads them (strict UTF-8, BOM stripped, CRLF -> LF), so
+     "exact" means exactly what the model saw.
+   - **Path safety:** a path with `..`, `.`, a backslash, a leading `/`, or a symlink anywhere
+     on the way is a failure, never followed.
+   - **The record:** the result is written as `lines_check`: `ok`, `commit_sha`, `checked_at`,
+     the block count and any problems. The command exits non-zero if any answer fails.
+   - **Tests:** 15 more offline tests.
 6. **Grading (Q51).** Claude drafts claim-by-claim grades and marks the 2-3 riskiest claims
    (`reviewer: "claude"`); I spot-check and flip to `author`. A failed answer moves to
    `eval/results/m2d_failures/` with its grade; its replacement question is committed before it

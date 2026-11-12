@@ -1,6 +1,7 @@
 """Slice 5: pre-generate the suggested questions' answers (PLAN.md Q47-Q53, build step 4).
 
 Run: python -m codeask.pregen generate pallets/itsdangerous [--max-tokens 100000]
+     python -m codeask.pregen verify pallets/itsdangerous
 
 Answers, in order, each entry of the repo's frozen `questions` list (eval/m2d_questions/
 <owner>__<name>.json, Q48) that has no stored attempt yet. A replacement (Q50) is a reserve moved
@@ -18,16 +19,25 @@ into `questions` by a committed amendment, so it runs here like any other entry.
 - Writes the fixture() record plus its runs to frontend/data/examples/<owner>__<name>/<id>.json,
   and the full result (raw answer, whole context, dropped chunks) to
   eval/results/m2d_raw/<owner>__<name>/<id>.json for grading and M3. The raw file never ships.
+
+`verify` (Q51, build step 5) checks every stored answer against the real files, not the DB the
+blocks came from. It makes a fresh shallow clone at the pinned SHA in a temporary folder, and
+requires each shown block's content to equal the file's lines start..end exactly. The file is
+decoded as ingest decodes it (strict UTF-8, BOM stripped, CRLF -> LF) and split on "\n". No
+symlink is followed, and no path may leave the clone. The result (ok, SHA, time, problems) is
+written into each answer's JSON as `lines_check`. No API is called and the DB isn't used.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
+import tempfile
 import time
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import psycopg
 import requests
@@ -37,6 +47,7 @@ from codeask.api.app import TrackedLLM
 from codeask.ask import ask, fixture
 from codeask.askqueue import Pacer
 from codeask.deadline import DeadlineExceeded
+from codeask.filters import decode
 from codeask.llm import GroqError, RateLimited
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -176,6 +187,89 @@ def generate(pending: list[tuple[dict, list[float]]], repo: dict, paths: Paths, 
     return total
 
 
+def file_lines(root: Path, rel: str) -> list[str] | None:
+    """The file's lines, or None if the path is unsafe, a symlink anywhere on the way, not a
+    regular file or not UTF-8. Paths are repo-relative POSIX, as the chunker stores them."""
+    path = PurePosixPath(rel)
+    if (not rel or "\\" in rel or path.is_absolute()
+            or any(part in ("", ".", "..") for part in rel.split("/"))):
+        return None
+    full = root
+    for part in path.parts:
+        full = full / part
+        if full.is_symlink():
+            return None
+    if not full.is_file():
+        return None
+    text = decode(full.read_bytes())
+    return None if text is None else text.split("\n")
+
+
+def check_record(record: dict, root: Path, sha: str) -> list[str]:
+    """Problems with one stored answer against a checkout of `sha` at `root`; [] = ok."""
+    problems = []
+    if record["commit_sha"] != sha:
+        problems.append(f"answer is for {record['commit_sha'][:7]}, clone is {sha[:7]}")
+    for b in record["response"]["blocks"]:
+        ref = f"{b['path']}:{b['start']}-{b['end']}"
+        lines = file_lines(root, b["path"])
+        if lines is None:
+            problems.append(f"{ref}: file missing, unsafe or unreadable")
+        elif not 1 <= b["start"] <= b["end"] <= len(lines):
+            problems.append(f"{ref}: outside the file ({len(lines)} lines)")
+        elif "\n".join(lines[b["start"] - 1:b["end"]]) != b["content"]:
+            problems.append(f"{ref}: content differs from the file")
+    return problems
+
+
+def verify(paths: Paths, root: Path, sha: str, now: datetime) -> dict[str, list[str]]:
+    """Checks every stored answer and writes the result into it; returns the problems by id."""
+    results = {}
+    for file in sorted(paths.answers.glob("*.json")):
+        record = json.loads(file.read_text(encoding="utf-8"))
+        problems = check_record(record, root, sha)
+        record["lines_check"] = {"ok": not problems, "commit_sha": sha,
+                                 "checked_at": now.isoformat(timespec="seconds"),
+                                 "blocks": len(record["response"]["blocks"]),
+                                 "problems": problems}
+        write_json(file, record)
+        results[file.stem] = problems
+    return results
+
+
+def main_verify(slug: str) -> None:
+    from codeask.ingest import clone, remove_tree
+
+    slug = slug.lower()
+    pin = config.FEATURED_SHAS.get(slug)
+    if pin is None:
+        sys.exit(f"{slug} is not a featured repo")
+    paths = Paths(slug)
+    if not any(paths.answers.glob("*.json")):
+        sys.exit(f"no stored answers in {paths.answers}")
+    owner, name = slug.split("/")
+    dest = Path(tempfile.mkdtemp(prefix="codeask-verify-")) / "repo"
+    try:
+        print(f"cloning {slug} at {pin[:7]} into a temporary folder ...")
+        try:
+            sha = clone(owner, name, pin, dest)
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+            sys.exit(f"git failed: {getattr(error, 'stderr', '') or error}")
+        if sha != pin:
+            sys.exit(f"the clone is at {sha[:7]}, not the pin {pin[:7]}")
+        results = verify(paths, dest, sha, datetime.now(timezone.utc))
+    finally:
+        remove_tree(dest.parent)
+    for qid, problems in results.items():
+        print(f"{qid}: {'ok' if not problems else 'FAILED'}")
+        for p in problems:
+            print(f"  {p}")
+    bad = sum(1 for p in results.values() if p)
+    print(f"{len(results) - bad}/{len(results)} answers ok at {sha[:7]}; result written into each")
+    if bad:
+        sys.exit(1)
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     commands = parser.add_subparsers(dest="command", required=True)
@@ -183,7 +277,11 @@ def main(argv: list[str] | None = None) -> None:
     gen.add_argument("slug", help="owner/name, a featured repo")
     gen.add_argument("--max-tokens", type=int, default=config.PREGEN_MAX_TOKENS,
                      help="stop before a question that could pass this many tokens (Q53)")
+    ver = commands.add_parser("verify", help="check stored answers' lines against a fresh clone")
+    ver.add_argument("slug", help="owner/name, a featured repo")
     args = parser.parse_args(argv)
+    if args.command == "verify":
+        return main_verify(args.slug)
     if args.max_tokens <= 0:
         parser.error("--max-tokens must be positive")
 
