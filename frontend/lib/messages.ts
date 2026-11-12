@@ -9,9 +9,11 @@ export const LOADING_SLOW_MS = 12_000;
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+// What was checked, so the label can't be read as "complete" (Q37, amended in slice 5: a passing
+// answer may be incomplete under Q50).
 const CHECKED: Record<Grade["reviewer"], string> = {
-  claude: " Checked against the cited code by Claude; not yet reviewed by the author.",
-  author: " Checked by the author.",
+  claude: " Claims and citations checked against the cited code by Claude; not yet reviewed by the author.",
+  author: " Claims and citations checked by the author; the answer may leave things out.",
 };
 
 export function provenance(example: Example): string {

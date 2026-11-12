@@ -6,7 +6,7 @@ import path from "node:path";
 
 import type { Page } from "@playwright/test";
 
-import { EXAMPLE, expect, held, test, type MockApi } from "./mocks";
+import { EMPTY_REPO, EXAMPLE, expect, held, test, type MockApi } from "./mocks";
 import { ON_ITS_OWN } from "../../lib/messages";
 
 const Q = "How are signatures verified?";
@@ -79,8 +79,8 @@ test("a typed question that matches a suggestion still goes live", async ({ page
 
 test("a repo with no stored set: no stored answer and no list, the composer only", async ({ page, api }) => {
   await up(page, api);
-  await page.getByRole("combobox", { name: "Repository" }).selectOption("psf/requests");
-  await expect(heading(page)).toHaveText("Ask a question about the code in psf/requests.");
+  await page.getByRole("combobox", { name: "Repository" }).selectOption(EMPTY_REPO);
+  await expect(heading(page)).toHaveText(`Ask a question about the code in ${EMPTY_REPO}.`);
   await expect(list(page)).toHaveCount(0);
   await expect(page.getByText(LABEL)).toHaveCount(0);
   await expect(box(page)).toBeEnabled();
@@ -105,8 +105,8 @@ test("switching back to a repo opens its flagship, not the live answer left ther
   await ask(page);
   await expect(heading(page)).toHaveText(Q);
   const picker = page.getByRole("combobox", { name: "Repository" });
-  await picker.selectOption("psf/requests");
-  await expect(heading(page)).toHaveText(/psf\/requests/);
+  await picker.selectOption(EMPTY_REPO);
+  await expect(heading(page)).toHaveText(new RegExp(EMPTY_REPO));
   await picker.selectOption("pallets/itsdangerous");
   await expect(heading(page)).toHaveText(EXAMPLE.question);
   await expect(item(page)).toHaveAttribute("aria-current", "true");

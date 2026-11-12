@@ -1,0 +1,200 @@
+{
+ "question": "How are proxies picked up from environment variables, and when are they bypassed?",
+ "repo": "psf/requests",
+ "repo_url": "https://github.com/psf/requests",
+ "commit_sha": "3c7baaa05ab4aa49cc819ce3a819d260de19c157",
+ "generated_at": "2026-11-12T20:40:49+00:00",
+ "model": "qwen/qwen3.8-27b",
+ "prompt_version": 3,
+ "generation": {
+  "temperature": 0,
+  "max_completion_tokens": 600,
+  "model_options": {
+   "reasoning_effort": "none"
+  }
+ },
+ "packer": {
+  "retrieve_k": 15,
+  "budget": 2000,
+  "per_file_cap": null,
+  "merge_max_gap_lines": 5
+ },
+ "usage": {
+  "queue_time": 0.004281689,
+  "prompt_tokens": 2745,
+  "prompt_time": 0.214195683,
+  "completion_tokens": 432,
+  "completion_time": 0.8531406,
+  "total_tokens": 3177,
+  "total_time": 1.067336283
+ },
+ "retries_429": 0,
+ "attempt": 1,
+ "attempt_note": null,
+ "grade": {
+  "correct": "incorrect",
+  "grounded": "yes",
+  "citations_valid": "6/6 strict",
+  "unsupported": "minor",
+  "omission": "minor",
+  "claims": [
+   {
+    "claim": "get_environ_proxies returns {} when should_bypass_proxies says so, else getproxies()",
+    "verdict": "supported",
+    "blocks": [
+     "utils.py:873-882"
+    ]
+   },
+   {
+    "claim": "getproxies comes from urllib",
+    "verdict": "unsupported",
+    "blocks": [
+     "utils.py:46-60"
+    ]
+   },
+   {
+    "claim": "resolve_proxies is the main entry point used by sessions",
+    "verdict": "unsupported",
+    "blocks": [
+     "sessions.py:48-59"
+    ]
+   },
+   {
+    "claim": "with trust_env and no bypass, the environment proxy for the scheme (or 'all') is added to the proxies",
+    "verdict": "supported",
+    "blocks": [
+     "utils.py:911-939"
+    ]
+   },
+   {
+    "claim": "bypass happens in two cases: no_proxy, then the platform's proxy_bypass",
+    "verdict": "incorrect",
+    "blocks": [
+     "utils.py:810-868"
+    ],
+    "risky": true
+   },
+   {
+    "claim": "no_proxy: lowercase before uppercase; exact, suffix and IPv4 CIDR matches",
+    "verdict": "supported",
+    "blocks": [
+     "utils.py:817-859"
+    ],
+    "risky": true
+   },
+   {
+    "claim": "on Windows, proxy_bypass checks the registry's ProxyOverride; elsewhere the standard library's",
+    "verdict": "supported",
+    "blocks": [
+     "utils.py:96-146",
+     "utils.py:861-868"
+    ],
+    "risky": true
+   }
+  ],
+  "reviewer": "author",
+  "date": "2026-11-12",
+  "note": "Drafted by Claude (Q51), claim by claim against the cited blocks and the files at 3c7baaa; claims marked risky are the ones for the author's spot-check. Unsupported, minor: getproxies 'from urllib' (the context shows the compat import only) and resolve_proxies as the sessions' 'main entry point' (the context shows the import in sessions.py). Minor omissions: a URL with no hostname also bypasses (utils.py 830-832), so 'two cases' leaves out an edge case; Windows' proxy_bypass checks environment proxies first and reads the registry only when none are set (utils.py 143-146); setdefault keeps an explicitly passed proxy over the environment's (utils.py 938). Ruled a failure on 2026-11-12 (UTC) after review at 3c7baaa (Q50 rule 1, an incorrect claim): \"bypass happens in two cases\" is an exhaustive count on the exact point asked, and utils.py 830-832, inside the cited 810-860, holds a third case (no hostname). The Windows registry claim stays a minor omission: true for the branch named; the environment-first branch is left out, not contradicted."
+ },
+ "response": {
+  "grounded": true,
+  "answer": "Proxies are picked up from environment variables through a chain of functions in `src/requests/utils.py`:\n\n1.  **`get_environ_proxies`** calls `getproxies()` (from `urllib`) to retrieve a dictionary of proxies defined in the environment (e.g., `http_proxy`, `https_proxy`). It first checks `should_bypass_proxies`; if bypass is required, it returns an empty dictionary, otherwise it returns the environment proxies [1](cite:1).\n\n2.  **`resolve_proxies`** is the main entry point used by sessions. It takes explicit `proxies` and a `trust_env` flag. If `trust_env` is true and the URL should not bypass proxies, it calls `get_environ_proxies` and merges the resulting environment proxy for the specific scheme (or \"all\") into the proxies dictionary [2](cite:2).\n\nProxies are bypassed when `should_bypass_proxies` returns `True`. This happens in two cases:\n\n*   **`no_proxy` environment variable:** The function checks the `no_proxy` variable (prioritizing lowercase over uppercase). If the URL's hostname matches an entry in `no_proxy` (supporting exact matches, suffix matches like `.example.com`, and IPv4 CIDR notation), it returns `True` [3](cite:3).\n*   **Platform-specific bypass:** If `no_proxy` doesn't match, it calls the platform-specific `proxy_bypass` function. On Windows, this checks the registry for `ProxyOverride` settings; on other platforms, it uses the standard library's `proxy_bypass` [4](cite:4) [5](cite:5).\n\nIf either check indicates a bypass, `get_environ_proxies` returns an empty dict, effectively ignoring environment proxies for that request [6](cite:6).",
+  "citations": [
+   {
+    "n": 1,
+    "path": "src/requests/utils.py",
+    "start": 873,
+    "end": 882,
+    "valid": true,
+    "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/utils.py#L873-L882",
+    "block": 0
+   },
+   {
+    "n": 2,
+    "path": "src/requests/utils.py",
+    "start": 911,
+    "end": 939,
+    "valid": true,
+    "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/utils.py#L911-L939",
+    "block": 1
+   },
+   {
+    "n": 3,
+    "path": "src/requests/utils.py",
+    "start": 810,
+    "end": 860,
+    "valid": true,
+    "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/utils.py#L810-L860",
+    "block": 0
+   },
+   {
+    "n": 4,
+    "path": "src/requests/utils.py",
+    "start": 861,
+    "end": 868,
+    "valid": true,
+    "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/utils.py#L861-L868",
+    "block": 0
+   },
+   {
+    "n": 5,
+    "path": "src/requests/utils.py",
+    "start": 96,
+    "end": 146,
+    "valid": true,
+    "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/utils.py#L96-L146",
+    "block": 2
+   },
+   {
+    "n": 6,
+    "path": "src/requests/utils.py",
+    "start": 879,
+    "end": 880,
+    "valid": true,
+    "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/utils.py#L879-L880",
+    "block": 0
+   }
+  ],
+  "blocks": [
+   {
+    "path": "src/requests/utils.py",
+    "start": 810,
+    "end": 882,
+    "content": "def should_bypass_proxies(url: str, no_proxy: str | None) -> bool:\n    \"\"\"\n    Returns whether we should bypass proxies or not.\n\n    :rtype: bool\n    \"\"\"\n\n    # Prioritize lowercase environment variables over uppercase\n    # to keep a consistent behaviour with other http projects (curl, wget).\n    def get_proxy(key: str) -> str | None:\n        return os.environ.get(key) or os.environ.get(key.upper())\n\n    # First check whether no_proxy is defined. If it is, check that the URL\n    # we're getting isn't in the no_proxy list.\n    no_proxy_arg = no_proxy\n    if no_proxy is None:\n        no_proxy = get_proxy(\"no_proxy\")\n    parsed = urlparse(url)\n    hostname = parsed.hostname\n\n    if hostname is None:\n        # URLs don't always have hostnames, e.g. file:/// urls.\n        return True\n\n    if no_proxy:\n        # We need to check whether we match here. We need to see if we match\n        # the end of the hostname, both with and without the port.\n        no_proxy_hosts = (host for host in no_proxy.replace(\" \", \"\").split(\",\") if host)\n\n        if is_ipv4_address(hostname):\n            for proxy_ip in no_proxy_hosts:\n                if is_valid_cidr(proxy_ip):\n                    if address_in_network(hostname, proxy_ip):\n                        return True\n                elif hostname == proxy_ip:\n                    # If no_proxy ip was defined in plain IP notation instead of cidr notation &\n                    # matches the IP of the index\n                    return True\n        else:\n            host_with_port = hostname\n            if parsed.port:\n                host_with_port += f\":{parsed.port}\"\n\n            for host in no_proxy_hosts:\n                host = host.lstrip(\".\")\n                if hostname == host or host_with_port == host:\n                    return True\n                host = \".\" + host\n                if hostname.endswith(host) or host_with_port.endswith(host):\n                    return True\n\n    with set_environ(\"no_proxy\", no_proxy_arg):\n        try:\n            bypass = proxy_bypass(hostname)\n        except (TypeError, socket.gaierror):\n            bypass = False\n\n    if bypass:\n        return True\n\n    return False\n\n\ndef get_environ_proxies(url: str, no_proxy: str | None = None) -> dict[str, str]:\n    \"\"\"\n    Return a dict of environment proxies.\n\n    :rtype: dict\n    \"\"\"\n    if should_bypass_proxies(url, no_proxy=no_proxy):\n        return {}\n    else:\n        return getproxies()"
+   },
+   {
+    "path": "src/requests/utils.py",
+    "start": 911,
+    "end": 939,
+    "content": "def resolve_proxies(\n    request: Request | PreparedRequest,\n    proxies: dict[str, str] | None,\n    trust_env: bool = True,\n) -> dict[str, str]:\n    \"\"\"This method takes proxy information from a request and configuration\n    input to resolve a mapping of target proxies. This will consider settings\n    such as NO_PROXY to strip proxy configurations.\n\n    :param request: Request or PreparedRequest\n    :param proxies: A dictionary of schemes or schemes and hosts to proxy URLs\n    :param trust_env: Boolean declaring whether to trust environment configs\n\n    :rtype: dict\n    \"\"\"\n    proxies = proxies if proxies is not None else {}\n    url = cast(str, request.url)\n    scheme = urlparse(url).scheme\n    no_proxy = proxies.get(\"no_proxy\")\n    new_proxies = proxies.copy()\n\n    if trust_env and not should_bypass_proxies(url, no_proxy=no_proxy):\n        environ_proxies = get_environ_proxies(url, no_proxy=no_proxy)\n\n        proxy = environ_proxies.get(scheme, environ_proxies.get(\"all\"))\n\n        if proxy:\n            new_proxies.setdefault(scheme, proxy)\n    return new_proxies"
+   },
+   {
+    "path": "src/requests/utils.py",
+    "start": 96,
+    "end": 146,
+    "content": "if sys.platform == \"win32\":\n    # provide a proxy_bypass version on Windows without DNS lookups\n\n    def proxy_bypass_registry(host: str) -> bool:\n        try:\n            import winreg\n        except ImportError:\n            return False\n\n        try:\n            internetSettings = winreg.OpenKey(\n                winreg.HKEY_CURRENT_USER,\n                r\"Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\",\n            )\n            # ProxyEnable could be REG_SZ or REG_DWORD, normalizing it\n            proxyEnable = int(winreg.QueryValueEx(internetSettings, \"ProxyEnable\")[0])\n            # ProxyOverride is almost always a string\n            proxyOverride = winreg.QueryValueEx(internetSettings, \"ProxyOverride\")[0]\n        except (OSError, ValueError):\n            return False\n        if not proxyEnable or not proxyOverride:\n            return False\n\n        # make a check value list from the registry entry: replace the\n        # '<local>' string by the localhost entry and the corresponding\n        # canonical entry.\n        proxyOverride = proxyOverride.split(\";\")\n        # filter out empty strings to avoid re.match return true in the following code.\n        proxyOverride = filter(None, proxyOverride)\n        # now check if we match one of the registry values.\n        for test in proxyOverride:\n            if test == \"<local>\":\n                if \".\" not in host:\n                    return True\n            test = test.replace(\".\", r\"\\.\")  # mask dots\n            test = test.replace(\"*\", r\".*\")  # change glob sequence\n            test = test.replace(\"?\", r\".\")  # change glob char\n            if re.match(test, host, re.I):\n                return True\n        return False\n\n    def proxy_bypass(host: str) -> bool:  # noqa\n        \"\"\"Return True, if the host should be bypassed.\n\n        Checks proxy settings gathered from the environment, if specified,\n        or the registry.\n        \"\"\"\n        if getproxies_environment():\n            return proxy_bypass_environment(host)\n        else:\n            return proxy_bypass_registry(host)"
+   }
+  ],
+  "possibly_relevant": [],
+  "model": "qwen/qwen3.8-27b",
+  "prompt_version": 3
+ },
+ "question_id": "r1",
+ "runs": [
+  {
+   "id": "r1",
+   "at": "2026-11-12T20:40:49+00:00",
+   "outcome": "answered",
+   "tokens": 3177,
+   "estimated": false,
+   "error": null
+  }
+ ],
+ "lines_check": {
+  "ok": true,
+  "commit_sha": "3c7baaa05ab4aa49cc819ce3a819d260de19c157",
+  "checked_at": "2026-11-12T20:40:54+00:00",
+  "blocks": 3,
+  "problems": []
+ }
+}

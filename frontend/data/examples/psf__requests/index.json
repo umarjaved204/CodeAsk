@@ -1,0 +1,21 @@
+{
+ "repo": "psf/requests",
+ "commit_sha": "3c7baaa05ab4aa49cc819ce3a819d260de19c157",
+ "exported_at": "2026-11-12T21:08:27+00:00",
+ "flagship": "q2",
+ "flagship_note": null,
+ "questions": [
+  {
+   "id": "q2",
+   "question": "How does it decide whether to keep or strip credentials when a redirect goes to another host?"
+  },
+  {
+   "id": "q1",
+   "question": "How does a call like `requests.get` turn into an actual HTTP request, from the top-level function down to the network layer?"
+  },
+  {
+   "id": "q3",
+   "question": "How does it decide when to follow a redirect and when to stop?"
+  }
+ ]
+}

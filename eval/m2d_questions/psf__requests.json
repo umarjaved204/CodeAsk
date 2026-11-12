@@ -4,7 +4,8 @@
  "about": "Slice 5 (M2d) suggested questions, in index order (the first passing entry that meets the Q48 flagship criteria leads), with expected chunks. Questions proposed by the mentor chat (Claude) from general knowledge before any generated answer existed, selected and accepted by the author (Q48 amendment, 2026-11-12). Expected chunks drafted by Claude on 2026-11-12 from a fresh clone at commit_sha; ranges are whole functions/classes (decorators included), or the statement itself for module-level code, 1-based inclusive. 'required' = an answer can't be complete and grounded without it; 'supporting' = helpful, not used by the Q49 rule. A range counts as packed when every NON-BLANK line of it lies inside the packed blocks after merging (the rule of eval/m2_pack_compare.py; partial overlap does not count). Frozen once confirmed: later changes are amendments with a reason; rewording a question is a replacement (Q48).",
  "confirmed": {"date": "2026-11-12", "by": "author", "spot_checked": ["q2", "q5"], "note": "Author spot-checked these questions' ranges against the files at commit_sha; the mentor reviewed the table's structure and consistency, not the line numbers. Frozen from here: committed before the Q49 packer comparison and before any generation."},
  "amendments": [
-  {"date": "2026-11-12", "change": "q4, q5 and q6 failed and moved to `failed`; reserve r1 promoted into q4's slot (index order q1, q2, q3, r1); r2 stays a reserve and is promoted only if r1 passes.", "reason": "Q50 replacement 1 of at most 3 for this repo (failures: 3; the stop rule fires at more than N/2 = 3 with N = 6, so a failed r1 stops the repo). Committed before r1 is generated (Q48)."}
+  {"date": "2026-11-12", "change": "q4, q5 and q6 failed and moved to `failed`; reserve r1 promoted into q4's slot (index order q1, q2, q3, r1); r2 stays a reserve and is promoted only if r1 passes.", "reason": "Q50 replacement 1 of at most 3 for this repo (failures: 3; the stop rule fires at more than N/2 = 3 with N = 6, so a failed r1 stops the repo). Committed before r1 is generated (Q48)."},
+  {"date": "2026-11-12", "change": "r1 failed and moved to `failed`; the stop rule fires (4 failures, more than N/2 = 3 with N = 6), so r2 is not promoted or generated. requests ships q1, q2 (flagship) and q3.", "reason": "Q50 stop rule. Classified as tuning, deferred to M3: no code defect; q4 was a predicted Q49 retrieval miss, q5, q6 and r1 generation misreads."}
  ],
  "questions": [
   {
@@ -51,20 +52,6 @@
     {"path": "src/requests/sessions.py", "start": 752, "end": 829, "name": "Session > send (allow_redirects)"},
     {"path": "src/requests/sessions.py", "start": 370, "end": 392, "name": "SessionRedirectMixin > rebuild_method"},
     {"path": "src/requests/sessions.py", "start": 442, "end": 503, "name": "Session > __init__ (max_redirects)"}
-   ]
-  },
-  {
-   "id": "r1",
-   "question": "How are proxies picked up from environment variables, and when are they bypassed?",
-   "required": [
-    {"path": "src/requests/utils.py", "start": 873, "end": 882, "name": "get_environ_proxies"},
-    {"path": "src/requests/utils.py", "start": 810, "end": 870, "name": "should_bypass_proxies"},
-    {"path": "src/requests/utils.py", "start": 911, "end": 939, "name": "resolve_proxies"}
-   ],
-   "supporting": [
-    {"path": "src/requests/sessions.py", "start": 831, "end": 868, "name": "Session > merge_environment_settings"},
-    {"path": "src/requests/utils.py", "start": 885, "end": 908, "name": "select_proxy"},
-    {"path": "src/requests/sessions.py", "start": 334, "end": 368, "name": "SessionRedirectMixin > rebuild_proxies"}
    ]
   }
  ],
@@ -117,6 +104,22 @@
    ],
    "attempt": "generated 2026-11-12; the answer and its grade are in eval/results/m2d_failures/psf__requests/q6.json",
    "reason": "Q50 rule 1, an incorrect claim: connection pooling is presented as something requests adds on top of urllib3, while the adapter docstring in the context names urllib3's pools. A generation error (a feature list read as additions)."
+  },
+  {
+   "id": "r1",
+   "question": "How are proxies picked up from environment variables, and when are they bypassed?",
+   "required": [
+    {"path": "src/requests/utils.py", "start": 873, "end": 882, "name": "get_environ_proxies"},
+    {"path": "src/requests/utils.py", "start": 810, "end": 870, "name": "should_bypass_proxies"},
+    {"path": "src/requests/utils.py", "start": 911, "end": 939, "name": "resolve_proxies"}
+   ],
+   "supporting": [
+    {"path": "src/requests/sessions.py", "start": 831, "end": 868, "name": "Session > merge_environment_settings"},
+    {"path": "src/requests/utils.py", "start": 885, "end": 908, "name": "select_proxy"},
+    {"path": "src/requests/sessions.py", "start": 334, "end": 368, "name": "SessionRedirectMixin > rebuild_proxies"}
+   ],
+   "attempt": "generated 2026-11-12 as the first replacement; the answer and its grade are in eval/results/m2d_failures/psf__requests/r1.json",
+   "reason": "Q50 rule 1, an incorrect claim, ruled after review: 'bypass happens in two cases' is an exhaustive count on the exact point asked, and utils.py 830-832 (inside the cited 810-860) holds a third case, a URL with no hostname. A generation error. The Windows registry claim stays a minor omission."
   }
  ],
  "reserves": [

@@ -22,7 +22,7 @@ import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 
 import {
-  FIRST_UNVERIFIED, NOT_OUR_JSON, UNGROUNDED, apiError, expect, held, statusWith, test,
+  EMPTY_REPO, FIRST_UNVERIFIED, NOT_OUR_JSON, UNGROUNDED, apiError, expect, held, statusWith, test,
   type MockApi,
 } from "./mocks";
 import {
@@ -58,8 +58,8 @@ const STATES: State[] = [
   } },
   { name: "empty (no example yet)", setup: async (page) => {
     await page.goto("/");
-    await page.getByRole("combobox", { name: "Repository" }).selectOption("psf/requests");
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText(/psf\/requests/);
+    await page.getByRole("combobox", { name: "Repository" }).selectOption(EMPTY_REPO);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(new RegExp(EMPTY_REPO));
   } },
   { name: "loading", setup: async (page, api) => {
     api.on("POST /ask", held().handler);

@@ -6,7 +6,7 @@
 // screen, Q54), so toHaveCount(1) on that exact text fails if both speak and if neither does.
 import type { Page } from "@playwright/test";
 
-import { EXAMPLE, apiError, expect, statusWith, test, type MockApi } from "./mocks";
+import { EMPTY_REPO, EXAMPLE, apiError, expect, statusWith, test, type MockApi } from "./mocks";
 import {
   IN_PROGRESS_MESSAGE, dailyLimitMessage, pausedMessage, perVisitorMessage,
 } from "../../lib/messages";
@@ -44,7 +44,7 @@ test("paused on load: the composer says so, the example stays, and Ask stays ena
 test("a repo without an example: the line drops the example sentence", async ({ page, api }) => {
   api.on("GET /status", () => statusWith(null, "paused"));
   await up(page, api);
-  await page.getByRole("combobox", { name: "Repository" }).selectOption("psf/requests");
+  await page.getByRole("combobox", { name: "Repository" }).selectOption(EMPTY_REPO);
   await expect(exact(page, pausedMessage(false))).toBeVisible();
   await expect(exact(page, pausedMessage(true))).toHaveCount(0);
 });

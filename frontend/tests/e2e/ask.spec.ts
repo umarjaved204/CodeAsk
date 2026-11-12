@@ -11,7 +11,7 @@
 import type { Locator, Page } from "@playwright/test";
 
 import {
-  EXAMPLE, FIRST_UNVERIFIED, LONG_BLOCK, NOT_OUR_JSON, UNGROUNDED, apiError, expect, held, test,
+  EMPTY_REPO, EXAMPLE, FIRST_UNVERIFIED, LONG_BLOCK, NOT_OUR_JSON, UNGROUNDED, apiError, expect, held, test,
   type MockApi, type Reply,
 } from "./mocks";
 import {
@@ -133,9 +133,9 @@ test("a repo switch mid-request: the old answer never appears, and Ask waits unt
   await ask(page);
   await expect(page.getByRole("button", { name: "Asking…" })).toBeDisabled();
 
-  await page.getByLabel("Repository").selectOption("psf/requests");
+  await page.getByLabel("Repository").selectOption(EMPTY_REPO);
   await expect(page.getByRole("heading", { level: 1 }))
-    .toHaveText("Ask a question about the code in psf/requests.");
+    .toHaveText(`Ask a question about the code in ${EMPTY_REPO}.`);
   await expect(page.getByText("Finishing the previous question.")).toBeVisible();
   await box(page).fill("A question for requests");
   await expect(askButton(page)).toBeDisabled();
@@ -154,7 +154,7 @@ test("a repo switch mid-request: the old answer never appears, and Ask waits unt
   await expect(askButton(page)).toBeEnabled();
   expect(await page.evaluate(() => document.documentElement.dataset.sawStale)).toBeUndefined();
   await expect(page.getByRole("heading", { level: 1 }))
-    .toHaveText("Ask a question about the code in psf/requests.");
+    .toHaveText(`Ask a question about the code in ${EMPTY_REPO}.`);
   expect(api.count("POST /ask")).toBe(1);
 });
 

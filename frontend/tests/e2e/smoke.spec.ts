@@ -4,7 +4,8 @@
 import { EXAMPLE, expect, test } from "./mocks";
 
 const LABEL = "Example answer, generated 2 Nov 2026 with qwen3.8-27b on commit 672971d. " +
-  "Checked by the author."; // the fixture's grade.reviewer is "author" since 2026-11-11 (Q37)
+  "Claims and citations checked by the author; the answer may leave things out.";
+  // the flagship's grade.reviewer is "author" (Q37; wording amended in slice 5)
 
 test("first screen: the labelled example, with its first valid citation open", async ({ page, api }) => {
   await page.goto("/");

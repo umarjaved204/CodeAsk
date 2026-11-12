@@ -3,7 +3,7 @@
 // focus outline from globals.css (:focus-visible, 2px solid).
 import type { Locator, Page } from "@playwright/test";
 
-import { expect, held, test, type MockApi } from "./mocks";
+import { EXAMPLE, expect, held, test, type MockApi } from "./mocks";
 
 const Q = "How are signatures verified?";
 
@@ -116,8 +116,11 @@ test("controls: the repo picker by keyboard, and Ask by pointer", async ({ page,
   await expectVisibleFocus(picker);
   await page.keyboard.press("ArrowDown");
   await expect(picker).toHaveValue("psf/requests");
-  await expect(page.getByRole("heading", { level: 1 }))
-    .toHaveText("Ask a question about the code in psf/requests.");
+  // requests' stored set is its own chunk (slice 5): once it loads, its flagship replaces
+  // itsdangerous's, with its label and the list.
+  await expect(page.getByRole("region", { name: "Suggested questions" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).not.toHaveText(EXAMPLE.question);
+  await expect(page.getByText(/commit 3c7baaa\./)).toBeVisible();
 
   await expect(page.getByRole("button", { name: "Ask", exact: true })).toBeDisabled(); // empty box
   await box(page).fill(Q);

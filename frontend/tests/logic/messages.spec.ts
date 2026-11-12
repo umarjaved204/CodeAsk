@@ -23,8 +23,10 @@ test("the pre-generated label is a sentence, in UTC, and names who checked it", 
     ({ reviewer, note: "never shown in the label" }) as Example["grade"];
   expect(provenance(example)).toBe(base);
   expect(provenance({ ...example, grade: grade("claude") })).toBe(
-    `${base} Checked against the cited code by Claude; not yet reviewed by the author.`);
-  expect(provenance({ ...example, grade: grade("author") })).toBe(`${base} Checked by the author.`);
+    `${base} Claims and citations checked against the cited code by Claude; not yet reviewed by the author.`);
+  // Names what was checked, so it can't be read as "complete" (Q37, amended in slice 5).
+  expect(provenance({ ...example, grade: grade("author") })).toBe(
+    `${base} Claims and citations checked by the author; the answer may leave things out.`);
 });
 
 test("waking changes its wording after 35 seconds", () => {

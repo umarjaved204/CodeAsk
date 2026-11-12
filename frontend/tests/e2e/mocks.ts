@@ -24,6 +24,9 @@ export const API = "http://api.test";
 
 // The default repo's flagship: the stored answer the page opens on (slice 5, Q54).
 export const EXAMPLE = DEFAULT_SET.answers[DEFAULT_SET.index.flagship];
+// A repo /repos lists but no export covers: it always opens on the composer only (slice 5). Not
+// a featured repo, so it stays empty after every featured repo has its stored answers.
+export const EMPTY_REPO = "octo/empty";
 
 export type Reply =
   // expose: false leaves out Access-Control-Expose-Headers (a backend that forgot the list)
@@ -43,8 +46,9 @@ function defaults(): Map<string, Handler> {
     ["GET /status", () => statusWith(null)],
     // app.py repos()
     ["GET /repos", () => ({
-      json: FEATURED.map((r) => ({ ...r, commit_sha: EXAMPLE.commit_sha,
-                                   ingested_at: "2026-11-02T00:00:00+00:00" })),
+      json: [...FEATURED, { slug: EMPTY_REPO, url: `https://github.com/${EMPTY_REPO}` }]
+        .map((r) => ({ ...r, commit_sha: EXAMPLE.commit_sha,
+                       ingested_at: "2026-11-02T00:00:00+00:00" })),
     })],
     // ask.py public_view(), as saved by `ask --save` in the real fixture
     ["POST /ask", () => ({ json: EXAMPLE.response })],

@@ -16,7 +16,7 @@ import { pathToFileURL } from "node:url";
 import { test as plain, type Page } from "@playwright/test";
 
 import {
-  EXAMPLE, FIRST_UNVERIFIED, LONG_BLOCK, NOT_OUR_JSON, UNGROUNDED, apiError, expect, held,
+  EMPTY_REPO, EXAMPLE, FIRST_UNVERIFIED, LONG_BLOCK, NOT_OUR_JSON, UNGROUNDED, apiError, expect, held,
   statusWith, test,
   type MockApi, type Reply,
 } from "../tests/e2e/mocks";
@@ -95,8 +95,8 @@ const STATES: Record<string, Setup> = {
   },
   "02-empty": async (page, api) => {
     await load(page, api);
-    await page.getByRole("combobox", { name: "Repository" }).selectOption("psf/requests");
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText(/psf\/requests/);
+    await page.getByRole("combobox", { name: "Repository" }).selectOption(EMPTY_REPO);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(new RegExp(EMPTY_REPO));
   },
   "03-loading": loading(0, /^Answering\./),
   "03b-still-working": loading(12_000, /^Still working\./),

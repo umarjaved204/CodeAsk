@@ -5,7 +5,7 @@
 import type { Page } from "@playwright/test";
 
 import {
-  EXAMPLE, apiError, expect, held, statusWith, test, type MockApi,
+  EMPTY_REPO, EXAMPLE, apiError, expect, held, statusWith, test, type MockApi,
 } from "./mocks";
 import { serverErrorMessage } from "../../lib/messages";
 import type { QueueWire } from "../../lib/types";
@@ -204,9 +204,9 @@ test("a repo switch while queued: the queue line goes, polling stops, Ask waits 
   await page.clock.runFor(1_000);
   await expect(page.getByText("Next in line, up to about 40 seconds.")).toBeVisible();
 
-  await page.getByRole("combobox", { name: "Repository" }).selectOption("psf/requests");
+  await page.getByRole("combobox", { name: "Repository" }).selectOption(EMPTY_REPO);
   await expect(page.getByRole("heading", { level: 1 }))
-    .toHaveText("Ask a question about the code in psf/requests.");
+    .toHaveText(`Ask a question about the code in ${EMPTY_REPO}.`);
   await expect(page.getByText(/in line/)).toHaveCount(0);
   await expect(page.getByText("Finishing the previous question.")).toBeVisible();
   const calls = (await logged(page)).statusCalls.length;
