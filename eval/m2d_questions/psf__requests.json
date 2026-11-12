@@ -1,0 +1,127 @@
+{
+ "repo": "psf/requests",
+ "commit_sha": "3c7baaa05ab4aa49cc819ce3a819d260de19c157",
+ "about": "Slice 5 (M2d) suggested questions, in index order (the first passing entry that meets the Q48 flagship criteria leads), with expected chunks. Questions proposed by the mentor chat (Claude) from general knowledge before any generated answer existed, selected and accepted by the author (Q48 amendment, 2026-11-12). Expected chunks drafted by Claude on 2026-11-12 from a fresh clone at commit_sha; ranges are whole functions/classes (decorators included), or the statement itself for module-level code, 1-based inclusive. 'required' = an answer can't be complete and grounded without it; 'supporting' = helpful, not used by the Q49 rule. A range counts as packed when every NON-BLANK line of it lies inside the packed blocks after merging (the rule of eval/m2_pack_compare.py; partial overlap does not count). Frozen once confirmed: later changes are amendments with a reason; rewording a question is a replacement (Q48).",
+ "confirmed": {"date": "2026-11-12", "by": "author", "spot_checked": ["q2", "q5"], "note": "Author spot-checked these questions' ranges against the files at commit_sha; the mentor reviewed the table's structure and consistency, not the line numbers. Frozen from here: committed before the Q49 packer comparison and before any generation."},
+ "amendments": [],
+ "questions": [
+  {
+   "id": "q1",
+   "question": "How does a call like `requests.get` turn into an actual HTTP request, from the top-level function down to the network layer?",
+   "note": "required is what a complete answer needs (~350 lines), more than the 2,000-token budget packs: expected to be incomplete and may fail the flagship rule; the author may reorder after review; the budget is not changed (tuning is M3).",
+   "required": [
+    {"path": "src/requests/api.py", "start": 74, "end": 87, "name": "get"},
+    {"path": "src/requests/api.py", "start": 24, "end": 71, "name": "request"},
+    {"path": "src/requests/sessions.py", "start": 557, "end": 653, "name": "Session > request"},
+    {"path": "src/requests/sessions.py", "start": 752, "end": 829, "name": "Session > send"},
+    {"path": "src/requests/adapters.py", "start": 634, "end": 748, "name": "HTTPAdapter > send"}
+   ],
+   "supporting": [
+    {"path": "src/requests/sessions.py", "start": 511, "end": 555, "name": "Session > prepare_request"},
+    {"path": "src/requests/sessions.py", "start": 870, "end": 881, "name": "Session > get_adapter"},
+    {"path": "src/requests/sessions.py", "start": 442, "end": 503, "name": "Session > __init__ (mounts the adapters)"},
+    {"path": "src/requests/adapters.py", "start": 365, "end": 401, "name": "HTTPAdapter > build_response"},
+    {"path": "src/requests/models.py", "start": 424, "end": 451, "name": "PreparedRequest > prepare"}
+   ]
+  },
+  {
+   "id": "q2",
+   "question": "How does it decide whether to keep or strip credentials when a redirect goes to another host?",
+   "required": [
+    {"path": "src/requests/sessions.py", "start": 154, "end": 184, "name": "SessionRedirectMixin > should_strip_auth"},
+    {"path": "src/requests/sessions.py", "start": 309, "end": 332, "name": "SessionRedirectMixin > rebuild_auth"}
+   ],
+   "supporting": [
+    {"path": "src/requests/sessions.py", "start": 186, "end": 307, "name": "SessionRedirectMixin > resolve_redirects"},
+    {"path": "src/requests/sessions.py", "start": 334, "end": 368, "name": "SessionRedirectMixin > rebuild_proxies"}
+   ]
+  },
+  {
+   "id": "q3",
+   "question": "How does it decide when to follow a redirect and when to stop?",
+   "required": [
+    {"path": "src/requests/sessions.py", "start": 186, "end": 307, "name": "SessionRedirectMixin > resolve_redirects"},
+    {"path": "src/requests/sessions.py", "start": 134, "end": 152, "name": "SessionRedirectMixin > get_redirect_target"},
+    {"path": "src/requests/models.py", "start": 876, "end": 881, "name": "Response > is_redirect"}
+   ],
+   "supporting": [
+    {"path": "src/requests/models.py", "start": 95, "end": 101, "name": "REDIRECT_STATI"},
+    {"path": "src/requests/sessions.py", "start": 752, "end": 829, "name": "Session > send (allow_redirects)"},
+    {"path": "src/requests/sessions.py", "start": 370, "end": 392, "name": "SessionRedirectMixin > rebuild_method"},
+    {"path": "src/requests/sessions.py", "start": 442, "end": 503, "name": "Session > __init__ (max_redirects)"}
+   ]
+  },
+  {
+   "id": "q4",
+   "question": "How does a `Session` keep cookies between requests?",
+   "required": [
+    {"path": "src/requests/sessions.py", "start": 442, "end": 503, "name": "Session > __init__ (self.cookies)"},
+    {"path": "src/requests/sessions.py", "start": 511, "end": 555, "name": "Session > prepare_request (merges session cookies)"},
+    {"path": "src/requests/sessions.py", "start": 752, "end": 829, "name": "Session > send (extract_cookies_to_jar)"}
+   ],
+   "supporting": [
+    {"path": "src/requests/cookies.py", "start": 135, "end": 150, "name": "extract_cookies_to_jar"},
+    {"path": "src/requests/cookies.py", "start": 604, "end": 625, "name": "merge_cookies"},
+    {"path": "src/requests/models.py", "start": 699, "end": 720, "name": "PreparedRequest > prepare_cookies"},
+    {"path": "src/requests/sessions.py", "start": 186, "end": 307, "name": "SessionRedirectMixin > resolve_redirects (cookies on redirects)"}
+   ]
+  },
+  {
+   "id": "q5",
+   "question": "How does it guess the encoding of a response body when you read `.text`?",
+   "required": [
+    {"path": "src/requests/models.py", "start": 1053, "end": 1089, "name": "Response > text"},
+    {"path": "src/requests/models.py", "start": 896, "end": 904, "name": "Response > apparent_encoding"},
+    {"path": "src/requests/utils.py", "start": 569, "end": 591, "name": "get_encoding_from_headers"},
+    {"path": "src/requests/adapters.py", "start": 365, "end": 401, "name": "HTTPAdapter > build_response (sets encoding)"}
+   ],
+   "supporting": [
+    {"path": "src/requests/utils.py", "start": 547, "end": 566, "name": "_parse_content_type_header"},
+    {"path": "src/requests/compat.py", "start": 36, "end": 45, "name": "_resolve_char_detection"}
+   ]
+  },
+  {
+   "id": "q6",
+   "question": "What does the library add on top of its underlying HTTP library?",
+   "required": [
+    {"path": "README.md", "start": 40, "end": 56, "name": "README: Supported Features & Best-Practices"},
+    {"path": "src/requests/adapters.py", "start": 158, "end": 199, "name": "HTTPAdapter (class header: the urllib3 adapter)"}
+   ],
+   "supporting": [
+    {"path": "README.md", "start": 9, "end": 26, "name": "README: intro and example"},
+    {"path": "src/requests/sessions.py", "start": 442, "end": 503, "name": "Session > __init__"},
+    {"path": "src/requests/sessions.py", "start": 186, "end": 307, "name": "SessionRedirectMixin > resolve_redirects"},
+    {"path": "src/requests/adapters.py", "start": 634, "end": 748, "name": "HTTPAdapter > send"}
+   ]
+  }
+ ],
+ "reserves": [
+  {
+   "id": "r1",
+   "question": "How are proxies picked up from environment variables, and when are they bypassed?",
+   "required": [
+    {"path": "src/requests/utils.py", "start": 873, "end": 882, "name": "get_environ_proxies"},
+    {"path": "src/requests/utils.py", "start": 810, "end": 870, "name": "should_bypass_proxies"},
+    {"path": "src/requests/utils.py", "start": 911, "end": 939, "name": "resolve_proxies"}
+   ],
+   "supporting": [
+    {"path": "src/requests/sessions.py", "start": 831, "end": 868, "name": "Session > merge_environment_settings"},
+    {"path": "src/requests/utils.py", "start": 885, "end": 908, "name": "select_proxy"},
+    {"path": "src/requests/sessions.py", "start": 334, "end": 368, "name": "SessionRedirectMixin > rebuild_proxies"}
+   ]
+  },
+  {
+   "id": "r2",
+   "question": "How does HTTP Digest authentication work in this library?",
+   "required": [
+    {"path": "src/requests/auth.py", "start": 157, "end": 266, "name": "HTTPDigestAuth > build_digest_header"},
+    {"path": "src/requests/auth.py", "start": 273, "end": 319, "name": "HTTPDigestAuth > handle_401"},
+    {"path": "src/requests/auth.py", "start": 321, "end": 343, "name": "HTTPDigestAuth > __call__"}
+   ],
+   "supporting": [
+    {"path": "src/requests/auth.py", "start": 147, "end": 155, "name": "HTTPDigestAuth > init_per_thread_state"},
+    {"path": "src/requests/auth.py", "start": 268, "end": 271, "name": "HTTPDigestAuth > handle_redirect"}
+   ]
+  }
+ ]
+}

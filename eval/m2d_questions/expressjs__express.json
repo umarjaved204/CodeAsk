@@ -1,0 +1,121 @@
+{
+ "repo": "expressjs/express",
+ "commit_sha": "1c6f1b0fe4000977b9a7b4f34097e4d527dd9824",
+ "about": "Slice 5 (M2d) suggested questions, in index order (the first passing entry that meets the Q48 flagship criteria leads), with expected chunks. Questions proposed by the mentor chat (Claude) from general knowledge before any generated answer existed, selected and accepted by the author (Q48 amendment, 2026-11-12). Expected chunks drafted by Claude on 2026-11-12 from a fresh clone at commit_sha (express 5.3.0; routing, body parsing, static files, proxy-address parsing and ETag hashing live in npm packages, not in this repo); ranges are the statement itself (from `x.y = function` or `function` to its closing brace, without the JSDoc above it), 1-based inclusive. 'required' = an answer can't be complete and grounded without it; 'supporting' = helpful, not used by the Q49 rule. A range counts as packed when every NON-BLANK line of it lies inside the packed blocks after merging (the rule of eval/m2_pack_compare.py; partial overlap does not count). The chunker attaches a JSDoc block to the unit below it, so a packed chunk holding the statement covers the range; JSDoc lines are not required. Frozen once confirmed: later changes are amendments with a reason; rewording a question is a replacement (Q48).",
+ "confirmed": {"date": "2026-11-12", "by": "author", "spot_checked": ["q2", "q3"], "note": "Author spot-checked these questions' ranges against the files at commit_sha; the mentor reviewed the table's structure and consistency, not the line numbers. Frozen from here: committed before the Q49 packer comparison and before any generation."},
+ "amendments": [],
+ "questions": [
+  {
+   "id": "q1",
+   "question": "How do `req` and `res` get Express's extra methods on top of Node's built-in ones?",
+   "required": [
+    {"path": "lib/express.js", "start": 36, "end": 56, "name": "createApplication (app.request / app.response)"},
+    {"path": "lib/request.js", "start": 30, "end": 30, "name": "req = Object.create(http.IncomingMessage.prototype)"},
+    {"path": "lib/response.js", "start": 43, "end": 43, "name": "res = Object.create(http.ServerResponse.prototype)"},
+    {"path": "lib/application.js", "start": 152, "end": 178, "name": "app.handle (Object.setPrototypeOf)"}
+   ],
+   "supporting": [
+    {"path": "lib/application.js", "start": 90, "end": 141, "name": "app.defaultConfiguration (mounted apps inherit the prototypes)"},
+    {"path": "lib/request.js", "start": 521, "end": 527, "name": "defineGetter"}
+   ]
+  },
+  {
+   "id": "q2",
+   "question": "How do the \"trust proxy\" setting and the request's protocol, hostname and IP relate to each other?",
+   "required": [
+    {"path": "lib/utils.js", "start": 194, "end": 214, "name": "compileTrust"},
+    {"path": "lib/application.js", "start": 351, "end": 383, "name": "app.set ('trust proxy fn')"},
+    {"path": "lib/request.js", "start": 297, "end": 315, "name": "req.protocol"},
+    {"path": "lib/request.js", "start": 418, "end": 431, "name": "req.host"},
+    {"path": "lib/request.js", "start": 444, "end": 458, "name": "req.hostname"},
+    {"path": "lib/request.js", "start": 340, "end": 343, "name": "req.ip"}
+   ],
+   "supporting": [
+    {"path": "lib/request.js", "start": 357, "end": 366, "name": "req.ips"},
+    {"path": "lib/request.js", "start": 326, "end": 328, "name": "req.secure"},
+    {"path": "lib/application.js", "start": 90, "end": 141, "name": "app.defaultConfiguration ('trust proxy' false)"}
+   ]
+  },
+  {
+   "id": "q3",
+   "question": "How does `res.send` decide the Content-Type, the ETag, and whether to send a body?",
+   "required": [
+    {"path": "lib/response.js", "start": 126, "end": 222, "name": "res.send"}
+   ],
+   "supporting": [
+    {"path": "lib/response.js", "start": 236, "end": 250, "name": "res.json"},
+    {"path": "lib/response.js", "start": 507, "end": 514, "name": "res.type"},
+    {"path": "lib/utils.js", "start": 225, "end": 238, "name": "setCharset"},
+    {"path": "lib/utils.js", "start": 249, "end": 257, "name": "createETagGenerator"},
+    {"path": "lib/utils.js", "start": 130, "end": 152, "name": "compileETag"},
+    {"path": "lib/request.js", "start": 469, "end": 486, "name": "req.fresh"}
+   ]
+  },
+  {
+   "id": "q4",
+   "question": "How does Express choose a template engine and find the view file for `res.render`?",
+   "required": [
+    {"path": "lib/application.js", "start": 522, "end": 575, "name": "app.render"},
+    {"path": "lib/view.js", "start": 52, "end": 95, "name": "View"},
+    {"path": "lib/view.js", "start": 104, "end": 123, "name": "View.prototype.lookup"},
+    {"path": "lib/view.js", "start": 169, "end": 187, "name": "View.prototype.resolve"}
+   ],
+   "supporting": [
+    {"path": "lib/application.js", "start": 294, "end": 308, "name": "app.engine"},
+    {"path": "lib/application.js", "start": 625, "end": 631, "name": "tryRender"},
+    {"path": "lib/response.js", "start": 897, "end": 921, "name": "res.render"},
+    {"path": "lib/view.js", "start": 133, "end": 159, "name": "View.prototype.render"}
+   ]
+  },
+  {
+   "id": "q5",
+   "question": "How are settings like `etag`, `query parser` and `trust proxy` compiled when you call `app.set`?",
+   "required": [
+    {"path": "lib/application.js", "start": 351, "end": 383, "name": "app.set"},
+    {"path": "lib/utils.js", "start": 130, "end": 152, "name": "compileETag"},
+    {"path": "lib/utils.js", "start": 162, "end": 184, "name": "compileQueryParser"},
+    {"path": "lib/utils.js", "start": 194, "end": 214, "name": "compileTrust"}
+   ],
+   "supporting": [
+    {"path": "lib/application.js", "start": 90, "end": 141, "name": "app.defaultConfiguration (the defaults)"},
+    {"path": "lib/utils.js", "start": 249, "end": 257, "name": "createETagGenerator"}
+   ]
+  },
+  {
+   "id": "q6",
+   "question": "Which built-in middleware does the express module expose, and where does it come from?",
+   "required": [
+    {"path": "lib/express.js", "start": 77, "end": 81, "name": "exports.json/raw/static/text/urlencoded"},
+    {"path": "lib/express.js", "start": 15, "end": 15, "name": "require('body-parser')"}
+   ],
+   "supporting": [
+    {"path": "lib/express.js", "start": 70, "end": 71, "name": "exports.Route / exports.Router"},
+    {"path": "lib/express.js", "start": 19, "end": 19, "name": "require('router')"}
+   ]
+  }
+ ],
+ "reserves": [
+  {
+   "id": "r1",
+   "question": "How does `res.redirect` build the Location header and pick the status code?",
+   "required": [
+    {"path": "lib/response.js", "start": 815, "end": 867, "name": "res.redirect"},
+    {"path": "lib/response.js", "start": 797, "end": 799, "name": "res.location"}
+   ],
+   "supporting": [
+    {"path": "lib/response.js", "start": 574, "end": 599, "name": "res.format"}
+   ]
+  },
+  {
+   "id": "r2",
+   "question": "How does content negotiation work in `req.accepts` and `res.format`?",
+   "required": [
+    {"path": "lib/request.js", "start": 127, "end": 130, "name": "req.accepts"},
+    {"path": "lib/response.js", "start": 574, "end": 599, "name": "res.format"}
+   ],
+   "supporting": [
+    {"path": "lib/response.js", "start": 878, "end": 882, "name": "res.vary"}
+   ]
+  }
+ ]
+}

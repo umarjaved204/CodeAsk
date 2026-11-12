@@ -1,0 +1,112 @@
+{
+ "repo": "pallets/itsdangerous",
+ "commit_sha": "672971d66a2ef9f85151e53283113f33d642dabd",
+ "about": "Slice 5 (M2d) suggested questions, in index order (the first passing entry that meets the Q48 flagship criteria leads), with expected chunks. Questions proposed by the mentor chat (Claude) from general knowledge before any generated answer existed, selected and accepted by the author (Q48 amendment, 2026-11-12). Expected chunks drafted by Claude on 2026-11-12 from a fresh clone at commit_sha; ranges are whole functions/classes (decorators included), or the statement itself for module-level code, 1-based inclusive. q1 reuses the confirmed ranges of eval/m2_expected.json Q5 (the existing fixture's question). 'required' = an answer can't be complete and grounded without it; 'supporting' = helpful, not used by the Q49 rule. A range counts as packed when every NON-BLANK line of it lies inside the packed blocks after merging (the rule of eval/m2_pack_compare.py; partial overlap does not count). Frozen once confirmed: later changes are amendments with a reason; rewording a question is a replacement (Q48).",
+ "confirmed": {"date": "2026-11-12", "by": "author", "spot_checked": ["q1"], "note": "Author spot-checked these questions' ranges against the files at commit_sha; the mentor reviewed the table's structure and consistency, not the line numbers. Frozen from here: committed before the Q49 packer comparison and before any generation."},
+ "amendments": [],
+ "questions": [
+  {
+   "id": "q1",
+   "question": "How does it support rotating to a new secret key while old keys still work?",
+   "note": "The existing fixture (frontend/data/examples/pallets__itsdangerous.json), kept unchanged (Q4).",
+   "required": [
+    {"path": "src/itsdangerous/signer.py", "start": 227, "end": 242, "name": "Signer > verify_signature"},
+    {"path": "src/itsdangerous/signer.py", "start": 182, "end": 213, "name": "Signer > derive_key"}
+   ],
+   "supporting": [
+    {"path": "src/itsdangerous/signer.py", "start": 129, "end": 173, "name": "Signer > __init__"},
+    {"path": "src/itsdangerous/signer.py", "start": 175, "end": 180, "name": "Signer > secret_key"},
+    {"path": "src/itsdangerous/signer.py", "start": 67, "end": 73, "name": "_make_keys_list"},
+    {"path": "src/itsdangerous/serializer.py", "start": 190, "end": 234, "name": "Serializer > __init__"}
+   ]
+  },
+  {
+   "id": "q2",
+   "question": "How does `TimestampSigner` decide that a signed value has expired?",
+   "required": [
+    {"path": "src/itsdangerous/timed.py", "start": 72, "end": 158, "name": "TimestampSigner > unsign"}
+   ],
+   "supporting": [
+    {"path": "src/itsdangerous/timed.py", "start": 29, "end": 33, "name": "TimestampSigner > get_timestamp"},
+    {"path": "src/itsdangerous/timed.py", "start": 45, "end": 51, "name": "TimestampSigner > sign"},
+    {"path": "src/itsdangerous/exc.py", "start": 60, "end": 63, "name": "SignatureExpired"}
+   ]
+  },
+  {
+   "id": "q3",
+   "question": "How is the signing key derived from the secret key and the salt?",
+   "required": [
+    {"path": "src/itsdangerous/signer.py", "start": 182, "end": 213, "name": "Signer > derive_key"}
+   ],
+   "supporting": [
+    {"path": "src/itsdangerous/signer.py", "start": 76, "end": 127, "name": "Signer (class header, default_key_derivation)"},
+    {"path": "src/itsdangerous/signer.py", "start": 215, "end": 220, "name": "Signer > get_signature"}
+   ]
+  },
+  {
+   "id": "q4",
+   "question": "What does a signed token look like, and what does the library do overall?",
+   "required": [
+    {"path": "README.md", "start": 16, "end": 32, "name": "README: A Simple Example"},
+    {"path": "src/itsdangerous/signer.py", "start": 222, "end": 225, "name": "Signer > sign"},
+    {"path": "src/itsdangerous/url_safe.py", "start": 55, "end": 69, "name": "URLSafeSerializerMixin > dump_payload"}
+   ],
+   "supporting": [
+    {"path": "README.md", "start": 3, "end": 13, "name": "README: intro"},
+    {"path": "src/itsdangerous/signer.py", "start": 215, "end": 220, "name": "Signer > get_signature"},
+    {"path": "src/itsdangerous/serializer.py", "start": 309, "end": 320, "name": "Serializer > dumps"},
+    {"path": "src/itsdangerous/timed.py", "start": 45, "end": 51, "name": "TimestampSigner > sign"}
+   ]
+  },
+  {
+   "id": "q5",
+   "question": "How does the URL-safe serializer decide whether to compress a payload, and how does it mark compressed data?",
+   "required": [
+    {"path": "src/itsdangerous/url_safe.py", "start": 55, "end": 69, "name": "URLSafeSerializerMixin > dump_payload"}
+   ],
+   "supporting": [
+    {"path": "src/itsdangerous/url_safe.py", "start": 23, "end": 53, "name": "URLSafeSerializerMixin > load_payload"}
+   ]
+  },
+  {
+   "id": "q6",
+   "question": "What exceptions can be raised when a signature is bad, and how do they differ?",
+   "required": [
+    {"path": "src/itsdangerous/exc.py", "start": 22, "end": 33, "name": "BadSignature"},
+    {"path": "src/itsdangerous/exc.py", "start": 36, "end": 57, "name": "BadTimeSignature"},
+    {"path": "src/itsdangerous/exc.py", "start": 60, "end": 63, "name": "SignatureExpired"}
+   ],
+   "supporting": [
+    {"path": "src/itsdangerous/exc.py", "start": 7, "end": 19, "name": "BadData"},
+    {"path": "src/itsdangerous/exc.py", "start": 66, "end": 89, "name": "BadHeader"},
+    {"path": "src/itsdangerous/exc.py", "start": 92, "end": 106, "name": "BadPayload"},
+    {"path": "src/itsdangerous/signer.py", "start": 244, "end": 256, "name": "Signer > unsign"},
+    {"path": "src/itsdangerous/timed.py", "start": 72, "end": 158, "name": "TimestampSigner > unsign"}
+   ]
+  }
+ ],
+ "reserves": [
+  {
+   "id": "r1",
+   "question": "How does the library compare signatures safely?",
+   "required": [
+    {"path": "src/itsdangerous/signer.py", "start": 24, "end": 28, "name": "SigningAlgorithm > verify_signature"}
+   ],
+   "supporting": [
+    {"path": "src/itsdangerous/signer.py", "start": 227, "end": 242, "name": "Signer > verify_signature"}
+   ]
+  },
+  {
+   "id": "r2",
+   "question": "How can the payload of a value with a bad signature still be inspected?",
+   "required": [
+    {"path": "src/itsdangerous/exc.py", "start": 22, "end": 33, "name": "BadSignature"},
+    {"path": "src/itsdangerous/serializer.py", "start": 349, "end": 365, "name": "Serializer > loads_unsafe"},
+    {"path": "src/itsdangerous/serializer.py", "start": 367, "end": 395, "name": "Serializer > _loads_unsafe_impl"}
+   ],
+   "supporting": [
+    {"path": "src/itsdangerous/signer.py", "start": 244, "end": 256, "name": "Signer > unsign"}
+   ]
+  }
+ ]
+}
