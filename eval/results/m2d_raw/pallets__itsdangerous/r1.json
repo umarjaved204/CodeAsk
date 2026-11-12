@@ -1,0 +1,147 @@
+{
+ "question_id": "r1",
+ "question": "How does the library compare signatures safely?",
+ "generated_at": "2026-11-12T20:12:57+00:00",
+ "grounded": true,
+ "possibly_relevant": [],
+ "answer": "The library compares signatures safely using `hmac.compare_digest`, which performs a constant-time comparison to prevent timing attacks.\n\nThis is implemented in the `SigningAlgorithm.verify_signature` method, which calls `hmac.compare_digest(sig, self.get_signature(key, value))` [1](cite:1). The `hmac` module is imported at the top of the file [2](cite:2).\n\nThe `Signer` class uses this via its `algorithm` attribute. In `Signer.verify_signature`, the method iterates through secret keys (in reverse order to support key rotation) and calls `self.algorithm.verify_signature(key, value, sig)` for each key [3](cite:3). This ensures that the actual byte comparison is always done through the constant-time `hmac.compare_digest` function rather than a standard `==` comparison.",
+ "raw_answer": "The library compares signatures safely using `hmac.compare_digest`, which performs a constant-time comparison to prevent timing attacks.\n\nThis is implemented in the `SigningAlgorithm.verify_signature` method, which calls `hmac.compare_digest(sig, self.get_signature(key, value))` [src/itsdangerous/signer.py:24-28]. The `hmac` module is imported at the top of the file [src/itsdangerous/signer.py:5].\n\nThe `Signer` class uses this via its `algorithm` attribute. In `Signer.verify_signature`, the method iterates through secret keys (in reverse order to support key rotation) and calls `self.algorithm.verify_signature(key, value, sig)` for each key [src/itsdangerous/signer.py:236-240]. This ensures that the actual byte comparison is always done through the constant-time `hmac.compare_digest` function rather than a standard `==` comparison.",
+ "citations": [
+  {
+   "n": 1,
+   "path": "src/itsdangerous/signer.py",
+   "start": 24,
+   "end": 28,
+   "valid": true,
+   "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L24-L28"
+  },
+  {
+   "n": 2,
+   "path": "src/itsdangerous/signer.py",
+   "start": 5,
+   "end": 5,
+   "valid": true,
+   "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L5"
+  },
+  {
+   "n": 3,
+   "path": "src/itsdangerous/signer.py",
+   "start": 236,
+   "end": 240,
+   "valid": true,
+   "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L236-L240"
+  }
+ ],
+ "stats": {
+  "markers": 3,
+  "attempted": 3,
+  "valid": 3,
+  "unverified": 0
+ },
+ "blocks": [
+  "src/itsdangerous/signer.py:1-28",
+  "src/itsdangerous/signer.py:76-127",
+  "src/itsdangerous/signer.py:215-266",
+  "src/itsdangerous/timed.py:53-54",
+  "src/itsdangerous/serializer.py:1-11"
+ ],
+ "context": [
+  {
+   "path": "src/itsdangerous/signer.py",
+   "start": 1,
+   "end": 28,
+   "content": "from __future__ import annotations\n\nimport collections.abc as cabc\nimport hashlib\nimport hmac\nimport typing as t\n\nfrom .encoding import _base64_alphabet\nfrom .encoding import base64_decode\nfrom .encoding import base64_encode\nfrom .encoding import want_bytes\nfrom .exc import BadSignature\n\n\nclass SigningAlgorithm:\n    \"\"\"Subclasses must implement :meth:`get_signature` to provide\n    signature generation functionality.\n    \"\"\"\n\n    def get_signature(self, key: bytes, value: bytes) -> bytes:\n        \"\"\"Returns the signature for the given key and value.\"\"\"\n        raise NotImplementedError()\n\n    def verify_signature(self, key: bytes, value: bytes, sig: bytes) -> bool:\n        \"\"\"Verifies the given signature matches the expected\n        signature.\n        \"\"\"\n        return hmac.compare_digest(sig, self.get_signature(key, value))"
+  },
+  {
+   "path": "src/itsdangerous/signer.py",
+   "start": 76,
+   "end": 127,
+   "content": "class Signer:\n    \"\"\"A signer securely signs bytes, then unsigns them to verify that\n    the value hasn't been changed.\n\n    The secret key should be a random string of ``bytes`` and should not\n    be saved to code or version control. Different salts should be used\n    to distinguish signing in different contexts. See :doc:`/concepts`\n    for information about the security of the secret key and salt.\n\n    :param secret_key: The secret key to sign and verify with. Can be a\n        list of keys, oldest to newest, to support key rotation.\n    :param salt: Extra key to combine with ``secret_key`` to distinguish\n        signatures in different contexts.\n    :param sep: Separator between the signature and value.\n    :param key_derivation: How to derive the signing key from the secret\n        key and salt. Possible values are ``concat``, ``django-concat``,\n        or ``hmac``. Defaults to :attr:`default_key_derivation`, which\n        defaults to ``django-concat``.\n    :param digest_method: Hash function to use when generating the HMAC\n        signature. Defaults to :attr:`default_digest_method`, which\n        defaults to :func:`hashlib.sha1`. Note that the security of the\n        hash alone doesn't apply when used intermediately in HMAC.\n    :param algorithm: A :class:`SigningAlgorithm` instance to use\n        instead of building a default :class:`HMACAlgorithm` with the\n        ``digest_method``.\n\n    .. versionchanged:: 2.0\n        Added support for key rotation by passing a list to\n        ``secret_key``.\n\n    .. versionchanged:: 0.18\n        ``algorithm`` was added as an argument to the class constructor.\n\n    .. versionchanged:: 0.14\n        ``key_derivation`` and ``digest_method`` were added as arguments\n        to the class constructor.\n    \"\"\"\n\n    #: The default digest method to use for the signer. The default is\n    #: :func:`hashlib.sha1`, but can be changed to any :mod:`hashlib` or\n    #: compatible object. Note that the security of the hash alone\n    #: doesn't apply when used intermediately in HMAC.\n    #:\n    #: .. versionadded:: 0.14\n    default_digest_method: t.Any = staticmethod(_lazy_sha1)\n\n    #: The default scheme to use to derive the signing key from the\n    #: secret key and salt. The default is ``django-concat``. Possible\n    #: values are ``concat``, ``django-concat``, and ``hmac``.\n    #:\n    #: .. versionadded:: 0.14\n    default_key_derivation: str = \"django-concat\""
+  },
+  {
+   "path": "src/itsdangerous/signer.py",
+   "start": 215,
+   "end": 266,
+   "content": "    def get_signature(self, value: str | bytes) -> bytes:\n        \"\"\"Returns the signature for the given value.\"\"\"\n        value = want_bytes(value)\n        key = self.derive_key()\n        sig = self.algorithm.get_signature(key, value)\n        return base64_encode(sig)\n\n    def sign(self, value: str | bytes) -> bytes:\n        \"\"\"Signs the given string.\"\"\"\n        value = want_bytes(value)\n        return value + self.sep + self.get_signature(value)\n\n    def verify_signature(self, value: str | bytes, sig: str | bytes) -> bool:\n        \"\"\"Verifies the signature for the given value.\"\"\"\n        try:\n            sig = base64_decode(sig)\n        except Exception:\n            return False\n\n        value = want_bytes(value)\n\n        for secret_key in reversed(self.secret_keys):\n            key = self.derive_key(secret_key)\n\n            if self.algorithm.verify_signature(key, value, sig):\n                return True\n\n        return False\n\n    def unsign(self, signed_value: str | bytes) -> bytes:\n        \"\"\"Unsigns the given string.\"\"\"\n        signed_value = want_bytes(signed_value)\n\n        if self.sep not in signed_value:\n            raise BadSignature(f\"No {self.sep!r} found in value\")\n\n        value, sig = signed_value.rsplit(self.sep, 1)\n\n        if self.verify_signature(value, sig):\n            return value\n\n        raise BadSignature(f\"Signature {sig!r} does not match\", payload=value)\n\n    def validate(self, signed_value: str | bytes) -> bool:\n        \"\"\"Only validates the given signed value. Returns ``True`` if\n        the signature exists and is valid.\n        \"\"\"\n        try:\n            self.unsign(signed_value)\n            return True\n        except BadSignature:\n            return False"
+  },
+  {
+   "path": "src/itsdangerous/timed.py",
+   "start": 53,
+   "end": 54,
+   "content": "    # Ignore overlapping signatures check, return_timestamp is the only\n    # parameter that affects the return type."
+  },
+  {
+   "path": "src/itsdangerous/serializer.py",
+   "start": 1,
+   "end": 11,
+   "content": "from __future__ import annotations\n\nimport collections.abc as cabc\nimport json\nimport typing as t\n\nfrom .encoding import want_bytes\nfrom .exc import BadPayload\nfrom .exc import BadSignature\nfrom .signer import _make_keys_list\nfrom .signer import Signer"
+  }
+ ],
+ "outlines": [
+  {
+   "path": "src/itsdangerous/signer.py",
+   "name": "Signer",
+   "members": [
+    "__init__",
+    "secret_key",
+    "derive_key",
+    "get_signature, sign",
+    "verify_signature",
+    "unsign",
+    "validate"
+   ]
+  }
+ ],
+ "dropped": [
+  [
+   "src/itsdangerous/timed.py:160-167",
+   "budget"
+  ],
+  [
+   "README.md:1-13",
+   "budget"
+  ],
+  [
+   "src/itsdangerous/serializer.py:349-365",
+   "budget"
+  ],
+  [
+   "src/itsdangerous/signer.py:40-45",
+   "budget"
+  ],
+  [
+   "src/itsdangerous/exc.py:22-33",
+   "budget"
+  ],
+  [
+   "src/itsdangerous/timed.py:1-19",
+   "budget"
+  ]
+ ],
+ "context_estimate": 1985,
+ "model": "qwen/qwen3.8-27b",
+ "prompt_version": 3,
+ "usage": {
+  "queue_time": 0.023578926,
+  "prompt_tokens": 2393,
+  "prompt_time": 0.224184217,
+  "completion_tokens": 200,
+  "completion_time": 0.415229499,
+  "total_tokens": 2593,
+  "total_time": 0.639413716
+ },
+ "headers": {
+  "x-ratelimit-limit-requests": "1000",
+  "x-ratelimit-remaining-requests": "999",
+  "x-ratelimit-reset-requests": "1m26.4s",
+  "x-ratelimit-limit-tokens": "8000",
+  "x-ratelimit-remaining-tokens": "5007",
+  "x-ratelimit-reset-tokens": "22.447s"
+ },
+ "reasoning_chars": 0,
+ "timings_s": {
+  "retrieve": 1.59,
+  "llm": 1.04
+ },
+ "retries": 0
+}

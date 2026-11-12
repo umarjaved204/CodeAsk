@@ -2,5 +2,10 @@
 /* eslint-disable */
 import index from "./index.json";
 import q1 from "./q1.json";
+import q2 from "./q2.json";
+import q3 from "./q3.json";
+import q4 from "./q4.json";
+import r1 from "./r1.json";
+import q6 from "./q6.json";
 
-export default { index, answers: { q1 } };
+export default { index, answers: { q1, q2, q3, q4, r1, q6 } };

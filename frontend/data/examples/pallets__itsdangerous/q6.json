@@ -92,9 +92,9 @@
     ]
    }
   ],
-  "reviewer": "claude",
+  "reviewer": "author",
   "date": "2026-11-12",
-  "note": "Drafted by Claude (Q51), claim by claim against the cited blocks and the files at the pin; claims marked risky are the ones for the author's spot-check. Every claim checked against exc.py 7-106, signer.py 248-256 and __init__.py at 672971d. Minor omission: SignatureExpired is also raised for a timestamp in the future (timed.py 148-153, not in this context)."
+  "note": "Drafted by Claude (Q51), claim by claim against the cited blocks and the files at the pin; claims marked risky are the ones for the author's spot-check. Every claim checked against exc.py 7-106, signer.py 248-256 and __init__.py at 672971d. Minor omission: SignatureExpired is also raised for a timestamp in the future (timed.py 148-153, not in this context). Spot-checked and agreed by the author on 2026-11-12 (UTC) against the files at 672971d: exc.py 36-106 (BadTimeSignature, BadHeader, BadPayload and their bases)."
  },
  "response": {
   "grounded": true,
@@ -211,7 +211,7 @@
  "lines_check": {
   "ok": true,
   "commit_sha": "672971d66a2ef9f85151e53283113f33d642dabd",
-  "checked_at": "2026-11-12T20:04:28+00:00",
+  "checked_at": "2026-11-12T20:13:00+00:00",
   "blocks": 3,
   "problems": []
  }

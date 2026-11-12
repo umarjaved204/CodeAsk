@@ -1,0 +1,152 @@
+{
+ "question": "How does the library compare signatures safely?",
+ "repo": "pallets/itsdangerous",
+ "repo_url": "https://github.com/pallets/itsdangerous",
+ "commit_sha": "672971d66a2ef9f85151e53283113f33d642dabd",
+ "generated_at": "2026-11-12T20:12:57+00:00",
+ "model": "qwen/qwen3.8-27b",
+ "prompt_version": 3,
+ "generation": {
+  "temperature": 0,
+  "max_completion_tokens": 600,
+  "model_options": {
+   "reasoning_effort": "none"
+  }
+ },
+ "packer": {
+  "retrieve_k": 15,
+  "budget": 2000,
+  "per_file_cap": null,
+  "merge_max_gap_lines": 5
+ },
+ "usage": {
+  "queue_time": 0.023578926,
+  "prompt_tokens": 2393,
+  "prompt_time": 0.224184217,
+  "completion_tokens": 200,
+  "completion_time": 0.415229499,
+  "total_tokens": 2593,
+  "total_time": 0.639413716
+ },
+ "retries_429": 0,
+ "attempt": 1,
+ "attempt_note": null,
+ "grade": {
+  "correct": "correct",
+  "grounded": "yes",
+  "citations_valid": "3/3 strict",
+  "unsupported": "minor",
+  "omission": "minor",
+  "claims": [
+   {
+    "claim": "verification calls hmac.compare_digest(sig, self.get_signature(key, value)) in SigningAlgorithm.verify_signature",
+    "verdict": "supported",
+    "blocks": [
+     "signer.py:24-28"
+    ],
+    "risky": true
+   },
+   {
+    "claim": "hmac is imported at the top of signer.py",
+    "verdict": "supported",
+    "blocks": [
+     "signer.py:5"
+    ]
+   },
+   {
+    "claim": "Signer.verify_signature tries each key, newest first, through self.algorithm.verify_signature",
+    "verdict": "supported",
+    "blocks": [
+     "signer.py:236-240"
+    ]
+   },
+   {
+    "claim": "compare_digest is a constant-time comparison that prevents timing attacks",
+    "verdict": "unsupported",
+    "blocks": [
+     "signer.py:24-28"
+    ],
+    "risky": true
+   },
+   {
+    "claim": "so the byte comparison always goes through compare_digest, never ==",
+    "verdict": "unsupported",
+    "blocks": [
+     "signer.py:24-28"
+    ],
+    "risky": true
+   }
+  ],
+  "reviewer": "author",
+  "date": "2026-11-12",
+  "note": "Drafted by Claude (Q51), claim by claim against the cited blocks and the files at 672971d; claims marked risky are the ones for the author's spot-check. Unsupported, drafted as minor (author to decide whether load-bearing): 'constant-time, prevents timing attacks' is the standard library's documented property of hmac.compare_digest, not stated in the blocks; the answer's main claim, that the comparison goes through compare_digest, is cited. Also unsupported: 'always' (true at the pin: no algorithm overrides verify_signature, but HMACAlgorithm and NoneAlgorithm, signer.py 31-64, were not in the context). Minor omission: the signature is base64-decoded first and a decode failure returns False (signer.py 229-232). Spot-checked and agreed by the author on 2026-11-12 (UTC) against the files at 672971d: signer.py 24-28 (compare_digest), 227-242 (the reversed key loop) and 229-232 (the omission). The author ruled the 'constant-time' sentence minor by the Q50 clarification: with it deleted, the answer still answers the question from the cited blocks alone. 'Always goes through compare_digest' stays a minor unsupported absolute."
+ },
+ "response": {
+  "grounded": true,
+  "answer": "The library compares signatures safely using `hmac.compare_digest`, which performs a constant-time comparison to prevent timing attacks.\n\nThis is implemented in the `SigningAlgorithm.verify_signature` method, which calls `hmac.compare_digest(sig, self.get_signature(key, value))` [1](cite:1). The `hmac` module is imported at the top of the file [2](cite:2).\n\nThe `Signer` class uses this via its `algorithm` attribute. In `Signer.verify_signature`, the method iterates through secret keys (in reverse order to support key rotation) and calls `self.algorithm.verify_signature(key, value, sig)` for each key [3](cite:3). This ensures that the actual byte comparison is always done through the constant-time `hmac.compare_digest` function rather than a standard `==` comparison.",
+  "citations": [
+   {
+    "n": 1,
+    "path": "src/itsdangerous/signer.py",
+    "start": 24,
+    "end": 28,
+    "valid": true,
+    "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L24-L28",
+    "block": 0
+   },
+   {
+    "n": 2,
+    "path": "src/itsdangerous/signer.py",
+    "start": 5,
+    "end": 5,
+    "valid": true,
+    "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L5",
+    "block": 0
+   },
+   {
+    "n": 3,
+    "path": "src/itsdangerous/signer.py",
+    "start": 236,
+    "end": 240,
+    "valid": true,
+    "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L236-L240",
+    "block": 1
+   }
+  ],
+  "blocks": [
+   {
+    "path": "src/itsdangerous/signer.py",
+    "start": 1,
+    "end": 28,
+    "content": "from __future__ import annotations\n\nimport collections.abc as cabc\nimport hashlib\nimport hmac\nimport typing as t\n\nfrom .encoding import _base64_alphabet\nfrom .encoding import base64_decode\nfrom .encoding import base64_encode\nfrom .encoding import want_bytes\nfrom .exc import BadSignature\n\n\nclass SigningAlgorithm:\n    \"\"\"Subclasses must implement :meth:`get_signature` to provide\n    signature generation functionality.\n    \"\"\"\n\n    def get_signature(self, key: bytes, value: bytes) -> bytes:\n        \"\"\"Returns the signature for the given key and value.\"\"\"\n        raise NotImplementedError()\n\n    def verify_signature(self, key: bytes, value: bytes, sig: bytes) -> bool:\n        \"\"\"Verifies the given signature matches the expected\n        signature.\n        \"\"\"\n        return hmac.compare_digest(sig, self.get_signature(key, value))"
+   },
+   {
+    "path": "src/itsdangerous/signer.py",
+    "start": 215,
+    "end": 266,
+    "content": "    def get_signature(self, value: str | bytes) -> bytes:\n        \"\"\"Returns the signature for the given value.\"\"\"\n        value = want_bytes(value)\n        key = self.derive_key()\n        sig = self.algorithm.get_signature(key, value)\n        return base64_encode(sig)\n\n    def sign(self, value: str | bytes) -> bytes:\n        \"\"\"Signs the given string.\"\"\"\n        value = want_bytes(value)\n        return value + self.sep + self.get_signature(value)\n\n    def verify_signature(self, value: str | bytes, sig: str | bytes) -> bool:\n        \"\"\"Verifies the signature for the given value.\"\"\"\n        try:\n            sig = base64_decode(sig)\n        except Exception:\n            return False\n\n        value = want_bytes(value)\n\n        for secret_key in reversed(self.secret_keys):\n            key = self.derive_key(secret_key)\n\n            if self.algorithm.verify_signature(key, value, sig):\n                return True\n\n        return False\n\n    def unsign(self, signed_value: str | bytes) -> bytes:\n        \"\"\"Unsigns the given string.\"\"\"\n        signed_value = want_bytes(signed_value)\n\n        if self.sep not in signed_value:\n            raise BadSignature(f\"No {self.sep!r} found in value\")\n\n        value, sig = signed_value.rsplit(self.sep, 1)\n\n        if self.verify_signature(value, sig):\n            return value\n\n        raise BadSignature(f\"Signature {sig!r} does not match\", payload=value)\n\n    def validate(self, signed_value: str | bytes) -> bool:\n        \"\"\"Only validates the given signed value. Returns ``True`` if\n        the signature exists and is valid.\n        \"\"\"\n        try:\n            self.unsign(signed_value)\n            return True\n        except BadSignature:\n            return False"
+   }
+  ],
+  "possibly_relevant": [],
+  "model": "qwen/qwen3.8-27b",
+  "prompt_version": 3
+ },
+ "question_id": "r1",
+ "runs": [
+  {
+   "id": "r1",
+   "at": "2026-11-12T20:12:57+00:00",
+   "outcome": "answered",
+   "tokens": 2593,
+   "estimated": false,
+   "error": null
+  }
+ ],
+ "lines_check": {
+  "ok": true,
+  "commit_sha": "672971d66a2ef9f85151e53283113f33d642dabd",
+  "checked_at": "2026-11-12T20:13:00+00:00",
+  "blocks": 2,
+  "problems": []
+ }
+}

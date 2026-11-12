@@ -86,9 +86,9 @@
     "risky": true
    }
   ],
-  "reviewer": "claude",
+  "reviewer": "author",
   "date": "2026-11-12",
-  "note": "Drafted by Claude (Q51), claim by claim against the cited blocks and the files at the pin; claims marked risky are the ones for the author's spot-check. Every claim checked against signer.py 120-213 at 672971d. Unsupported, minor background: that the derived key feeds the algorithm (true, get_signature 215-220, but not in the context). Minor omission: the default salt (b'itsdangerous.Signer') and where the serializer passes its salt."
+  "note": "Drafted by Claude (Q51), claim by claim against the cited blocks and the files at the pin; claims marked risky are the ones for the author's spot-check. Every claim checked against signer.py 120-213 at 672971d. Unsupported, minor background: that the derived key feeds the algorithm (true, get_signature 215-220, but not in the context). Minor omission: the default salt (b'itsdangerous.Signer') and where the serializer passes its salt. Spot-checked and agreed by the author on 2026-11-12 (UTC) against the files at 672971d: signer.py 200-213 (the four derivations) and 114-120 (the sha1 default)."
  },
  "response": {
   "grounded": true,
@@ -190,7 +190,7 @@
  "lines_check": {
   "ok": true,
   "commit_sha": "672971d66a2ef9f85151e53283113f33d642dabd",
-  "checked_at": "2026-11-12T20:04:28+00:00",
+  "checked_at": "2026-11-12T20:13:00+00:00",
   "blocks": 2,
   "problems": []
  }

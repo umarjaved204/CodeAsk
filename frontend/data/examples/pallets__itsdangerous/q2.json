@@ -77,9 +77,9 @@
     "risky": true
    }
   ],
-  "reviewer": "claude",
+  "reviewer": "author",
   "date": "2026-11-12",
-  "note": "Drafted by Claude (Q51), claim by claim against the cited blocks and the files at the pin; claims marked risky are the ones for the author's spot-check. Every claim checked against timed.py 108-153 and exc.py 60-63 at 672971d. Minor omission: the signature is verified before the age check, so a bad signature raises BadTimeSignature and never reaches it."
+  "note": "Drafted by Claude (Q51), claim by claim against the cited blocks and the files at the pin; claims marked risky are the ones for the author's spot-check. Every claim checked against timed.py 108-153 and exc.py 60-63 at 672971d. Minor omission: the signature is verified before the age check, so a bad signature raises BadTimeSignature and never reaches it. Spot-checked and agreed by the author on 2026-11-12 (UTC) against the files at 672971d: timed.py 138-153 (the age and the age < 0 case) and exc.py 60-63."
  },
  "response": {
   "grounded": true,
@@ -163,7 +163,7 @@
  "lines_check": {
   "ok": true,
   "commit_sha": "672971d66a2ef9f85151e53283113f33d642dabd",
-  "checked_at": "2026-11-12T20:04:28+00:00",
+  "checked_at": "2026-11-12T20:13:00+00:00",
   "blocks": 2,
   "problems": []
  }
