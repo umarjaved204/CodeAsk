@@ -77,6 +77,13 @@ const STATES: State[] = [
     await page.getByRole("button", { name: /^Citation 2:/ }).click();
     await expect(panel(page)).toContainText("Cited lines 138–142");
   } },
+  // Slice 5 (Q55): a suggestion picked after a live answer (focus on the question heading).
+  { name: "suggestion picked after a live answer", setup: async (page, api) => {
+    await askAfterUp(page, api);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(Q);
+    await page.getByRole("region", { name: "Suggested questions" }).getByRole("button").first().click();
+    await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
+  } },
   { name: "unverified note open", setup: async (page, api) => {
     api.on("POST /ask", () => ({ json: FIRST_UNVERIFIED }));
     await askAfterUp(page, api);
@@ -230,4 +237,24 @@ test("forced colors: cited lines keep a visible 3 px left bar", async ({ page },
   expect(bar.style).toBe("solid");
   expect(bar.color).not.toBe("rgba(0, 0, 0, 0)");
   await panel(page).screenshot({ path: testInfo.outputPath("forced-colors-panel.png") });
+});
+
+// Slice 5 (Q55): the current suggestion's bar is a border, so it survives forced colors, and it
+// is the only one: forced colors paints even transparent borders, so the others have none.
+test("forced colors: only the current suggestion has a left bar", async ({ page, api }, testInfo) => {
+  await page.emulateMedia({ forcedColors: "active" });
+  await askAfterUp(page, api);
+  const list = page.getByRole("region", { name: "Suggested questions" });
+  const bars = async () => list.getByRole("button").evaluateAll((els) => els.map((el) => {
+    const s = getComputedStyle(el);
+    return { current: el.getAttribute("aria-current"), width: s.borderLeftWidth,
+             style: s.borderLeftStyle };
+  }));
+  for (const b of await bars()) expect(b.width).toBe("0px"); // under a live answer: none current
+  await list.getByRole("button").first().click();
+  const after = await bars();
+  expect(after.filter((b) => b.current === "true")).toEqual([
+    { current: "true", width: "2px", style: "solid" }]);
+  for (const b of after.filter((b) => b.current !== "true")) expect(b.width).toBe("0px");
+  await list.screenshot({ path: testInfo.outputPath("forced-colors-suggestions.png") });
 });

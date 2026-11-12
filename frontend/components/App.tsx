@@ -193,6 +193,7 @@ export function App() {
   const [focusRequest, setFocusRequest] = useState(0);
   const lastSwitch = useRef(0);
   const heading = useRef<HTMLHeadingElement>(null);
+  const top = useRef<HTMLDivElement>(null); // the stored answer's label and its question
   const [now, setNow] = useState(0);
   // Are live questions open (Q45)? From every /status reply the page already makes and from
   // /ask; never polled while idle (Q14). lastStatusAt: when /status last answered.
@@ -387,13 +388,15 @@ export function App() {
     setFocusRequest((n) => n + 1);
   }
 
-  // After a pick: focus the question heading and bring it into view (Q54), instantly when the
-  // visitor prefers reduced motion. Runs after the render that shows the new answer.
+  // After every pick (the flagship too): bring the label and the question into view together
+  // (round s5, F1), instantly when the visitor prefers reduced motion, and focus the heading
+  // without letting the browser's focus scroll move the view (Q54). Runs after the render that
+  // shows the new answer. Live answers don't scroll.
   useEffect(() => {
-    if (focusRequest === 0 || !heading.current) return;
+    if (focusRequest === 0 || !heading.current || !top.current) return;
     heading.current.focus({ preventScroll: true });
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    heading.current.scrollIntoView({ block: "start", behavior: reduce ? "instant" : "smooth" });
+    top.current.scrollIntoView({ block: "start", behavior: reduce ? "instant" : "smooth" });
   }, [focusRequest]);
 
   const openCitation = useCallback((n: number) => {
@@ -467,12 +470,16 @@ export function App() {
         <section aria-labelledby="question"
                  className="reading-scroll flex min-w-0 flex-col px-5 lg:min-h-0 lg:overflow-y-auto lg:px-14">
           <div className="max-w-measure pt-2 pb-8">
-            {example && <p className="mb-3 text-meta text-text-muted">{provenance(example)}</p>}
-            {/* tabIndex -1: a picked suggestion moves focus here (Q54) */}
-            <h1 id="question" ref={heading} tabIndex={-1}
-                className="scroll-mt-4 font-serif text-title-sm font-medium text-balance lg:text-title">
-              {question ?? `Ask a question about the code in ${repo}.`}
-            </h1>
+            {/* A pick scrolls this block into view, so the stored answer's label is seen with
+                its question (round s5, F1); focus goes to the heading (tabIndex -1, Q54). The
+                header isn't sticky, so a small margin is enough. */}
+            <div ref={top} className="scroll-mt-4">
+              {example && <p className="mb-3 text-meta text-text-muted">{provenance(example)}</p>}
+              <h1 id="question" ref={heading} tabIndex={-1}
+                  className="font-serif text-title-sm font-medium text-balance lg:text-title">
+                {question ?? `Ask a question about the code in ${repo}.`}
+              </h1>
+            </div>
             {!question && (
               <p className="mt-4 font-serif text-body">Answers cite the lines they use.</p>
             )}

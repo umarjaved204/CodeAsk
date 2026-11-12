@@ -1165,6 +1165,58 @@ config gains a pinned SHA per repo, and the drift guard compares slug and SHA (Q
    pre-generated answers with the backend down; repo switch opens the flagship; list hidden while
    loading; a typed suggested question goes live; keyboard/focus/scroll flow. Axe on the new
    states in both themes and forced colors. One `round-s5` screenshot round (Q41 matrix).
+   **Built 2026-11-12 (what runs before answers exist):**
+   - **E2E, added to `suggestions.spec.ts`:**
+     - with the backend down, the list and a pick work, with no API call;
+     - switching back to a repo opens its flagship, not the live answer left there;
+     - keyboard: Tab to a suggestion and press Enter; focus lands visibly on the question, and
+       Tab goes on into the answer;
+     - the pick's scroll call, recorded rather than timed: `instant` under reduced motion,
+       `smooth` otherwise, with the heading in view afterwards.
+   - **Axe:** a new state, a suggestion picked after a live answer, in both themes.
+   - **Forced colours:** a test that only the current suggestion has a left bar. Fixed before
+     it ran: step 8 gave every item a transparent border, and forced-colors mode paints those
+     too, so every item would have shown a bar. Now only the current item has a border, with
+     2 px less padding.
+   - **Screenshot harness:** the refusal states expect "The suggested questions still work.".
+     New states `22-list-under-live` and `23-picked-after-live`, plus end-of-scroll shots of
+     states 01 and 22 at 1440 and 390, where the list shows.
+   - **Waits for step 11:** rapid picks, A -> B -> C, a failed chunk, and a repo switch that
+     opens a flagship from a dynamic set.
+   - **Screenshot round s5 (2026-11-12):** 133 shots at commit `6648c1c` (dirty: the step 9
+     work). `check.ps1` and `npm run screens` passed. No new kind of automatic note: the new
+     states show only the accepted "text under the composer's fade".
+     - **F1, fixed:** after a pick, the heading scrolled to the top edge and pushed the
+       "Example answer, generated … Checked by the author." label out of view (a sliver at
+       1440, gone at 390). Now every pick, the flagship included, scrolls the block holding the
+       label and the heading. The heading gets focus with `preventScroll`, so the browser's
+       focus scroll can't undo it. Reduced motion stays instant. The header isn't sticky, so
+       `scroll-mt-4` is enough. Live answers don't scroll. The e2e check asserts both are
+       fully in view after a pick, at 390 and 1440, for both motion settings.
+     - **F2, inset dropped (2026-11-13), the bar now hangs in the margin:** list items sat
+       14 px in from the "Suggested questions" heading, room for the current item's bar. I
+       first kept that, on condition that it costs no line at 390. The e2e check then showed
+       it does: express q5 ("How are settings like `etag`…") and q6 ("Which built-in
+       middleware…") wrapped onto an extra line.
+       - **Option (a), chosen:** the text sits flush with the heading at full column width.
+         Each button starts 14 px into the left margin (`-ml-3.5`, padding 14 px) and is 14 px
+         wider. The current item's 2 px bar hangs in that margin, with its padding 2 px less
+         so its text doesn't move.
+       - **Rejected:** accepting the extra lines (b), and a smaller inset (c).
+       - **Conditions, all tested:**
+         - The line-count test is unchanged in intent, with no accepted exceptions. Its
+           reference is a plain item flush with the heading at column width.
+         - At 390 and 320, the keyboard focus ring's outer edge (the 2 px outline plus its 2 px
+           offset) stays inside the viewport. No ancestor that clips sits further right, and
+           the page doesn't scroll sideways. The phone margin is 20 px; bar plus ring need 18.
+         - The bar is a border, so it survives forced colors; the forced-colors test still
+           passes.
+       - **Screenshot:** a focused current item at 390 (`24-current-focused`) is added to the
+         round.
+     - **F3, checked:** the refusal ends "The suggested questions still work." with the list
+       right below it. Under a live answer, the note sits above the list and nothing is marked
+       current.
+     - **I check 23-picked-after-live at 390 myself.**
 10. **Licence line (Q55)** in the README's "How it works", from each LICENSE at the pinned SHA.
 11. **Generation run** on the dev DB, at least 24 h before launch (Q53), then the Q42 budget
     raise; PLAN.md records counts, tokens and findings.

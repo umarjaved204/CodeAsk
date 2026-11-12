@@ -16,7 +16,8 @@ import { pathToFileURL } from "node:url";
 import { test as plain, type Page } from "@playwright/test";
 
 import {
-  FIRST_UNVERIFIED, LONG_BLOCK, NOT_OUR_JSON, UNGROUNDED, apiError, expect, held, statusWith, test,
+  EXAMPLE, FIRST_UNVERIFIED, LONG_BLOCK, NOT_OUR_JSON, UNGROUNDED, apiError, expect, held,
+  statusWith, test,
   type MockApi, type Reply,
 } from "../tests/e2e/mocks";
 import {
@@ -112,12 +113,12 @@ const STATES: Record<string, Setup> = {
                       /^The demo is at capacity\./),
   // Slice 4 (Q45, step 8): the refusals from /ask, and the service line on load.
   "07-daily-limit": replying(apiError(429, "daily_limit", "Used up.", { "Retry-After": "7200" }),
-                             dailyLimitMessage(7_200, false)),
+                             dailyLimitMessage(7_200, true)),
   "07b-per-visitor": replying(apiError(429, "per_ip_limit", "Limit.", { "Retry-After": "10800" }),
-                              perVisitorMessage(10_800, false)),
+                              perVisitorMessage(10_800, true)),
   "07c-in-progress": replying(apiError(429, "in_progress", "Still answering.", { "Retry-After": "40" }),
                               IN_PROGRESS_MESSAGE),
-  "07d-paused-refused": replying(apiError(503, "paused", "Paused."), pausedMessage(false)),
+  "07d-paused-refused": replying(apiError(503, "paused", "Paused."), pausedMessage(true)),
   "20-paused-on-load": async (page, api) => {
     api.on("GET /status", () => statusWith(null, "paused"));
     await load(page, api);
@@ -165,6 +166,25 @@ const STATES: Record<string, Setup> = {
   "18-specimen": answered(SPECIMEN),
   "19-not-found": replying(apiError(404, "not_found", "Unknown repo."),
                            "pallets/itsdangerous is no longer available here."),
+  // Slice 5 (Q54, Q55; round s5): the suggested questions under a live answer, with the note,
+  // and a suggestion picked after it (focus on the question heading).
+  "22-list-under-live": answered(EXAMPLE.response),
+  "23-picked-after-live": async (page, api, width) => {
+    await answered(EXAMPLE.response)(page, api, width);
+    await page.getByRole("region", { name: "Suggested questions" }).getByRole("button").first().click();
+    await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
+  },
+  // Round s5, F2 (option a): the current item focused by keyboard, so the hanging bar and the
+  // focus ring show together in the left margin.
+  "24-current-focused": async (page, api) => {
+    await load(page, api);
+    const current = page.getByRole("region", { name: "Suggested questions" })
+      .getByRole("button", { name: EXAMPLE.question, exact: true });
+    for (let i = 0; i < 60 && !(await current.evaluate((el) => el === document.activeElement)); i++) {
+      await page.keyboard.press("Tab");
+    }
+    await expect(current).toBeFocused();
+  },
 };
 
 // ---------- the matrix (Q41) ----------
@@ -179,7 +199,8 @@ for (const state of ["01-first-screen", "10-ungrounded", "11-unverified-note"]) 
 }
 for (const width of [390, 768, 1023]) for (const theme of BOTH) add("15-sheet-open", width, theme);
 for (const state of Object.keys(STATES)) {
-  if (["01-first-screen", "10-ungrounded", "11-unverified-note", "15-sheet-open"].includes(state)) continue;
+  if (["01-first-screen", "10-ungrounded", "11-unverified-note", "15-sheet-open",
+       "24-current-focused"].includes(state)) continue;
   add(state, 1440, "light");
   add(state, 390, "light");
   add(state, 1440, "dark");
@@ -198,6 +219,13 @@ add("01-first-screen", 1920, "light");
 for (const state of ["01-first-screen", "12-long-answer"]) {
   add(state, 844, "light");
   add(state, 1440, "light", "scrollbars");
+}
+// Round s5: the list sits below the answer, so it shows at the end of the scroll; and the focused
+// current item at the narrowest common phone width (F2).
+add("24-current-focused", 390, "light");
+for (const width of [1440, 390]) {
+  add("01-first-screen", width, "light", "end");
+  add("22-list-under-live", width, "light", "end");
 }
 for (const width of [1440, 390]) {
   add("12-long-answer", width, "light", "mid");
