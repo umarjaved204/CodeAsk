@@ -1,0 +1,238 @@
+{
+ "question": "How does a call like `requests.get` turn into an actual HTTP request, from the top-level function down to the network layer?",
+ "repo": "psf/requests",
+ "repo_url": "https://github.com/psf/requests",
+ "commit_sha": "3c7baaa05ab4aa49cc819ce3a819d260de19c157",
+ "generated_at": "2026-11-12T20:27:49+00:00",
+ "model": "qwen/qwen3.8-27b",
+ "prompt_version": 3,
+ "generation": {
+  "temperature": 0,
+  "max_completion_tokens": 600,
+  "model_options": {
+   "reasoning_effort": "none"
+  }
+ },
+ "packer": {
+  "retrieve_k": 15,
+  "budget": 2000,
+  "per_file_cap": null,
+  "merge_max_gap_lines": 5
+ },
+ "usage": {
+  "queue_time": 0.004352645,
+  "prompt_tokens": 2672,
+  "prompt_time": 0.212642062,
+  "completion_tokens": 481,
+  "completion_time": 0.950337925,
+  "total_tokens": 3153,
+  "total_time": 1.162979987
+ },
+ "retries_429": 0,
+ "attempt": 1,
+ "attempt_note": null,
+ "grade": {
+  "correct": "incomplete",
+  "grounded": "yes",
+  "citations_valid": "11/11 strict",
+  "unsupported": "minor",
+  "omission": "material",
+  "claims": [
+   {
+    "claim": "requests.get is imported from requests.api; api implements the public API",
+    "verdict": "supported",
+    "blocks": [
+     "__init__.py:171",
+     "api.py:1-9"
+    ]
+   },
+   {
+    "claim": "a Session object is used to manage the request lifecycle",
+    "verdict": "unsupported",
+    "blocks": [
+     "__init__.py:185"
+    ],
+    "risky": true
+   },
+   {
+    "claim": "Session.request builds a Request, prepares it with prepare_request, and sends it",
+    "verdict": "supported",
+    "blocks": [
+     "sessions.py:623-635",
+     "sessions.py:651"
+    ],
+    "risky": true
+   },
+   {
+    "claim": "send delegates to an adapter (the answer says this is implied, not shown)",
+    "verdict": "unsupported",
+    "blocks": [
+     "sessions.py:651"
+    ],
+    "risky": true
+   },
+   {
+    "claim": "the adapter calls conn.urlopen with the request, re-raises urllib3 errors as requests exceptions and builds the response",
+    "verdict": "supported",
+    "blocks": [
+     "adapters.py:696-748"
+    ]
+   }
+  ],
+  "reviewer": "author",
+  "date": "2026-11-12",
+  "note": "Drafted by Claude (Q51), claim by claim against the cited blocks and the files at 3c7baaa; claims marked risky are the ones for the author's spot-check. Passes as incomplete: with its two hedged gap sentences deleted (Q50 clarification), the cited chain still runs from get to the session's request, prepare and send, to the adapter's urlopen. Material omission: api.get -> api.request -> opening a Session, and Session.send -> get_adapter -> HTTPAdapter.send are not shown (the Q49 retrieval misses; expected, Q48 pre-freeze note). Not flagship-eligible. Spot-checked and agreed by the author on 2026-11-12 (UTC) against the files at 3c7baaa: sessions.py 619-653 (build, prepare, send) and adapters.py 695-748 (urlopen, errors, build_response)."
+ },
+ "response": {
+  "grounded": true,
+  "answer": "Based on the provided files, the flow from `requests.get` to the network layer is as follows:\n\n1.  **Top-level API**: The `requests.get` function is imported from `requests.api` in the main package initialization [1](cite:1). The `requests.api` module implements the public API [2](cite:2).\n2.  **Session Creation**: The API functions utilize the `sessions` module [3](cite:3). A `Session` object is imported and used to manage the request lifecycle [4](cite:4).\n3.  **Request Preparation**: Inside the session's request method (implied by the context of `sessions.py`), a `Request` object is created with the method, URL, headers, and other parameters [5](cite:5). This `Request` is then prepared into a `PreparedRequest` via `self.prepare_request(req)` [6](cite:6).\n4.  **Sending**: The prepared request is sent via `self.send(prep, **send_kwargs)` [7](cite:7).\n5.  **Network Layer**: The `send` method delegates to an adapter (implied by the import of `adapters` in typical requests structure, though not explicitly shown in the snippet, the `adapters.py` file contains the network logic). In `adapters.py`, the `urlopen` method of the underlying connection (`conn`) is called with the request details [8](cite:8). This call interacts with `urllib3` to perform the actual HTTP communication.\n6.  **Response Handling**: The response from `conn.urlopen` is processed, and exceptions like `ConnectionError`, `Timeout`, or `SSLError` are caught and re-raised as `requests` exceptions [9](cite:9). Finally, the response is built and returned [10](cite:10).\n\nThe `Response` object is defined in `requests.models` [11](cite:11).",
+  "citations": [
+   {
+    "n": 1,
+    "path": "src/requests/__init__.py",
+    "start": 171,
+    "end": 171,
+    "valid": true,
+    "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/__init__.py#L171",
+    "block": 0
+   },
+   {
+    "n": 2,
+    "path": "src/requests/api.py",
+    "start": 1,
+    "end": 9,
+    "valid": true,
+    "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/api.py#L1-L9",
+    "block": 1
+   },
+   {
+    "n": 3,
+    "path": "src/requests/api.py",
+    "start": 15,
+    "end": 15,
+    "valid": true,
+    "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/api.py#L15",
+    "block": 1
+   },
+   {
+    "n": 4,
+    "path": "src/requests/__init__.py",
+    "start": 185,
+    "end": 185,
+    "valid": true,
+    "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/__init__.py#L185",
+    "block": 0
+   },
+   {
+    "n": 5,
+    "path": "src/requests/sessions.py",
+    "start": 623,
+    "end": 634,
+    "valid": true,
+    "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/sessions.py#L623-L634",
+    "block": 2
+   },
+   {
+    "n": 6,
+    "path": "src/requests/sessions.py",
+    "start": 635,
+    "end": 635,
+    "valid": true,
+    "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/sessions.py#L635",
+    "block": 2
+   },
+   {
+    "n": 7,
+    "path": "src/requests/sessions.py",
+    "start": 651,
+    "end": 651,
+    "valid": true,
+    "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/sessions.py#L651",
+    "block": 2
+   },
+   {
+    "n": 8,
+    "path": "src/requests/adapters.py",
+    "start": 696,
+    "end": 708,
+    "valid": true,
+    "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/adapters.py#L696-L708",
+    "block": 3
+   },
+   {
+    "n": 9,
+    "path": "src/requests/adapters.py",
+    "start": 710,
+    "end": 746,
+    "valid": true,
+    "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/adapters.py#L710-L746",
+    "block": 3
+   },
+   {
+    "n": 10,
+    "path": "src/requests/adapters.py",
+    "start": 748,
+    "end": 748,
+    "valid": true,
+    "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/adapters.py#L748",
+    "block": 3
+   },
+   {
+    "n": 11,
+    "path": "src/requests/__init__.py",
+    "start": 184,
+    "end": 184,
+    "valid": true,
+    "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/__init__.py#L184",
+    "block": 0
+   }
+  ],
+  "blocks": [
+   {
+    "path": "src/requests/__init__.py",
+    "start": 149,
+    "end": 186,
+    "content": "# urllib3's DependencyWarnings should be silenced.\nfrom urllib3.exceptions import DependencyWarning\n\nwarnings.simplefilter(\"ignore\", DependencyWarning)\n\n# Set default logging handler to avoid \"No handler found\" warnings.\nimport logging\nfrom logging import NullHandler\n\nfrom . import packages, utils\nfrom .__version__ import (\n    __author__,\n    __author_email__,\n    __build__,\n    __cake__,\n    __copyright__,\n    __description__,\n    __license__,\n    __title__,\n    __url__,\n    __version__,\n)\nfrom .api import delete, get, head, options, patch, post, put, request\nfrom .exceptions import (\n    ConnectionError,\n    ConnectTimeout,\n    FileModeWarning,\n    HTTPError,\n    JSONDecodeError,\n    ReadTimeout,\n    RequestException,\n    Timeout,\n    TooManyRedirects,\n    URLRequired,\n)\nfrom .models import PreparedRequest, Request, Response\nfrom .sessions import Session, session\nfrom .status_codes import codes"
+   },
+   {
+    "path": "src/requests/api.py",
+    "start": 1,
+    "end": 21,
+    "content": "\"\"\"\nrequests.api\n~~~~~~~~~~~~\n\nThis module implements the Requests API.\n\n:copyright: (c) 2012 by Kenneth Reitz.\n:license: Apache2, see LICENSE for more details.\n\"\"\"\n\nfrom __future__ import annotations\n\nfrom typing import TYPE_CHECKING\n\nfrom . import sessions\nfrom .models import Response\n\nif TYPE_CHECKING:\n    from typing_extensions import Unpack\n\n    from . import _types as _t"
+   },
+   {
+    "path": "src/requests/sessions.py",
+    "start": 619,
+    "end": 653,
+    "content": "        if isinstance(url, bytes):\n            url = url.decode(\"utf-8\")\n\n        # Create the Request.\n        req = Request(\n            method=method.upper(),\n            url=url,\n            headers=headers,\n            files=files,\n            data=data or {},\n            json=json,\n            params=params or {},\n            auth=auth,\n            cookies=cookies,\n            hooks=hooks,\n        )\n        prep = self.prepare_request(req)\n\n        assert _is_prepared(prep)\n\n        proxies = proxies or {}\n\n        settings = self.merge_environment_settings(\n            prep.url, proxies, stream, verify, cert\n        )\n\n        # Send the request.\n        send_kwargs = {\n            \"timeout\": timeout,\n            \"allow_redirects\": allow_redirects,\n        }\n        send_kwargs.update(settings)\n        resp = self.send(prep, **send_kwargs)\n\n        return resp"
+   },
+   {
+    "path": "src/requests/adapters.py",
+    "start": 695,
+    "end": 748,
+    "content": "        try:\n            resp = conn.urlopen(\n                method=request.method,\n                url=url,\n                body=request.body,  # type: ignore[arg-type]  # urllib3 stubs don't accept Iterable[bytes | str]\n                headers=request.headers,  # type: ignore[arg-type]  # urllib3#3072\n                redirect=False,\n                assert_same_host=False,\n                preload_content=False,\n                decode_content=False,\n                retries=self.max_retries,\n                timeout=resolved_timeout,\n                chunked=chunked,\n            )\n\n        except (ProtocolError, OSError) as err:\n            raise ConnectionError(err, request=request)\n\n        except MaxRetryError as e:\n            if isinstance(e.reason, ConnectTimeoutError):\n                # TODO: Remove this in 3.0.0: see #2811\n                if not isinstance(e.reason, NewConnectionError):\n                    raise ConnectTimeout(e, request=request)\n\n            if isinstance(e.reason, ResponseError):\n                raise RetryError(e, request=request)\n\n            if isinstance(e.reason, _ProxyError):\n                raise ProxyError(e, request=request)\n\n            if isinstance(e.reason, _SSLError):\n                # This branch is for urllib3 v1.22 and later.\n                raise SSLError(e, request=request)\n\n            raise ConnectionError(e, request=request)\n\n        except ClosedPoolError as e:\n            raise ConnectionError(e, request=request)\n\n        except _ProxyError as e:\n            raise ProxyError(e)\n\n        except (_SSLError, _HTTPError) as e:\n            if isinstance(e, _SSLError):\n                # This branch is for urllib3 versions earlier than v1.22\n                raise SSLError(e, request=request)\n            elif isinstance(e, ReadTimeoutError):\n                raise ReadTimeout(e, request=request)\n            elif isinstance(e, _InvalidHeader):\n                raise InvalidHeader(e, request=request)\n            else:\n                raise\n\n        return self.build_response(request, resp)"
+   }
+  ],
+  "possibly_relevant": [],
+  "model": "qwen/qwen3.8-27b",
+  "prompt_version": 3
+ },
+ "question_id": "q1",
+ "runs": [
+  {
+   "id": "q1",
+   "at": "2026-11-12T20:27:49+00:00",
+   "outcome": "answered",
+   "tokens": 3153,
+   "estimated": false,
+   "error": null
+  }
+ ],
+ "lines_check": {
+  "ok": true,
+  "commit_sha": "3c7baaa05ab4aa49cc819ce3a819d260de19c157",
+  "checked_at": "2026-11-12T20:31:12+00:00",
+  "blocks": 4,
+  "problems": []
+ }
+}

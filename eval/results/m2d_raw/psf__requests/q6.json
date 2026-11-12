@@ -1,0 +1,250 @@
+{
+ "question_id": "q6",
+ "question": "What does the library add on top of its underlying HTTP library?",
+ "generated_at": "2026-11-12T20:31:07+00:00",
+ "grounded": true,
+ "possibly_relevant": [],
+ "answer": "Based on the provided files, the Requests library adds the following features on top of its underlying HTTP library (urllib3):\n\n*   **Simplicity:** It allows sending HTTP/1.1 requests easily without manually adding query strings or form-encoding `PUT` and `POST` data [1](cite:1).\n*   **Connection Management:** It supports Keep-Alive and Connection Pooling [2](cite:2).\n*   **State Persistence:** It provides Sessions with Cookie Persistence and familiar `dict`-like Cookies [3](cite:3).\n*   **Security & Verification:** It includes Browser-style TLS/SSL Verification, Basic & Digest Authentication, and automatic honoring of `.netrc` [4](cite:4) [5](cite:5).\n*   **Data Handling:** It offers Automatic Content Decompression and Decoding, Multi-part File Uploads, and Streaming Downloads [6](cite:6) [7](cite:7).\n*   **Network Features:** It supports International Domains and URLs, SOCKS Proxy Support, Connection Timeouts, and Chunked HTTP Requests [8](cite:8) [9](cite:9) [10](cite:10).\n*   **Retry Logic:** The `HTTPAdapter` allows configuring `max_retries` for failed DNS lookups, socket connections, and timeouts, which is not the default behavior [11](cite:11).\n\nThe library is built on top of `urllib3`, as indicated by the import of `urllib3.exceptions` and the description of `HTTPAdapter` as the \"built-in HTTP Adapter for urllib3\" [12](cite:12) [13](cite:13).",
+ "raw_answer": "Based on the provided files, the Requests library adds the following features on top of its underlying HTTP library (urllib3):\n\n*   **Simplicity:** It allows sending HTTP/1.1 requests easily without manually adding query strings or form-encoding `PUT` and `POST` data [README.md:26].\n*   **Connection Management:** It supports Keep-Alive and Connection Pooling [README.md:44].\n*   **State Persistence:** It provides Sessions with Cookie Persistence and familiar `dict`-like Cookies [README.md:46-49].\n*   **Security & Verification:** It includes Browser-style TLS/SSL Verification, Basic & Digest Authentication, and automatic honoring of `.netrc` [README.md:47-48, 55].\n*   **Data Handling:** It offers Automatic Content Decompression and Decoding, Multi-part File Uploads, and Streaming Downloads [README.md:50-51, 54].\n*   **Network Features:** It supports International Domains and URLs, SOCKS Proxy Support, Connection Timeouts, and Chunked HTTP Requests [README.md:45, 52-53, 56].\n*   **Retry Logic:** The `HTTPAdapter` allows configuring `max_retries` for failed DNS lookups, socket connections, and timeouts, which is not the default behavior [src/requests/adapters.py:168-174].\n\nThe library is built on top of `urllib3`, as indicated by the import of `urllib3.exceptions` and the description of `HTTPAdapter` as the \"built-in HTTP Adapter for urllib3\" [src/requests/__init__.py:150, src/requests/adapters.py:159].",
+ "citations": [
+  {
+   "n": 1,
+   "path": "README.md",
+   "start": 26,
+   "end": 26,
+   "valid": true,
+   "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/README.md#L26"
+  },
+  {
+   "n": 2,
+   "path": "README.md",
+   "start": 44,
+   "end": 44,
+   "valid": true,
+   "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/README.md#L44"
+  },
+  {
+   "n": 3,
+   "path": "README.md",
+   "start": 46,
+   "end": 49,
+   "valid": true,
+   "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/README.md#L46-L49"
+  },
+  {
+   "n": 4,
+   "path": "README.md",
+   "start": 47,
+   "end": 48,
+   "valid": true,
+   "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/README.md#L47-L48"
+  },
+  {
+   "n": 5,
+   "path": "README.md",
+   "start": 55,
+   "end": 55,
+   "valid": true,
+   "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/README.md#L55"
+  },
+  {
+   "n": 6,
+   "path": "README.md",
+   "start": 50,
+   "end": 51,
+   "valid": true,
+   "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/README.md#L50-L51"
+  },
+  {
+   "n": 7,
+   "path": "README.md",
+   "start": 54,
+   "end": 54,
+   "valid": true,
+   "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/README.md#L54"
+  },
+  {
+   "n": 8,
+   "path": "README.md",
+   "start": 45,
+   "end": 45,
+   "valid": true,
+   "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/README.md#L45"
+  },
+  {
+   "n": 9,
+   "path": "README.md",
+   "start": 52,
+   "end": 53,
+   "valid": true,
+   "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/README.md#L52-L53"
+  },
+  {
+   "n": 10,
+   "path": "README.md",
+   "start": 56,
+   "end": 56,
+   "valid": true,
+   "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/README.md#L56"
+  },
+  {
+   "n": 11,
+   "path": "src/requests/adapters.py",
+   "start": 168,
+   "end": 174,
+   "valid": true,
+   "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/adapters.py#L168-L174"
+  },
+  {
+   "n": 12,
+   "path": "src/requests/__init__.py",
+   "start": 150,
+   "end": 150,
+   "valid": true,
+   "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/__init__.py#L150"
+  },
+  {
+   "n": 13,
+   "path": "src/requests/adapters.py",
+   "start": 159,
+   "end": 159,
+   "valid": true,
+   "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/adapters.py#L159"
+  }
+ ],
+ "stats": {
+  "markers": 8,
+  "attempted": 8,
+  "valid": 13,
+  "unverified": 0
+ },
+ "blocks": [
+  "README.md:1-28",
+  "README.md:40-56",
+  "src/requests/__init__.py:1-39",
+  "src/requests/__init__.py:149-186",
+  "src/requests/__init__.py:216-219",
+  "src/requests/adapters.py:158-199"
+ ],
+ "context": [
+  {
+   "path": "README.md",
+   "start": 1,
+   "end": 28,
+   "content": "# Requests\n\n[![Version](https://img.shields.io/pypi/v/requests.svg?maxAge=86400)](https://pypi.org/project/requests/)\n[![Supported Versions](https://img.shields.io/pypi/pyversions/requests.svg)](https://pypi.org/project/requests)\n[![Downloads](https://static.pepy.tech/badge/requests/month)](https://pepy.tech/project/requests)\n[![Contributors](https://img.shields.io/github/contributors/psf/requests.svg)](https://github.com/psf/requests/graphs/contributors)\n[![Documentation](https://readthedocs.org/projects/requests/badge/?version=latest)](https://requests.readthedocs.io)\n\n**Requests** is a simple, yet elegant, HTTP library.\n\n```python\n>>> import requests\n>>> r = requests.get('https://httpbin.org/basic-auth/user/pass', auth=('user', 'pass'))\n>>> r.status_code\n200\n>>> r.headers['content-type']\n'application/json; charset=utf8'\n>>> r.encoding\n'utf-8'\n>>> r.text\n'{\"authenticated\": true, ...'\n>>> r.json()\n{'authenticated': True, ...}\n```\n\nRequests allows you to send HTTP/1.1 requests extremely easily. There’s no need to manually add query strings to your URLs, or to form-encode your `PUT` & `POST` data — but nowadays, just use the `json` method!\n\nRequests is one of the most downloaded Python packages today, pulling in around `300M downloads / week` — according to GitHub, Requests is currently [depended upon](https://github.com/psf/requests/network/dependents?package_id=UGFja2FnZS01NzA4OTExNg%3D%3D) by `4,000,000+` repositories."
+  },
+  {
+   "path": "README.md",
+   "start": 40,
+   "end": 56,
+   "content": "## Supported Features & Best–Practices\n\nRequests is ready for the demands of building robust and reliable HTTP–speaking applications, for the needs of today.\n\n- Keep-Alive & Connection Pooling\n- International Domains and URLs\n- Sessions with Cookie Persistence\n- Browser-style TLS/SSL Verification\n- Basic & Digest Authentication\n- Familiar `dict`–like Cookies\n- Automatic Content Decompression and Decoding\n- Multi-part File Uploads\n- SOCKS Proxy Support\n- Connection Timeouts\n- Streaming Downloads\n- Automatic honoring of `.netrc`\n- Chunked HTTP Requests"
+  },
+  {
+   "path": "src/requests/__init__.py",
+   "start": 1,
+   "end": 39,
+   "content": "#   __\n#  /__)  _  _     _   _ _/   _\n# / (   (- (/ (/ (- _)  /  _)\n#          /\n\n\"\"\"\nRequests HTTP Library\n~~~~~~~~~~~~~~~~~~~~~\n\nRequests is an HTTP library, written in Python, for human beings.\nBasic GET usage:\n\n   >>> import requests\n   >>> r = requests.get('https://www.python.org')\n   >>> r.status_code\n   200\n   >>> b'Python is a programming language' in r.content\n   True\n\n... or POST:\n\n   >>> payload = dict(key1='value1', key2='value2')\n   >>> r = requests.post('https://httpbin.org/post', data=payload)\n   >>> print(r.text)\n   {\n     ...\n     \"form\": {\n       \"key1\": \"value1\",\n       \"key2\": \"value2\"\n     },\n     ...\n   }\n\nThe other HTTP methods are supported - see `requests.api`. Full documentation\nis at <https://requests.readthedocs.io>.\n\n:copyright: (c) 2017 by Kenneth Reitz.\n:license: Apache 2.0, see LICENSE for more details.\n\"\"\""
+  },
+  {
+   "path": "src/requests/__init__.py",
+   "start": 149,
+   "end": 186,
+   "content": "# urllib3's DependencyWarnings should be silenced.\nfrom urllib3.exceptions import DependencyWarning\n\nwarnings.simplefilter(\"ignore\", DependencyWarning)\n\n# Set default logging handler to avoid \"No handler found\" warnings.\nimport logging\nfrom logging import NullHandler\n\nfrom . import packages, utils\nfrom .__version__ import (\n    __author__,\n    __author_email__,\n    __build__,\n    __cake__,\n    __copyright__,\n    __description__,\n    __license__,\n    __title__,\n    __url__,\n    __version__,\n)\nfrom .api import delete, get, head, options, patch, post, put, request\nfrom .exceptions import (\n    ConnectionError,\n    ConnectTimeout,\n    FileModeWarning,\n    HTTPError,\n    JSONDecodeError,\n    ReadTimeout,\n    RequestException,\n    Timeout,\n    TooManyRedirects,\n    URLRequired,\n)\nfrom .models import PreparedRequest, Request, Response\nfrom .sessions import Session, session\nfrom .status_codes import codes"
+  },
+  {
+   "path": "src/requests/__init__.py",
+   "start": 216,
+   "end": 219,
+   "content": "logging.getLogger(__name__).addHandler(NullHandler())\n\n# FileModeWarnings go off per the default.\nwarnings.simplefilter(\"default\", FileModeWarning, append=True)"
+  },
+  {
+   "path": "src/requests/adapters.py",
+   "start": 158,
+   "end": 199,
+   "content": "class HTTPAdapter(BaseAdapter):\n    \"\"\"The built-in HTTP Adapter for urllib3.\n\n    Provides a general-case interface for Requests sessions to contact HTTP and\n    HTTPS urls by implementing the Transport Adapter interface. This class will\n    usually be created by the :class:`Session <Session>` class under the\n    covers.\n\n    :param pool_connections: The number of urllib3 connection pools to cache.\n    :param pool_maxsize: The maximum number of connections to save in the pool.\n    :param max_retries: The maximum number of retries each connection\n        should attempt. Note, this applies only to failed DNS lookups, socket\n        connections and connection timeouts, never to requests where data has\n        made it to the server. By default, Requests does not retry failed\n        connections. If you need granular control over the conditions under\n        which we retry a request, import urllib3's ``Retry`` class and pass\n        that instead.\n    :param pool_block: Whether the connection pool should block for connections.\n\n    Usage::\n\n      >>> import requests\n      >>> s = requests.Session()\n      >>> a = requests.adapters.HTTPAdapter(max_retries=3)\n      >>> s.mount('http://', a)\n    \"\"\"\n\n    __attrs__: list[str] = [\n        \"max_retries\",\n        \"config\",\n        \"_pool_connections\",\n        \"_pool_maxsize\",\n        \"_pool_block\",\n    ]\n\n    max_retries: Retry\n    config: dict[str, Any]\n    proxy_manager: dict[str, Any]\n    _pool_connections: int\n    _pool_maxsize: int\n    _pool_block: bool\n    poolmanager: _PoolManager"
+  }
+ ],
+ "outlines": [
+  {
+   "path": "src/requests/adapters.py",
+   "name": "HTTPAdapter",
+   "members": [
+    "__init__",
+    "__getstate__",
+    "__setstate__",
+    "init_poolmanager",
+    "proxy_manager_for",
+    "cert_verify",
+    "build_response",
+    "build_connection_pool_key_attributes",
+    "get_connection_with_tls_context",
+    "get_connection",
+    "close",
+    "request_url",
+    "add_headers",
+    "proxy_headers",
+    "send"
+   ]
+  }
+ ],
+ "dropped": [
+  [
+   "src/requests/adapters.py:599-611",
+   "budget"
+  ],
+  [
+   "src/requests/__init__.py:188-214",
+   "budget"
+  ],
+  [
+   "src/requests/adapters.py:1-37",
+   "budget"
+  ],
+  [
+   "src/requests/sessions.py:1-45",
+   "budget"
+  ],
+  [
+   "src/requests/api.py:1-21",
+   "budget"
+  ],
+  [
+   "src/requests/adapters.py:695-748",
+   "budget"
+  ],
+  [
+   "src/requests/sessions.py:557-575",
+   "budget"
+  ],
+  [
+   "src/requests/adapters.py:365-401",
+   "budget"
+  ]
+ ],
+ "context_estimate": 1998,
+ "model": "qwen/qwen3.8-27b",
+ "prompt_version": 3,
+ "usage": {
+  "queue_time": 0.004273652,
+  "prompt_tokens": 2727,
+  "prompt_time": 0.22893423,
+  "completion_tokens": 374,
+  "completion_time": 0.733865161,
+  "total_tokens": 3101,
+  "total_time": 0.962799391
+ },
+ "headers": {
+  "x-ratelimit-limit-requests": "1000",
+  "x-ratelimit-remaining-requests": "994",
+  "x-ratelimit-reset-requests": "8m38.4s",
+  "x-ratelimit-limit-tokens": "8000",
+  "x-ratelimit-remaining-tokens": "4979",
+  "x-ratelimit-reset-tokens": "22.657s"
+ },
+ "reasoning_chars": 0,
+ "timings_s": {
+  "retrieve": 1.76,
+  "llm": 1.49
+ },
+ "retries": 0
+}

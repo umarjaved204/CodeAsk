@@ -1,0 +1,175 @@
+{
+ "question_id": "q4",
+ "question": "How does a `Session` keep cookies between requests?",
+ "generated_at": "2026-11-12T20:30:01+00:00",
+ "grounded": true,
+ "possibly_relevant": [],
+ "answer": "A `Session` keeps cookies between requests by maintaining a persistent cookie jar instance.\n\nIn `__init__`, the session creates `self.cookies` using `cookiejar_from_dict({})`, which defaults to a `RequestsCookieJar` (a `cookielib.CookieJar` compatible object) [1](cite:1). This jar is listed in `__attrs__` so it is preserved during pickling via `__getstate__` and `__setstate__` [2](cite:2) [3](cite:3).\n\nThe jar is populated and updated during request/response cycles using the imported helpers `extract_cookies_to_jar` and `merge_cookies` [4](cite:4). Because the same `Session` object (and thus the same `self.cookies` jar) is reused across calls to `get`, `post`, etc., cookies set by previous responses remain available for subsequent requests. The `Session` class docstring explicitly states it \"Provides cookie persistence\" [5](cite:5).\n\nNote: The specific code inside `send`/`request` that calls `extract_cookies_to_jar` and `merge_cookies` is not shown in the provided file blocks, so the exact call sites are not visible here.",
+ "raw_answer": "A `Session` keeps cookies between requests by maintaining a persistent cookie jar instance.\n\nIn `__init__`, the session creates `self.cookies` using `cookiejar_from_dict({})`, which defaults to a `RequestsCookieJar` (a `cookielib.CookieJar` compatible object) [src/requests/sessions.py:494-498]. This jar is listed in `__attrs__` so it is preserved during pickling via `__getstate__` and `__setstate__` [src/requests/sessions.py:427-440, 899-905].\n\nThe jar is populated and updated during request/response cycles using the imported helpers `extract_cookies_to_jar` and `merge_cookies` [src/requests/sessions.py:24-29]. Because the same `Session` object (and thus the same `self.cookies` jar) is reused across calls to `get`, `post`, etc., cookies set by previous responses remain available for subsequent requests. The `Session` class docstring explicitly states it \"Provides cookie persistence\" [src/requests/sessions.py:395-398].\n\nNote: The specific code inside `send`/`request` that calls `extract_cookies_to_jar` and `merge_cookies` is not shown in the provided file blocks, so the exact call sites are not visible here.",
+ "citations": [
+  {
+   "n": 1,
+   "path": "src/requests/sessions.py",
+   "start": 494,
+   "end": 498,
+   "valid": true,
+   "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/sessions.py#L494-L498"
+  },
+  {
+   "n": 2,
+   "path": "src/requests/sessions.py",
+   "start": 427,
+   "end": 440,
+   "valid": true,
+   "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/sessions.py#L427-L440"
+  },
+  {
+   "n": 3,
+   "path": "src/requests/sessions.py",
+   "start": 899,
+   "end": 905,
+   "valid": true,
+   "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/sessions.py#L899-L905"
+  },
+  {
+   "n": 4,
+   "path": "src/requests/sessions.py",
+   "start": 24,
+   "end": 29,
+   "valid": true,
+   "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/sessions.py#L24-L29"
+  },
+  {
+   "n": 5,
+   "path": "src/requests/sessions.py",
+   "start": 395,
+   "end": 398,
+   "valid": true,
+   "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/sessions.py#L395-L398"
+  }
+ ],
+ "stats": {
+  "markers": 4,
+  "attempted": 4,
+  "valid": 5,
+  "unverified": 0
+ },
+ "blocks": [
+  "src/requests/sessions.py:1-45",
+  "src/requests/sessions.py:395-509",
+  "src/requests/sessions.py:899-905"
+ ],
+ "context": [
+  {
+   "path": "src/requests/sessions.py",
+   "start": 1,
+   "end": 45,
+   "content": "\"\"\"\nrequests.sessions\n~~~~~~~~~~~~~~~~~\n\nThis module provides a Session object to manage and persist settings across\nrequests (cookies, auth, proxies).\n\"\"\"\n\nfrom __future__ import annotations\n\nimport os\nimport sys\nimport time\nfrom collections import OrderedDict\nfrom collections.abc import Generator, Mapping, MutableMapping\nfrom datetime import timedelta\nfrom typing import TYPE_CHECKING, Any, cast\n\nfrom ._internal_utils import to_native_string\nfrom ._types import is_prepared as _is_prepared\nfrom .adapters import HTTPAdapter\nfrom .auth import _basic_auth_str\nfrom .compat import cookielib, urljoin, urlparse\nfrom .cookies import (\n    RequestsCookieJar,\n    cookiejar_from_dict,\n    extract_cookies_to_jar,\n    merge_cookies,\n)\nfrom .exceptions import (\n    ChunkedEncodingError,\n    ContentDecodingError,\n    InvalidSchema,\n    TooManyRedirects,\n)\nfrom .hooks import default_hooks, dispatch_hook\n\n# formerly defined here, reexposed here for backward compatibility\nfrom .models import (  # noqa: F401\n    DEFAULT_REDIRECT_LIMIT,\n    REDIRECT_STATI,\n    PreparedRequest,\n    Request,\n    Response,\n)"
+  },
+  {
+   "path": "src/requests/sessions.py",
+   "start": 395,
+   "end": 509,
+   "content": "class Session(SessionRedirectMixin):\n    \"\"\"A Requests session.\n\n    Provides cookie persistence, connection-pooling, and configuration.\n\n    Basic Usage::\n\n      >>> import requests\n      >>> s = requests.Session()\n      >>> s.get('https://httpbin.org/get')\n      <Response [200]>\n\n    Or as a context manager::\n\n      >>> with requests.Session() as s:\n      ...     s.get('https://httpbin.org/get')\n      <Response [200]>\n    \"\"\"\n\n    headers: CaseInsensitiveDict[str]\n    auth: _t.AuthType\n    proxies: dict[str, str]\n    hooks: dict[str, list[_t.HookType]]\n    params: MutableMapping[str, Any]\n    stream: bool\n    verify: _t.VerifyType\n    cert: _t.CertType\n    max_redirects: int\n    trust_env: bool\n    cookies: RequestsCookieJar\n    adapters: MutableMapping[str, BaseAdapter]\n\n    __attrs__: list[str] = [\n        \"headers\",\n        \"cookies\",\n        \"auth\",\n        \"proxies\",\n        \"hooks\",\n        \"params\",\n        \"verify\",\n        \"cert\",\n        \"adapters\",\n        \"stream\",\n        \"trust_env\",\n        \"max_redirects\",\n    ]\n\n    def __init__(self) -> None:\n        #: A case-insensitive dictionary of headers to be sent on each\n        #: :class:`Request <Request>` sent from this\n        #: :class:`Session <Session>`.\n        self.headers = default_headers()\n\n        #: Default Authentication tuple or object to attach to\n        #: :class:`Request <Request>`.\n        self.auth = None\n\n        #: Dictionary mapping protocol or protocol and host to the URL of the proxy\n        #: (e.g. {'http': 'foo.bar:3128', 'http://host.name': 'foo.bar:4012'}) to\n        #: be used on each :class:`Request <Request>`.\n        self.proxies = {}\n\n        #: Event-handling hooks.\n        self.hooks = default_hooks()\n\n        #: Dictionary of querystring data to attach to each\n        #: :class:`Request <Request>`. The dictionary values may be lists for\n        #: representing multivalued query parameters.\n        self.params = {}\n\n        #: Stream response content default.\n        self.stream = False\n\n        #: SSL Verification default.\n        #: Defaults to `True`, requiring requests to verify the TLS certificate at the\n        #: remote end.\n        #: If verify is set to `False`, requests will accept any TLS certificate\n        #: presented by the server, and will ignore hostname mismatches and/or\n        #: expired certificates, which will make your application vulnerable to\n        #: man-in-the-middle (MitM) attacks.\n        #: Only set this to `False` for testing.\n        #: If verify is set to a string, it must be the path to a CA bundle file\n        #: that will be used to verify the TLS certificate.\n        self.verify = True\n\n        #: SSL client certificate default, if String, path to ssl client\n        #: cert file (.pem). If Tuple, ('cert', 'key') pair.\n        self.cert = None\n\n        #: Maximum number of redirects allowed. If the request exceeds this\n        #: limit, a :class:`TooManyRedirects` exception is raised.\n        #: This defaults to requests.models.DEFAULT_REDIRECT_LIMIT, which is\n        #: 30.\n        self.max_redirects = DEFAULT_REDIRECT_LIMIT\n\n        #: Trust environment settings for proxy configuration, default\n        #: authentication and similar.\n        self.trust_env = True\n\n        #: A CookieJar containing all currently outstanding cookies set on this\n        #: session. By default it is a\n        #: :class:`RequestsCookieJar <requests.cookies.RequestsCookieJar>`, but\n        #: may be any other ``cookielib.CookieJar`` compatible object.\n        self.cookies = cookiejar_from_dict({})\n\n        # Default connection adapters.\n        self.adapters = OrderedDict()\n        self.mount(\"https://\", HTTPAdapter())\n        self.mount(\"http://\", HTTPAdapter())\n\n    def __enter__(self) -> Self:\n        return self\n\n    def __exit__(self, *args: Any) -> None:\n        self.close()"
+  },
+  {
+   "path": "src/requests/sessions.py",
+   "start": 899,
+   "end": 905,
+   "content": "    def __getstate__(self) -> dict[str, Any]:\n        state = {attr: getattr(self, attr, None) for attr in self.__attrs__}\n        return state\n\n    def __setstate__(self, state: dict[str, Any]) -> None:\n        for attr, value in state.items():\n            setattr(self, attr, value)"
+  }
+ ],
+ "outlines": [
+  {
+   "path": "src/requests/sessions.py",
+   "name": "Session",
+   "members": [
+    "__init__",
+    "__enter__, __exit__",
+    "prepare_request",
+    "request",
+    "get",
+    "options",
+    "head",
+    "post",
+    "put",
+    "patch",
+    "delete",
+    "send",
+    "merge_environment_settings",
+    "get_adapter",
+    "close",
+    "mount",
+    "__getstate__, __setstate__"
+   ]
+  }
+ ],
+ "dropped": [
+  [
+   "src/requests/sessions.py:127-130",
+   "budget"
+  ],
+  [
+   "src/requests/cookies.py:191-209",
+   "budget"
+  ],
+  [
+   "src/requests/cookies.py:461-465",
+   "budget"
+  ],
+  [
+   "src/requests/sessions.py:263-307",
+   "budget"
+  ],
+  [
+   "README.md:40-56",
+   "budget"
+  ],
+  [
+   "src/requests/cookies.py:454-459",
+   "budget"
+  ],
+  [
+   "src/requests/sessions.py:61-73",
+   "budget"
+  ],
+  [
+   "src/requests/sessions.py:557-575",
+   "budget"
+  ],
+  [
+   "src/requests/models.py:699-720",
+   "budget"
+  ],
+  [
+   "src/requests/cookies.py:467-476",
+   "budget"
+  ]
+ ],
+ "context_estimate": 1996,
+ "model": "qwen/qwen3.8-27b",
+ "prompt_version": 3,
+ "usage": {
+  "queue_time": 0.005089025,
+  "prompt_tokens": 2450,
+  "prompt_time": 0.207850773,
+  "completion_tokens": 294,
+  "completion_time": 0.65224466,
+  "total_tokens": 2744,
+  "total_time": 0.860095433
+ },
+ "headers": {
+  "x-ratelimit-limit-requests": "1000",
+  "x-ratelimit-remaining-requests": "996",
+  "x-ratelimit-reset-requests": "5m45.6s",
+  "x-ratelimit-limit-tokens": "8000",
+  "x-ratelimit-remaining-tokens": "4950",
+  "x-ratelimit-reset-tokens": "22.875s"
+ },
+ "reasoning_chars": 0,
+ "timings_s": {
+  "retrieve": 1.53,
+  "llm": 1.28
+ },
+ "retries": 0
+}

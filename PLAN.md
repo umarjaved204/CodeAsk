@@ -1279,6 +1279,34 @@ config gains a pinned SHA per repo, and the drift guard compares slug and SHA (Q
       - **First-load re-measure (the step 8 rule; itsdangerous is the set that ships with the
         page):** 227.1 kB gzip, **+10.3 kB** over the 216.8 kB baseline. The set's own chunk
         grew 3.6 -> 12.8 kB. That's under the 30 kB limit, so the set stays a static import.
+    - **2026-11-12, requests:**
+      - `generate` answered q1-q6 in one run: all grounded, 0 unverified citations, 17,968
+        tokens, no errors. `verify`: 6/6 ok at `3c7baaa`.
+      - **Grades** (Claude's drafts; the author spot-checked all six, failures included):
+        - q1 passes: incomplete, minor unsupported, material omission, so not flagship.
+        - q2 passes and is the flagship.
+        - q3 passes.
+        - q4, q5 and q6 fail. q1-q3 flipped to `reviewer: "author"`; q4-q6 carry the author's
+          ruling and moved to `eval/results/m2d_failures/psf__requests/`.
+      - **q4:** a load-bearing unsupported claim. By the deletion test, only "a session holds a
+        cookie jar" remains, which doesn't say how.
+      - **q5:** an incorrect claim. "apparent_encoding uses chardet, utf-8 if chardet is
+        missing", but the detector is chardet or charset_normalizer (`compat.py` 36-45).
+      - **q6:** an incorrect claim. Connection pooling is presented as an addition on top of
+        urllib3, while the adapter docstring in its context names urllib3's pools.
+      - **Stop rule:** failures 3 of N = 6, so it fires at the next one.
+      - **Amendment, committed before r1 runs:** q4-q6 to `failed`; r1 promoted alone into
+        q4's slot (order q1, q2, q3, r1). r2 is promoted only if r1 passes. If r1 fails, that is
+        the 4th failure, the stop rule fires, and r2 is not generated (Q50: classify bug vs
+        tuning first).
+      - **Pattern for M3:** q1 and q4 are retrieval misses, predicted at step 3 (the
+        `Session.send`, `api.request` and `prepare_request` chunks were never in the top 15).
+        q5 and q6 are generation misreads (a variable named `chardet` read as the library; a
+        feature list read as additions). No prompt or retrieval tuning now (Q50: tuning goes to
+        M3).
+      - **Label check (author's question):** Q37's "Checked by the author." doesn't say what was
+        checked, so it can be read as "complete". requests q1 passes as incomplete. A rewording
+        is proposed for the author.
 
 ### [ ] Slice 6 (M2e): deploy
 **Gate from slice 4 (Q44):** before going public, compare the client IP the API sees with my

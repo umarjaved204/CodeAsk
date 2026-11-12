@@ -1,0 +1,188 @@
+{
+ "question": "How does it decide whether to keep or strip credentials when a redirect goes to another host?",
+ "repo": "psf/requests",
+ "repo_url": "https://github.com/psf/requests",
+ "commit_sha": "3c7baaa05ab4aa49cc819ce3a819d260de19c157",
+ "generated_at": "2026-11-12T20:28:55+00:00",
+ "model": "qwen/qwen3.8-27b",
+ "prompt_version": 3,
+ "generation": {
+  "temperature": 0,
+  "max_completion_tokens": 600,
+  "model_options": {
+   "reasoning_effort": "none"
+  }
+ },
+ "packer": {
+  "retrieve_k": 15,
+  "budget": 2000,
+  "per_file_cap": null,
+  "merge_max_gap_lines": 5
+ },
+ "usage": {
+  "queue_time": 0.004264888,
+  "prompt_tokens": 2573,
+  "prompt_time": 0.19418627,
+  "completion_tokens": 342,
+  "completion_time": 0.699807931,
+  "total_tokens": 2915,
+  "total_time": 0.893994201
+ },
+ "retries_429": 0,
+ "attempt": 1,
+ "attempt_note": null,
+ "grade": {
+  "correct": "correct",
+  "grounded": "yes",
+  "citations_valid": "7/7 strict",
+  "unsupported": "none",
+  "omission": "minor",
+  "claims": [
+   {
+    "claim": "rebuild_auth deletes Authorization when it is present and should_strip_auth says so",
+    "verdict": "supported",
+    "blocks": [
+     "sessions.py:324-327"
+    ]
+   },
+   {
+    "claim": "a different hostname strips",
+    "verdict": "supported",
+    "blocks": [
+     "sessions.py:158-159"
+    ],
+    "risky": true
+   },
+   {
+    "claim": "http on 80/default to https on 443/default on the same host keeps",
+    "verdict": "supported",
+    "blocks": [
+     "sessions.py:164-170"
+    ],
+    "risky": true
+   },
+   {
+    "claim": "same scheme with both ports default or None keeps; otherwise a changed port or scheme strips",
+    "verdict": "supported",
+    "blocks": [
+     "sessions.py:176-184"
+    ],
+    "risky": true
+   },
+   {
+    "claim": "with trust_env, .netrc auth for the new URL is applied",
+    "verdict": "supported",
+    "blocks": [
+     "sessions.py:330-332"
+    ]
+   }
+  ],
+  "reviewer": "author",
+  "date": "2026-11-12",
+  "note": "Drafted by Claude (Q51), claim by claim against the cited blocks and the files at 3c7baaa; claims marked risky are the ones for the author's spot-check. Every claim checked against sessions.py 154-184 and 309-332 at 3c7baaa. Minor omission: Proxy-Authorization is handled separately (rebuild_proxies). Spot-checked and agreed by the author on 2026-11-12 (UTC) against the files at 3c7baaa: sessions.py 154-184 (all four branches) and 309-332 (rebuild_auth, netrc)."
+ },
+ "response": {
+  "grounded": true,
+  "answer": "When a redirect occurs, `rebuild_auth` checks whether the `Authorization` header should be removed by calling `should_strip_auth` with the original and new URLs [1](cite:1).\n\nThe `should_strip_auth` method makes the decision as follows:\n\n1. **Different hostnames**: If the old and new URLs have different hostnames, it immediately returns `True`, meaning credentials are stripped [2](cite:2).\n\n2. **HTTP to HTTPS exception**: If the redirect is from `http` (port 80 or default) to `https` (port 443 or default) on the same host, it returns `False`, keeping credentials [3](cite:3).\n\n3. **Default port handling**: If the scheme hasn't changed and both ports are the default for that scheme (or `None`), it returns `False`, keeping credentials [4](cite:4).\n\n4. **Standard case**: Otherwise, it returns `True` if either the port or scheme changed, stripping credentials [5](cite:5).\n\nIf `should_strip_auth` returns `True`, the `Authorization` header is deleted from the request [6](cite:6). Additionally, if `trust_env` is enabled, the method checks `.netrc` for new authentication credentials for the target URL and applies them if found [7](cite:7).",
+  "citations": [
+   {
+    "n": 1,
+    "path": "src/requests/sessions.py",
+    "start": 324,
+    "end": 327,
+    "valid": true,
+    "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/sessions.py#L324-L327",
+    "block": 0
+   },
+   {
+    "n": 2,
+    "path": "src/requests/sessions.py",
+    "start": 158,
+    "end": 159,
+    "valid": true,
+    "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/sessions.py#L158-L159",
+    "block": 1
+   },
+   {
+    "n": 3,
+    "path": "src/requests/sessions.py",
+    "start": 164,
+    "end": 170,
+    "valid": true,
+    "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/sessions.py#L164-L170",
+    "block": 1
+   },
+   {
+    "n": 4,
+    "path": "src/requests/sessions.py",
+    "start": 176,
+    "end": 181,
+    "valid": true,
+    "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/sessions.py#L176-L181",
+    "block": 1
+   },
+   {
+    "n": 5,
+    "path": "src/requests/sessions.py",
+    "start": 184,
+    "end": 184,
+    "valid": true,
+    "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/sessions.py#L184",
+    "block": 1
+   },
+   {
+    "n": 6,
+    "path": "src/requests/sessions.py",
+    "start": 327,
+    "end": 327,
+    "valid": true,
+    "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/sessions.py#L327",
+    "block": 0
+   },
+   {
+    "n": 7,
+    "path": "src/requests/sessions.py",
+    "start": 330,
+    "end": 332,
+    "valid": true,
+    "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/sessions.py#L330-L332",
+    "block": 0
+   }
+  ],
+  "blocks": [
+   {
+    "path": "src/requests/sessions.py",
+    "start": 309,
+    "end": 368,
+    "content": "    def rebuild_auth(\n        self, prepared_request: PreparedRequest, response: Response\n    ) -> None:\n        \"\"\"When being redirected we may want to strip authentication from the\n        request to avoid leaking credentials. This method intelligently removes\n        and reapplies authentication where possible to avoid credential loss.\n        \"\"\"\n        original_request = response.request\n        assert _is_prepared(original_request)\n        assert _is_prepared(prepared_request)\n\n        headers = prepared_request.headers\n        original_url = original_request.url\n        url = prepared_request.url\n\n        if \"Authorization\" in headers and self.should_strip_auth(original_url, url):\n            # If we get redirected to a new host, we should strip out any\n            # authentication headers.\n            del headers[\"Authorization\"]\n\n        # .netrc might have more auth for us on our new host.\n        new_auth = get_netrc_auth(url) if self.trust_env else None\n        if new_auth is not None:\n            prepared_request.prepare_auth(new_auth)\n\n    def rebuild_proxies(\n        self,\n        prepared_request: PreparedRequest,\n        proxies: dict[str, str] | None,\n    ) -> dict[str, str]:\n        \"\"\"This method re-evaluates the proxy configuration by considering the\n        environment variables. If we are redirected to a URL covered by\n        NO_PROXY, we strip the proxy configuration. Otherwise, we set missing\n        proxy keys for this URL (in case they were stripped by a previous\n        redirect).\n\n        This method also replaces the Proxy-Authorization header where\n        necessary.\n\n        :rtype: dict\n        \"\"\"\n        assert _is_prepared(prepared_request)\n        headers = prepared_request.headers\n        scheme = urlparse(prepared_request.url).scheme\n        new_proxies = resolve_proxies(prepared_request, proxies, self.trust_env)\n\n        if \"Proxy-Authorization\" in headers:\n            del headers[\"Proxy-Authorization\"]\n\n        try:\n            username, password = get_auth_from_url(new_proxies[scheme])\n        except KeyError:\n            username, password = None, None\n\n        # urllib3 handles proxy authorization for us in the standard adapter.\n        # Avoid appending this to TLS tunneled requests where it may be leaked.\n        if not scheme.startswith(\"https\") and username and password:\n            headers[\"Proxy-Authorization\"] = _basic_auth_str(username, password)\n\n        return new_proxies"
+   },
+   {
+    "path": "src/requests/sessions.py",
+    "start": 154,
+    "end": 184,
+    "content": "    def should_strip_auth(self, old_url: str, new_url: str) -> bool:\n        \"\"\"Decide whether Authorization header should be removed when redirecting\"\"\"\n        old_parsed = urlparse(old_url)\n        new_parsed = urlparse(new_url)\n        if old_parsed.hostname != new_parsed.hostname:\n            return True\n        # Special case: allow http -> https redirect when using the standard\n        # ports. This isn't specified by RFC 7235, but is kept to avoid\n        # breaking backwards compatibility with older versions of requests\n        # that allowed any redirects on the same host.\n        if (\n            old_parsed.scheme == \"http\"\n            and old_parsed.port in (80, None)\n            and new_parsed.scheme == \"https\"\n            and new_parsed.port in (443, None)\n        ):\n            return False\n\n        # Handle default port usage corresponding to scheme.\n        changed_port = old_parsed.port != new_parsed.port\n        changed_scheme = old_parsed.scheme != new_parsed.scheme\n        default_port = (DEFAULT_PORTS.get(old_parsed.scheme, None), None)\n        if (\n            not changed_scheme\n            and old_parsed.port in default_port\n            and new_parsed.port in default_port\n        ):\n            return False\n\n        # Standard case: root URI must match\n        return changed_port or changed_scheme"
+   }
+  ],
+  "possibly_relevant": [],
+  "model": "qwen/qwen3.8-27b",
+  "prompt_version": 3
+ },
+ "question_id": "q2",
+ "runs": [
+  {
+   "id": "q2",
+   "at": "2026-11-12T20:28:55+00:00",
+   "outcome": "answered",
+   "tokens": 2915,
+   "estimated": false,
+   "error": null
+  }
+ ],
+ "lines_check": {
+  "ok": true,
+  "commit_sha": "3c7baaa05ab4aa49cc819ce3a819d260de19c157",
+  "checked_at": "2026-11-12T20:31:12+00:00",
+  "blocks": 2,
+  "problems": []
+ }
+}

@@ -3,7 +3,9 @@
  "commit_sha": "3c7baaa05ab4aa49cc819ce3a819d260de19c157",
  "about": "Slice 5 (M2d) suggested questions, in index order (the first passing entry that meets the Q48 flagship criteria leads), with expected chunks. Questions proposed by the mentor chat (Claude) from general knowledge before any generated answer existed, selected and accepted by the author (Q48 amendment, 2026-11-12). Expected chunks drafted by Claude on 2026-11-12 from a fresh clone at commit_sha; ranges are whole functions/classes (decorators included), or the statement itself for module-level code, 1-based inclusive. 'required' = an answer can't be complete and grounded without it; 'supporting' = helpful, not used by the Q49 rule. A range counts as packed when every NON-BLANK line of it lies inside the packed blocks after merging (the rule of eval/m2_pack_compare.py; partial overlap does not count). Frozen once confirmed: later changes are amendments with a reason; rewording a question is a replacement (Q48).",
  "confirmed": {"date": "2026-11-12", "by": "author", "spot_checked": ["q2", "q5"], "note": "Author spot-checked these questions' ranges against the files at commit_sha; the mentor reviewed the table's structure and consistency, not the line numbers. Frozen from here: committed before the Q49 packer comparison and before any generation."},
- "amendments": [],
+ "amendments": [
+  {"date": "2026-11-12", "change": "q4, q5 and q6 failed and moved to `failed`; reserve r1 promoted into q4's slot (index order q1, q2, q3, r1); r2 stays a reserve and is promoted only if r1 passes.", "reason": "Q50 replacement 1 of at most 3 for this repo (failures: 3; the stop rule fires at more than N/2 = 3 with N = 6, so a failed r1 stops the repo). Committed before r1 is generated (Q48)."}
+ ],
  "questions": [
   {
    "id": "q1",
@@ -52,6 +54,22 @@
    ]
   },
   {
+   "id": "r1",
+   "question": "How are proxies picked up from environment variables, and when are they bypassed?",
+   "required": [
+    {"path": "src/requests/utils.py", "start": 873, "end": 882, "name": "get_environ_proxies"},
+    {"path": "src/requests/utils.py", "start": 810, "end": 870, "name": "should_bypass_proxies"},
+    {"path": "src/requests/utils.py", "start": 911, "end": 939, "name": "resolve_proxies"}
+   ],
+   "supporting": [
+    {"path": "src/requests/sessions.py", "start": 831, "end": 868, "name": "Session > merge_environment_settings"},
+    {"path": "src/requests/utils.py", "start": 885, "end": 908, "name": "select_proxy"},
+    {"path": "src/requests/sessions.py", "start": 334, "end": 368, "name": "SessionRedirectMixin > rebuild_proxies"}
+   ]
+  }
+ ],
+ "failed": [
+  {
    "id": "q4",
    "question": "How does a `Session` keep cookies between requests?",
    "required": [
@@ -64,7 +82,9 @@
     {"path": "src/requests/cookies.py", "start": 604, "end": 625, "name": "merge_cookies"},
     {"path": "src/requests/models.py", "start": 699, "end": 720, "name": "PreparedRequest > prepare_cookies"},
     {"path": "src/requests/sessions.py", "start": 186, "end": 307, "name": "SessionRedirectMixin > resolve_redirects (cookies on redirects)"}
-   ]
+   ],
+   "attempt": "generated 2026-11-12; the answer and its grade are in eval/results/m2d_failures/psf__requests/q4.json",
+   "reason": "Q50, a load-bearing unsupported claim (the clarification's deletion test): without the sentences citing only the helpers' import, the answer says only that a session holds a cookie jar, not how cookies move between requests. A retrieval miss (prepare_request and send's cookie handling were not retrieved, as predicted at step 3)."
   },
   {
    "id": "q5",
@@ -78,7 +98,9 @@
    "supporting": [
     {"path": "src/requests/utils.py", "start": 547, "end": 566, "name": "_parse_content_type_header"},
     {"path": "src/requests/compat.py", "start": 36, "end": 45, "name": "_resolve_char_detection"}
-   ]
+   ],
+   "attempt": "generated 2026-11-12; the answer and its grade are in eval/results/m2d_failures/psf__requests/q5.json",
+   "reason": "Q50 rule 1, an incorrect claim: apparent_encoding is said to use chardet only and to fall back to utf-8 if chardet is missing; the detector is chardet or charset_normalizer (compat.py 36-45), utf-8 only when neither is installed. A generation error (a misread of the variable name)."
   },
   {
    "id": "q6",
@@ -92,24 +114,12 @@
     {"path": "src/requests/sessions.py", "start": 442, "end": 503, "name": "Session > __init__"},
     {"path": "src/requests/sessions.py", "start": 186, "end": 307, "name": "SessionRedirectMixin > resolve_redirects"},
     {"path": "src/requests/adapters.py", "start": 634, "end": 748, "name": "HTTPAdapter > send"}
-   ]
+   ],
+   "attempt": "generated 2026-11-12; the answer and its grade are in eval/results/m2d_failures/psf__requests/q6.json",
+   "reason": "Q50 rule 1, an incorrect claim: connection pooling is presented as something requests adds on top of urllib3, while the adapter docstring in the context names urllib3's pools. A generation error (a feature list read as additions)."
   }
  ],
  "reserves": [
-  {
-   "id": "r1",
-   "question": "How are proxies picked up from environment variables, and when are they bypassed?",
-   "required": [
-    {"path": "src/requests/utils.py", "start": 873, "end": 882, "name": "get_environ_proxies"},
-    {"path": "src/requests/utils.py", "start": 810, "end": 870, "name": "should_bypass_proxies"},
-    {"path": "src/requests/utils.py", "start": 911, "end": 939, "name": "resolve_proxies"}
-   ],
-   "supporting": [
-    {"path": "src/requests/sessions.py", "start": 831, "end": 868, "name": "Session > merge_environment_settings"},
-    {"path": "src/requests/utils.py", "start": 885, "end": 908, "name": "select_proxy"},
-    {"path": "src/requests/sessions.py", "start": 334, "end": 368, "name": "SessionRedirectMixin > rebuild_proxies"}
-   ]
-  },
   {
    "id": "r2",
    "question": "How does HTTP Digest authentication work in this library?",

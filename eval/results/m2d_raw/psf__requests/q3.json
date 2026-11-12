@@ -1,0 +1,191 @@
+{
+ "question_id": "q3",
+ "question": "How does it decide when to follow a redirect and when to stop?",
+ "generated_at": "2026-11-12T20:28:58+00:00",
+ "grounded": true,
+ "possibly_relevant": [],
+ "answer": "The decision to follow or stop a redirect is made in `SessionRedirectMixin.resolve_redirects` (the loop shown in the file) and relies on two checks:\n\n1. **Is the response a redirect?**\n   The loop continues only while `url` is truthy. `url` is set by `self.get_redirect_target(resp)` at the end of each iteration [1](cite:1). A response is considered a redirect when it has a `Location` header and its status code is in `REDIRECT_STATI` (301, 302, 303, 307, 308), as defined by the `is_redirect` property [2](cite:2) and the `REDIRECT_STATI` tuple [3](cite:3). If `get_redirect_target` returns `None` (no `Location` header or non-redirect status), the `while url:` loop exits.\n\n2. **Have we exceeded the redirect limit?**\n   Before following a redirect, the code checks `if len(resp.history) >= self.max_redirects` and raises `TooManyRedirects` if so [4](cite:4). `max_redirects` is a session attribute [5](cite:5).\n\nAdditionally, the method may be changed during redirection (e.g., 303 or 302 responses convert non-HEAD requests to GET; 301 converts POST to GET) via `rebuild_method` [6](cite:6), and for 307/308 redirects the request body and content headers are preserved rather than purged [7](cite:7).",
+ "raw_answer": "The decision to follow or stop a redirect is made in `SessionRedirectMixin.resolve_redirects` (the loop shown in the file) and relies on two checks:\n\n1. **Is the response a redirect?**\n   The loop continues only while `url` is truthy. `url` is set by `self.get_redirect_target(resp)` at the end of each iteration [src/requests/sessions.py:306]. A response is considered a redirect when it has a `Location` header and its status code is in `REDIRECT_STATI` (301, 302, 303, 307, 308), as defined by the `is_redirect` property [src/requests/models.py:876-881] and the `REDIRECT_STATI` tuple [src/requests/models.py:93-101]. If `get_redirect_target` returns `None` (no `Location` header or non-redirect status), the `while url:` loop exits.\n\n2. **Have we exceeded the redirect limit?**\n   Before following a redirect, the code checks `if len(resp.history) >= self.max_redirects` and raises `TooManyRedirects` if so [src/requests/sessions.py:216-219]. `max_redirects` is a session attribute [src/requests/sessions.py:128].\n\nAdditionally, the method may be changed during redirection (e.g., 303 or 302 responses convert non-HEAD requests to GET; 301 converts POST to GET) via `rebuild_method` [src/requests/sessions.py:370-392], and for 307/308 redirects the request body and content headers are preserved rather than purged [src/requests/sessions.py:250-258].",
+ "citations": [
+  {
+   "n": 1,
+   "path": "src/requests/sessions.py",
+   "start": 306,
+   "end": 306,
+   "valid": true,
+   "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/sessions.py#L306"
+  },
+  {
+   "n": 2,
+   "path": "src/requests/models.py",
+   "start": 876,
+   "end": 881,
+   "valid": true,
+   "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/models.py#L876-L881"
+  },
+  {
+   "n": 3,
+   "path": "src/requests/models.py",
+   "start": 93,
+   "end": 101,
+   "valid": true,
+   "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/models.py#L93-L101"
+  },
+  {
+   "n": 4,
+   "path": "src/requests/sessions.py",
+   "start": 216,
+   "end": 219,
+   "valid": true,
+   "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/sessions.py#L216-L219"
+  },
+  {
+   "n": 5,
+   "path": "src/requests/sessions.py",
+   "start": 128,
+   "end": 128,
+   "valid": true,
+   "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/sessions.py#L128"
+  },
+  {
+   "n": 6,
+   "path": "src/requests/sessions.py",
+   "start": 370,
+   "end": 392,
+   "valid": true,
+   "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/sessions.py#L370-L392"
+  },
+  {
+   "n": 7,
+   "path": "src/requests/sessions.py",
+   "start": 250,
+   "end": 258,
+   "valid": true,
+   "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/sessions.py#L250-L258"
+  }
+ ],
+ "stats": {
+  "markers": 7,
+  "attempted": 7,
+  "valid": 7,
+  "unverified": 0
+ },
+ "blocks": [
+  "src/requests/sessions.py:127-130",
+  "src/requests/sessions.py:204-307",
+  "src/requests/sessions.py:370-392",
+  "src/requests/models.py:93-101",
+  "src/requests/models.py:876-881"
+ ],
+ "context": [
+  {
+   "path": "src/requests/sessions.py",
+   "start": 127,
+   "end": 130,
+   "content": "class SessionRedirectMixin:\n    max_redirects: int\n    trust_env: bool\n    cookies: RequestsCookieJar"
+  },
+  {
+   "path": "src/requests/sessions.py",
+   "start": 204,
+   "end": 307,
+   "content": "        while url:\n            prepared_request = req.copy()\n\n            # Update history and keep track of redirects.\n            resp.history = hist[:]\n            hist.append(resp)\n\n            try:\n                resp.content  # Consume socket so it can be released\n            except (ChunkedEncodingError, ContentDecodingError, RuntimeError):\n                resp.raw.read(decode_content=False)\n\n            if len(resp.history) >= self.max_redirects:\n                raise TooManyRedirects(\n                    f\"Exceeded {self.max_redirects} redirects.\", response=resp\n                )\n\n            # Release the connection back into the pool.\n            resp.close()\n\n            # Handle redirection without scheme (see: RFC 1808 Section 4)\n            if url.startswith(\"//\"):\n                parsed_rurl = urlparse(resp.url)\n                url = \":\".join([to_native_string(parsed_rurl.scheme), url])\n\n            # Normalize url case and attach previous fragment if needed (RFC 7231 7.1.2)\n            parsed = urlparse(url)\n            if parsed.fragment == \"\" and previous_fragment:\n                parsed = parsed._replace(fragment=previous_fragment)\n            elif parsed.fragment:\n                previous_fragment = parsed.fragment\n            url = parsed.geturl()\n\n            # Facilitate relative 'location' headers, as allowed by RFC 7231.\n            # (e.g. '/path/to/resource' instead of 'http://domain.tld/path/to/resource')\n            # Compliant with RFC3986, we percent encode the url.\n            if not parsed.netloc:\n                url = urljoin(resp.url, requote_uri(url))\n            else:\n                url = requote_uri(url)\n\n            prepared_request.url = to_native_string(url)\n\n            self.rebuild_method(prepared_request, resp)\n\n            # https://github.com/psf/requests/issues/1084\n            if resp.status_code not in (\n                codes.temporary_redirect,\n                codes.permanent_redirect,\n            ):\n                # https://github.com/psf/requests/issues/3490\n                purged_headers = (\"Content-Length\", \"Content-Type\", \"Transfer-Encoding\")\n                for header in purged_headers:\n                    prepared_request.headers.pop(header, None)\n                prepared_request.body = None\n\n            headers = prepared_request.headers\n            headers.pop(\"Cookie\", None)\n\n            # Extract any cookies sent on the response to the cookiejar\n            # in the new request. Because we've mutated our copied prepared\n            # request, use the old one that we haven't yet touched.\n            cookie_jar = cast(\"CookieJar\", prepared_request._cookies)\n            extract_cookies_to_jar(cookie_jar, req, resp.raw)\n            merge_cookies(cookie_jar, self.cookies)\n            prepared_request.prepare_cookies(cookie_jar)\n\n            # Rebuild auth and proxy information.\n            proxies = self.rebuild_proxies(prepared_request, proxies)\n            self.rebuild_auth(prepared_request, resp)\n\n            # A failed tell() sets `_body_position` to `object()`. This non-None\n            # value ensures `rewindable` will be True, allowing us to raise an\n            # UnrewindableBodyError, instead of hanging the connection.\n            rewindable = prepared_request._body_position is not None and (\n                \"Content-Length\" in headers or \"Transfer-Encoding\" in headers\n            )\n\n            # Attempt to rewind consumed file-like object.\n            if rewindable:\n                rewind_body(prepared_request)\n\n            # Override the original request.\n            req = prepared_request\n\n            if yield_requests:\n                yield req  # type: ignore[misc]  # Internal use only, returns PreparedRequest\n            else:\n                resp = self.send(\n                    req,\n                    stream=stream,\n                    timeout=timeout,\n                    verify=verify,\n                    cert=cert,\n                    proxies=proxies,\n                    allow_redirects=False,\n                    **adapter_kwargs,\n                )\n\n                extract_cookies_to_jar(self.cookies, prepared_request, resp.raw)\n\n                # extract redirect url, if any, for the next loop\n                url = self.get_redirect_target(resp)\n                yield resp"
+  },
+  {
+   "path": "src/requests/sessions.py",
+   "start": 370,
+   "end": 392,
+   "content": "    def rebuild_method(\n        self, prepared_request: PreparedRequest, response: Response\n    ) -> None:\n        \"\"\"When being redirected we may want to change the method of the request\n        based on certain specs or browser behavior.\n        \"\"\"\n        method = prepared_request.method\n\n        # https://tools.ietf.org/html/rfc7231#section-6.4.4\n        if response.status_code == codes.see_other and method != \"HEAD\":\n            method = \"GET\"\n\n        # Do what the browsers do, despite standards...\n        # First, turn 302s into GETs.\n        if response.status_code == codes.found and method != \"HEAD\":\n            method = \"GET\"\n\n        # Second, if a POST is responded to with a 301, turn it into a GET.\n        # This bizarre behaviour is explained in Issue 1704.\n        if response.status_code == codes.moved and method == \"POST\":\n            method = \"GET\"\n\n        prepared_request.method = method"
+  },
+  {
+   "path": "src/requests/models.py",
+   "start": 93,
+   "end": 101,
+   "content": "#: The set of HTTP status codes that indicate an automatically\n#: processable redirect.\nREDIRECT_STATI: Final[tuple[int, ...]] = (  # type: ignore[assignment]\n    codes.moved,  # 301\n    codes.found,  # 302\n    codes.other,  # 303\n    codes.temporary_redirect,  # 307\n    codes.permanent_redirect,  # 308\n)"
+  },
+  {
+   "path": "src/requests/models.py",
+   "start": 876,
+   "end": 881,
+   "content": "    @property\n    def is_redirect(self) -> bool:\n        \"\"\"True if this Response is a well-formed HTTP redirect that could have\n        been processed automatically (by :meth:`Session.resolve_redirects`).\n        \"\"\"\n        return \"location\" in self.headers and self.status_code in REDIRECT_STATI"
+  }
+ ],
+ "outlines": [
+  {
+   "path": "src/requests/sessions.py",
+   "name": "SessionRedirectMixin",
+   "members": [
+    "send",
+    "get_redirect_target",
+    "should_strip_auth",
+    "resolve_redirects",
+    "rebuild_auth",
+    "rebuild_proxies",
+    "rebuild_method"
+   ]
+  }
+ ],
+ "dropped": [
+  [
+   "src/requests/sessions.py:186-203",
+   "budget"
+  ],
+  [
+   "src/requests/sessions.py:134-152",
+   "budget"
+  ],
+  [
+   "src/requests/auth.py:268-271",
+   "budget"
+  ],
+  [
+   "src/requests/sessions.py:154-184",
+   "budget"
+  ],
+  [
+   "src/requests/sessions.py:309-332",
+   "budget"
+  ],
+  [
+   "src/requests/models.py:883-889",
+   "budget"
+  ],
+  [
+   "src/requests/sessions.py:132-132",
+   "budget"
+  ],
+  [
+   "src/requests/models.py:103-105",
+   "budget"
+  ],
+  [
+   "src/requests/models.py:891-894",
+   "budget"
+  ]
+ ],
+ "context_estimate": 1962,
+ "model": "qwen/qwen3.8-27b",
+ "prompt_version": 3,
+ "usage": {
+  "queue_time": 0.004413744,
+  "prompt_tokens": 2544,
+  "prompt_time": 0.192926178,
+  "completion_tokens": 399,
+  "completion_time": 0.796433457,
+  "total_tokens": 2943,
+  "total_time": 0.989359635
+ },
+ "headers": {
+  "x-ratelimit-limit-requests": "1000",
+  "x-ratelimit-remaining-requests": "997",
+  "x-ratelimit-reset-requests": "4m19.2s",
+  "x-ratelimit-limit-tokens": "8000",
+  "x-ratelimit-remaining-tokens": "2611",
+  "x-ratelimit-reset-tokens": "40.757s"
+ },
+ "reasoning_chars": 0,
+ "timings_s": {
+  "retrieve": 1.51,
+  "llm": 1.68
+ },
+ "retries": 0
+}

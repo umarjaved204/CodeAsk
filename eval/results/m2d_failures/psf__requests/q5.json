@@ -1,0 +1,180 @@
+{
+ "question": "How does it guess the encoding of a response body when you read `.text`?",
+ "repo": "psf/requests",
+ "repo_url": "https://github.com/psf/requests",
+ "commit_sha": "3c7baaa05ab4aa49cc819ce3a819d260de19c157",
+ "generated_at": "2026-11-12T20:30:05+00:00",
+ "model": "qwen/qwen3.8-27b",
+ "prompt_version": 3,
+ "generation": {
+  "temperature": 0,
+  "max_completion_tokens": 600,
+  "model_options": {
+   "reasoning_effort": "none"
+  }
+ },
+ "packer": {
+  "retrieve_k": 15,
+  "budget": 2000,
+  "per_file_cap": null,
+  "merge_max_gap_lines": 5
+ },
+ "usage": {
+  "queue_time": 0.214850726,
+  "prompt_tokens": 2753,
+  "prompt_time": 0.201701744,
+  "completion_tokens": 359,
+  "completion_time": 1.067385324,
+  "total_tokens": 3112,
+  "total_time": 1.269087068
+ },
+ "retries_429": 0,
+ "attempt": 1,
+ "attempt_note": null,
+ "grade": {
+  "correct": "incorrect",
+  "grounded": "yes",
+  "citations_valid": "5/5 strict",
+  "unsupported": "minor",
+  "omission": "none",
+  "claims": [
+   {
+    "claim": "get_encoding_from_headers: charset param, else ISO-8859-1 for text, utf-8 for application/json",
+    "verdict": "supported",
+    "blocks": [
+     "utils.py:569-591"
+    ]
+   },
+   {
+    "claim": "self.encoding comes from the Content-Type header",
+    "verdict": "unsupported",
+    "blocks": [
+     "models.py:1053-1089"
+    ]
+   },
+   {
+    "claim": "text falls back to apparent_encoding when self.encoding is None",
+    "verdict": "supported",
+    "blocks": [
+     "models.py:1073-1075"
+    ]
+   },
+   {
+    "claim": "apparent_encoding uses chardet, and falls back to utf-8 if chardet is not installed",
+    "verdict": "incorrect",
+    "blocks": [
+     "models.py:896-904"
+    ],
+    "risky": true
+   },
+   {
+    "claim": "decoding uses the encoding or utf-8 with errors=replace, retrying on LookupError/TypeError",
+    "verdict": "supported",
+    "blocks": [
+     "models.py:1077-1087"
+    ]
+   }
+  ],
+  "reviewer": "author",
+  "date": "2026-11-12",
+  "note": "Drafted by Claude (Q51), claim by claim against the cited blocks and the files at 3c7baaa; claims marked risky are the ones for the author's spot-check. FAILS (Q50 rule 1, an incorrect claim): `chardet` in models.py 899-900 is whichever detector compat.py 36-45 found, chardet or charset_normalizer; utf-8 is the fallback only when neither is installed. The cited block's docstring (models.py 898) names both, and requests depends on charset_normalizer by default. A generation error (a misread of the variable name); compat.py 36-45 was not packed. Unsupported, minor: where self.encoding is set (build_response, not in the context). Spot-checked by the author on 2026-11-12 (UTC) at 3c7baaa and ruled a failure: the chardet-only claim and its fallback condition are incorrect."
+ },
+ "response": {
+  "grounded": true,
+  "answer": "When you access `Response.text`, the encoding is determined in this order:\n\n1. **HTTP headers first**: It checks `self.encoding`, which is derived from the `Content-Type` header. The helper `get_encoding_from_headers` extracts the `charset` parameter if present. If no charset is specified but the content type contains `\"text\"`, it defaults to `\"ISO-8859-1\"`. If the content type is `\"application/json\"`, it defaults to `\"utf-8\"` [1](cite:1).\n\n2. **Fallback to auto-detection**: If `self.encoding` is `None` (meaning no charset was found in headers), it calls `self.apparent_encoding` [2](cite:2). This property uses the `chardet` library to detect the encoding from the raw bytes. If `chardet` is not installed, it falls back to `\"utf-8\"` [3](cite:3).\n\n3. **Decoding**: The content is then decoded using the determined encoding. If the encoding is still `None` or invalid, it defaults to `\"utf-8\"` with `errors=\"replace\"` to handle any decoding errors gracefully [4](cite:4).\n\nNote: There is also a `guess_json_utf` function that detects UTF-8/16/32 encodings for JSON responses by analyzing null bytes and BOMs, but this is not directly used in the `.text` property flow shown [5](cite:5).",
+  "citations": [
+   {
+    "n": 1,
+    "path": "src/requests/utils.py",
+    "start": 569,
+    "end": 591,
+    "valid": true,
+    "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/utils.py#L569-L591",
+    "block": 0
+   },
+   {
+    "n": 2,
+    "path": "src/requests/models.py",
+    "start": 1073,
+    "end": 1075,
+    "valid": true,
+    "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/models.py#L1073-L1075",
+    "block": 1
+   },
+   {
+    "n": 3,
+    "path": "src/requests/models.py",
+    "start": 896,
+    "end": 904,
+    "valid": true,
+    "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/models.py#L896-L904",
+    "block": 2
+   },
+   {
+    "n": 4,
+    "path": "src/requests/models.py",
+    "start": 1077,
+    "end": 1087,
+    "valid": true,
+    "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/models.py#L1077-L1087",
+    "block": 1
+   },
+   {
+    "n": 5,
+    "path": "src/requests/utils.py",
+    "start": 1008,
+    "end": 1037,
+    "valid": true,
+    "url": "https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/src/requests/utils.py#L1008-L1037",
+    "block": 3
+   }
+  ],
+  "blocks": [
+   {
+    "path": "src/requests/utils.py",
+    "start": 569,
+    "end": 610,
+    "content": "def get_encoding_from_headers(headers: CaseInsensitiveDict[str]) -> str | None:\n    \"\"\"Returns encodings from given HTTP Header Dict.\n\n    :param headers: dictionary to extract encoding from.\n    :rtype: str\n    \"\"\"\n\n    content_type = headers.get(\"content-type\")\n\n    if not content_type:\n        return None\n\n    content_type, params = _parse_content_type_header(content_type)\n\n    if \"charset\" in params:\n        return params[\"charset\"].strip(\"'\\\"\")\n\n    if \"text\" in content_type:\n        return \"ISO-8859-1\"\n\n    if \"application/json\" in content_type:\n        # Assume UTF-8 based on RFC 4627: https://www.ietf.org/rfc/rfc4627.txt since the charset was unset\n        return \"utf-8\"\n\n\ndef stream_decode_response_unicode(\n    iterator: Iterable[bytes], r: Response\n) -> Generator[str | bytes, None, None]:\n    \"\"\"Stream decodes an iterator.\"\"\"\n\n    if r.encoding is None:\n        yield from iterator\n        return\n\n    decoder = codecs.getincrementaldecoder(r.encoding)(errors=\"replace\")\n    for chunk in iterator:\n        rv = decoder.decode(chunk)\n        if rv:\n            yield rv\n    rv = decoder.decode(b\"\", final=True)\n    if rv:\n        yield rv"
+   },
+   {
+    "path": "src/requests/models.py",
+    "start": 1053,
+    "end": 1089,
+    "content": "    @property\n    def text(self) -> str:\n        \"\"\"Content of the response, in unicode.\n\n        If Response.encoding is None, encoding will be guessed using\n        ``charset_normalizer`` or ``chardet``.\n\n        The encoding of the response content is determined based solely on HTTP\n        headers, following RFC 2616 to the letter. If you can take advantage of\n        non-HTTP knowledge to make a better guess at the encoding, you should\n        set ``r.encoding`` appropriately before accessing this property.\n        \"\"\"\n\n        # Try charset from content-type\n        content = None\n        encoding = self.encoding\n\n        if not self.content:\n            return \"\"\n\n        # Fallback to auto-detected encoding.\n        if self.encoding is None:\n            encoding = self.apparent_encoding\n\n        # Decode unicode from given encoding.\n        try:\n            content = str(self.content, encoding or \"utf-8\", errors=\"replace\")\n        except (LookupError, TypeError):\n            # A LookupError is raised if the encoding was not found which could\n            # indicate a misspelling or similar mistake.\n            #\n            # A TypeError can be raised if encoding is None\n            #\n            # So we try blindly encoding.\n            content = str(self.content, errors=\"replace\")\n\n        return content"
+   },
+   {
+    "path": "src/requests/models.py",
+    "start": 896,
+    "end": 904,
+    "content": "    @property\n    def apparent_encoding(self) -> str | None:\n        \"\"\"The apparent encoding, provided by the charset_normalizer or chardet libraries.\"\"\"\n        if chardet is not None:\n            return chardet.detect(self.content)[\"encoding\"]\n        else:\n            # If no character detection library is available, we'll fall back\n            # to a standard Python utf-8 str.\n            return \"utf-8\""
+   },
+   {
+    "path": "src/requests/utils.py",
+    "start": 1002,
+    "end": 1037,
+    "content": "# Null bytes; no need to recreate these on each call to guess_json_utf\n_null = \"\\x00\".encode(\"ascii\")  # encoding to ASCII for Python 3\n_null2 = _null * 2\n_null3 = _null * 3\n\n\ndef guess_json_utf(data: bytes) -> str | None:\n    \"\"\"\n    :rtype: str\n    \"\"\"\n    # JSON always starts with two ASCII characters, so detection is as\n    # easy as counting the nulls and from their location and count\n    # determine the encoding. Also detect a BOM, if present.\n    sample = data[:4]\n    if sample in (codecs.BOM_UTF32_LE, codecs.BOM_UTF32_BE):\n        return \"utf-32\"  # BOM included\n    if sample[:3] == codecs.BOM_UTF8:\n        return \"utf-8-sig\"  # BOM included, MS style (discouraged)\n    if sample[:2] in (codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE):\n        return \"utf-16\"  # BOM included\n    nullcount = sample.count(_null)\n    if nullcount == 0:\n        return \"utf-8\"\n    if nullcount == 2:\n        if sample[::2] == _null2:  # 1st and 3rd are null\n            return \"utf-16-be\"\n        if sample[1::2] == _null2:  # 2nd and 4th are null\n            return \"utf-16-le\"\n        # Did not detect 2 valid UTF-16 ascii-range characters\n    if nullcount == 3:\n        if sample[:3] == _null3:\n            return \"utf-32-be\"\n        if sample[1:] == _null3:\n            return \"utf-32-le\"\n        # Did not detect a valid UTF-32 ascii-range character\n    return None"
+   }
+  ],
+  "possibly_relevant": [],
+  "model": "qwen/qwen3.8-27b",
+  "prompt_version": 3
+ },
+ "question_id": "q5",
+ "runs": [
+  {
+   "id": "q5",
+   "at": "2026-11-12T20:30:05+00:00",
+   "outcome": "answered",
+   "tokens": 3112,
+   "estimated": false,
+   "error": null
+  }
+ ],
+ "lines_check": {
+  "ok": true,
+  "commit_sha": "3c7baaa05ab4aa49cc819ce3a819d260de19c157",
+  "checked_at": "2026-11-12T20:31:12+00:00",
+  "blocks": 4,
+  "problems": []
+ }
+}
