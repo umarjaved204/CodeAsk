@@ -2,11 +2,14 @@
 
 Run: python eval/m2_candidates.py pallets/itsdangerous eval/m2_models.json
      python eval/m2_candidates.py --add-file-chunks eval/results/m2_candidates_<date>.json
+     python eval/m2_candidates.py psf/requests eval/m2d_questions/psf__requests.json  (slice 5)
 
 All questions are embedded in ONE Voyage request. The query vectors are saved too, so later
 steps (a larger K, file_chunks) re-query the DB without another Voyage call. The packer
 variants (PLAN.md Q20) and the Q5 regression test then run offline from this file.
 --add-file-chunks adds the metadata of every chunk in the candidate files (DB only, no Voyage).
+A slice 5 questions file (eval/m2d_questions, Q49) is refused unless the repo is ingested at its
+pinned commit, and its file chunks are added in the same run.
 """
 
 from __future__ import annotations
@@ -44,11 +47,16 @@ def main():
     if not args.slug or not args.questions:
         parser.error("give SLUG QUESTIONS, or --add-file-chunks CANDIDATES_JSON")
 
-    items = json.loads(args.questions.read_text(encoding="utf-8"))
+    data = json.loads(args.questions.read_text(encoding="utf-8"))
+    pinned = isinstance(data, dict)  # m2_models.json is a list; an m2d_questions file a dict
+    items = data["questions"] if pinned else data
     store = Store(connect())
     repo = store.repo(args.slug.lower())
     if repo is None:
         sys.exit(f"{args.slug} is not ingested")
+    if pinned and (data["repo"], data["commit_sha"]) != (repo["slug"], repo["commit_sha"]):
+        sys.exit(f"the questions are for {data['repo']} at {data['commit_sha'][:7]}, but the DB "
+                 f"has {repo['slug']} at {repo['commit_sha'][:7]}")
     embedder = VoyageEmbedder()
     space = repo["settings"]["space"]
     if space != embedder.space:
@@ -66,11 +74,14 @@ def main():
                   f"{row['breadcrumb']}")
 
     OUT.mkdir(exist_ok=True)
-    out = OUT / f"m2_candidates_{date.today()}.json"
+    name = f"m2d_candidates_{repo['slug'].replace('/', '__')}" if pinned else "m2_candidates"
+    out = OUT / f"{name}_{date.today()}.json"
     out.write_text(json.dumps({
         "repo": repo["slug"], "commit_sha": repo["commit_sha"], "settings": repo["settings"],
         "k": K, "questions": questions}, indent=1), encoding="utf-8")
     print(f"\nwrote {out}")
+    if pinned:
+        add_file_chunks(out)
 
 
 if __name__ == "__main__":

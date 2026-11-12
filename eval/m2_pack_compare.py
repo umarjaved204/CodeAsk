@@ -1,6 +1,8 @@
 """M2 slice 2: compare packer variants offline on the saved candidates (PLAN.md Q20).
 
 Run: python eval/m2_pack_compare.py eval/results/m2_candidates_<date>.json eval/m2_expected.json
+     python eval/m2_pack_compare.py eval/results/m2d_candidates_<owner>__<name>_<date>.json
+         eval/m2d_questions/<owner>__<name>.json  (slice 5, Q49; questions matched by id)
 
 No network. Each variant packs every question's saved top-K with the real pack() (merging and
 outlines included) and is scored against the expected chunks, fixed beforehand (Q27). An
@@ -24,6 +26,11 @@ CAPS = [("hard cap 3", 3, False), ("soft cap 3", 3, True), ("cap 5", 5, False),
 BUDGETS = [2_000, 2_500]
 
 
+def key(q: dict) -> str:
+    """Slice 2 numbers its questions ("q"); slice 5 files name them ("id")."""
+    return str(q["id"] if "id" in q else q["q"])
+
+
 def covered(expected: dict, blocks, file_rows: list[dict]) -> bool:
     chunks = [f for f in file_rows if f["path"] == expected["path"]]
     assert chunks, f"no file_chunks for {expected['path']}: run --add-file-chunks first"
@@ -39,16 +46,16 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("candidates", type=Path)
     parser.add_argument("expected", type=Path)
-    parser.add_argument("--show", type=int, metavar="Q",
+    parser.add_argument("--show", metavar="Q",
                         help="print question Q's packing (default cap) at each budget instead")
     args = parser.parse_args()
     data = json.loads(args.candidates.read_text(encoding="utf-8"))
-    expected = {q["q"]: q for q in json.loads(args.expected.read_text(encoding="utf-8"))
+    expected = {key(q): q for q in json.loads(args.expected.read_text(encoding="utf-8"))
                 ["questions"]}
     file_rows = data["file_chunks"]
 
     if args.show:
-        (q,) = [q for q in data["questions"] if q["q"] == args.show]
+        (q,) = [q for q in data["questions"] if key(q) == args.show]
         for budget in BUDGETS:
             packed = pack(q["candidates"], file_rows, budget=budget)
             print(f"budget {budget:,}: estimate {packed.estimate}")
@@ -68,13 +75,13 @@ def main():
             for q in data["questions"]:
                 packed = pack(q["candidates"], file_rows, budget=budget, cap=cap, soft_cap=soft)
                 est, n_blocks = est + packed.estimate, n_blocks + len(packed.blocks)
-                exp = expected[q["q"]]
+                exp = expected[key(q)]
                 for e in exp["required"]:
                     req_n += 1
                     if covered(e, packed.blocks, file_rows):
                         req += 1
                     else:
-                        missing.append(f"Q{q['q']} {e['name']}")
+                        missing.append(f"{key(q)} {e['name']}")
                 for e in exp["supporting"]:
                     sup_n += 1
                     sup += covered(e, packed.blocks, file_rows)
