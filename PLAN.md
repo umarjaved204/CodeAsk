@@ -1379,6 +1379,18 @@ config gains a pinned SHA per repo, and the drift guard compares slug and SHA (Q
       the last generation call (express r1, `2026-11-12T21:36:05+00:00` in its run log, so not
       before `2026-11-13T21:36+00:00`). Only then
       `python -m codeask.admin budget 170000`, and no generation runs after the raise.
+    - **OPEN ITEM (dated 2026-11-12): the Q42 budget raise.** Not urgent: nothing needs 170K
+      until the site is live (slice 6), so waiting costs nothing.
+      - **When:** after the Groq console shows today's generation tokens have left its usage
+        window, or no earlier than `2026-11-13T21:36+00:00` (02:36 on Sat 14 Nov in Karachi).
+      - **Steps:**
+        1. `python -m codeask.admin status`: check the live budget (60,000) and that the kill
+           switch is off (paused: no).
+        2. Check the Groq console usage for the model (`qwen/qwen3.8-27b`). The console, not our
+           own usage table, shows what Groq counts.
+        3. `python -m codeask.admin budget 170000`, then `status` again to confirm it took.
+      - **After the raise,** no generation runs. Record the date and the status output here,
+        and tick the slice 6 done-when line.
 
 ### [ ] Slice 6 (M2e): deploy
 **Gate from slice 4 (Q44):** before going public, compare the client IP the API sees with my
@@ -1394,6 +1406,8 @@ rotate the keys set there, freeze `spike/m2/` (Q19). Link-preview metadata (titl
 description, Open Graph image) for sharing the URL (moved here from slice 3).
 
 **Done when:**
+- the live budget is at 170,000, raised after the slice 5 generation tokens left Groq's usage
+  window, with no generation since (the open item in slice 5's step 11 log, Q42);
 - the `db` test proves the API role cannot write content tables or delete;
 - the deployed API exposes no ingestion route (checked against its route list);
 - after the prod ingest, each featured repo's `commit_sha` from `/repos` equals its pinned SHA
