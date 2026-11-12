@@ -6,8 +6,11 @@ import path from "node:path";
 
 import type { Page } from "@playwright/test";
 
-import { EMPTY_REPO, EXAMPLE, expect, held, test, type MockApi } from "./mocks";
-import { ON_ITS_OWN } from "../../lib/messages";
+import { EMPTY_REPO, EXAMPLE, apiError, expect, held, test, type MockApi } from "./mocks";
+import expressIndex from "../../data/examples/expressjs__express/index.json";
+import requestsIndex from "../../data/examples/psf__requests/index.json";
+import { DEFAULT_SET } from "../../lib/stored";
+import { ON_ITS_OWN, SUGGESTIONS_STILL_WORK, pausedMessage, setLoadFailedMessage } from "../../lib/messages";
 
 const Q = "How are signatures verified?";
 const LABEL = /^Example answer, generated 2 Nov 2026/;
@@ -231,3 +234,92 @@ for (const [width, height] of [[390, 844], [320, 568]] as const) {
     expect(fit.sideways).toBe(false);
   });
 }
+
+
+// ---------- step 11: the cases that needed real sets (mentor's step 8 notes, slice 5 review) ----------
+const EXPRESS_FLAGSHIP = expressIndex.questions[0].question;
+const REQUESTS_FLAGSHIP = requestsIndex.questions[0].question;
+const picker = (page: Page) => page.getByRole("combobox", { name: "Repository" });
+const CHUNKS = "**/_next/static/chunks/*.js";
+
+test("rapid picks end on the last one: heading, aria-current and focus, and no /ask", async ({ page, api }) => {
+  await up(page, api);
+  const [, second, third, fourth] = DEFAULT_SET.index.questions;
+  // Three picks in one task, faster than any render in between.
+  await list(page).evaluate((el, names) => {
+    for (const name of names) {
+      [...el.querySelectorAll("button")].find((b) => b.textContent === name)!.click();
+    }
+  }, [second.question, third.question, fourth.question]);
+  await expect(heading(page)).toHaveText(fourth.question);
+  await expect(heading(page)).toBeFocused();
+  await expect(list(page).getByRole("button", { name: fourth.question, exact: true }))
+    .toHaveAttribute("aria-current", "true");
+  await expect(list(page).locator('[aria-current="true"]')).toHaveCount(1);
+  expect(api.count("POST /ask")).toBe(0); // a pick calls neither Voyage nor Groq
+});
+
+test("A -> B -> C: a held B chunk released after C has loaded never replaces C", async ({ page, api }) => {
+  await up(page, api);
+  // The first chunk requested after load is B's (requests): hold it; every later one passes.
+  const gate: { release: (() => void) | null } = { release: null };
+  await page.route(CHUNKS, async (route) => {
+    if (gate.release === null) {
+      await new Promise<void>((resolve) => { gate.release = resolve; });
+    }
+    return route.continue();
+  });
+  await picker(page).selectOption("psf/requests"); // B: its chunk is held
+  await expect.poll(() => gate.release !== null).toBe(true);
+  await picker(page).selectOption("expressjs/express"); // C: loads normally
+  await expect(heading(page)).toHaveText(EXPRESS_FLAGSHIP);
+  gate.release!(); // B arrives late
+  await page.waitForTimeout(300); // give a wrong late apply time to land
+  await expect(heading(page)).toHaveText(EXPRESS_FLAGSHIP);
+  await expect(picker(page)).toHaveValue("expressjs/express");
+});
+
+test("a failed chunk keeps the repo on screen and the draft; Try again retries the same switch", async ({ page, api }) => {
+  await up(page, api);
+  await box(page).fill("a draft I haven't sent");
+  await page.route(CHUNKS, (route) => route.abort("connectionrefused")); // after load only
+  await picker(page).selectOption("psf/requests");
+  await expect(page.getByText(setLoadFailedMessage("psf/requests"))).toBeVisible();
+  await expect(picker(page)).toHaveValue("pallets/itsdangerous"); // the repo whose content is shown
+  await expect(heading(page)).toHaveText(EXAMPLE.question);
+  await expect(box(page)).toHaveValue("a draft I haven't sent");
+  await page.unroute(CHUNKS);
+  await page.getByRole("button", { name: "Try again", exact: true }).click();
+  await expect(heading(page)).toHaveText(REQUESTS_FLAGSHIP);
+  await expect(picker(page)).toHaveValue("psf/requests");
+  await expect(box(page)).toHaveValue("a draft I haven't sent");
+  expect(api.count("POST /ask")).toBe(0);
+});
+
+test("a live answer still in flight at a switch never lands on the new repo's page", async ({ page, api }) => {
+  const reply = held();
+  api.on("POST /ask", reply.handler);
+  await up(page, api);
+  await ask(page);
+  await expect(page.getByText(/^Answering\./)).toBeVisible();
+  await picker(page).selectOption("expressjs/express");
+  await expect(heading(page)).toHaveText(EXPRESS_FLAGSHIP);
+  reply.release({ json: { ...EXAMPLE.response, answer: "STALE ANSWER [1](cite:1)." } });
+  await expect(page.getByText("Finishing the previous question.")).toHaveCount(0);
+  await expect(heading(page)).toHaveText(EXPRESS_FLAGSHIP);
+  await expect(page.getByText("STALE ANSWER")).toHaveCount(0);
+  expect(api.count("POST /ask")).toBe(1);
+});
+
+test("a repo with no stored set: no list, no stored answer, and its refusals never mention suggestions", async ({ page, api }) => {
+  api.on("POST /ask", () => apiError(503, "paused", "Paused."));
+  await up(page, api);
+  await picker(page).selectOption(EMPTY_REPO);
+  await expect(heading(page)).toHaveText(`Ask a question about the code in ${EMPTY_REPO}.`);
+  await expect(list(page)).toHaveCount(0);
+  await expect(page.getByText(LABEL)).toHaveCount(0);
+  await ask(page);
+  await expect(page.getByText(pausedMessage(false), { exact: true })).toBeVisible();
+  await expect(page.getByText(SUGGESTIONS_STILL_WORK)).toHaveCount(0);
+  await expect(list(page)).toHaveCount(0);
+});

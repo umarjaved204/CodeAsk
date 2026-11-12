@@ -920,7 +920,7 @@ budget.
   the daily-limit line (5 lines) covers the example below its question; it is one scroll away,
   and the pre-registered rule (<= 40% at 390x844, ask box in view at both sizes) passed.
 
-### [ ] Slice 5 (M2d): pre-generated answers
+### [x] Slice 5 (M2d): pre-generated answers
 Table + CLI to generate answers for my chosen questions through the live pipeline (Q13), a
 review step, a local export script writing static JSON into `frontend/` (Q14), the
 "pre-generated on <date> with <model>" label, SHA check.
@@ -928,6 +928,13 @@ review step, a local export script writing static JSON into `frontend/` (Q14), t
 **Done when:** every featured repo (dev DB for now) has 5–8 reviewed answers; clicking a
 suggested question shows its answer instantly with zero Voyage/Groq calls; Playwright passes
 "pre-generated answers with the backend down".
+**Amended at the done check (2026-11-12, author):**
+- The 5-8 answers condition is met for itsdangerous (6) and express (6). requests has 3,
+  stopped by the Q50 stop rule (4 failures of N = 6), classified as tuning deferred to M3 with
+  no code defect, and recorded in the step 11 log.
+- "Zero Voyage/Groq calls" means no request to `/ask` on a pick (`/status` is ignored). The
+  rapid-picks and pick e2e tests assert it.
+- The backend-down e2e test passes (step 9).
 
 **Grilling done (2026-11-12, mentor-reviewed with additions, my decisions): Q47-Q55.** In
 short: answers are generated and reviewed on the dev DB and shipped as committed JSON (prod
@@ -1358,6 +1365,20 @@ config gains a pinned SHA per repo, and the drift guard compares slug and SHA (Q
       216.8 kB baseline, under the 30 kB limit. **Rule applied: the default set stays a static
       import.** The figure equals the post-itsdangerous one (227.1 kB): requests' and express's
       sets are their own chunks, loaded on switch, not part of the first load.
+    - **Deferred e2e tests, written now that three sets exist** (`suggestions.spec.ts`):
+      - rapid picks end on the last one (heading, `aria-current`, focus, and no `/ask`);
+      - A -> B -> C: B's chunk is held by the route handler until C has loaded, and C stays;
+      - a failed chunk (`_next/static/chunks/*.js` intercepted after load): the selector keeps
+        the repo whose content is on screen, the draft is kept, and Try again retries the same
+        switch;
+      - a live answer in flight at a switch never lands on the new repo's page;
+      - a repo with no stored set (the synthetic `octo/empty` in the mocked `/repos`): no list,
+        no stored answer, and no "suggested questions" sentence in its refusals.
+    - **The Q42 budget raise is not done yet.** The live budget stays at 60K until the Groq
+      console shows today's 59,454 generation tokens have left its usage window, or 24 h after
+      the last generation call (express r1, `2026-11-12T21:36:05+00:00` in its run log, so not
+      before `2026-11-13T21:36+00:00`). Only then
+      `python -m codeask.admin budget 170000`, and no generation runs after the raise.
 
 ### [ ] Slice 6 (M2e): deploy
 **Gate from slice 4 (Q44):** before going public, compare the client IP the API sees with my
