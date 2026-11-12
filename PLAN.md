@@ -1352,8 +1352,12 @@ config gains a pinned SHA per repo, and the drift guard compares slug and SHA (Q
       (stopped by the stop rule), express 6. 6 failures in all (itsdangerous q5; requests q4,
       q5, q6, r1; express q4), all tuning or generation errors, with no code defect. 59,454
       tokens generated (16,555 + 21,145 + 21,754), inside the 100K per-run guard. The live
-      budget was lowered to 60K for the day. The first-load re-measure after the last export
-      is recorded below, once run.
+      budget was lowered to 60K for the day.
+    - **First-load re-measure after the last export (the step 8 rule):** `check.ps1` passes
+      (476 backend, 90 logic, 135 e2e). First load is 227.3 kB gzip, **+10.5 kB** over the
+      216.8 kB baseline, under the 30 kB limit. **Rule applied: the default set stays a static
+      import.** The figure equals the post-itsdangerous one (227.1 kB): requests' and express's
+      sets are their own chunks, loaded on switch, not part of the first load.
 
 ### [ ] Slice 6 (M2e): deploy
 **Gate from slice 4 (Q44):** before going public, compare the client IP the API sees with my
