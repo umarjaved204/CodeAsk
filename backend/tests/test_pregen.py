@@ -349,3 +349,34 @@ def test_minor_unsupported_claims_still_pass():
 def test_export_refuses(records, pins, message):
     with pytest.raises(Stop, match=message):
         export(records, pins=pins)
+
+
+# ---------- the generated modules (step 8, D1) ----------
+def test_render_set_imports_the_index_and_each_answer_in_order():
+    from codeask.pregen import render_set
+
+    text = render_set({"questions": [{"id": "q2"}, {"id": "q1"}]})
+    assert text.startswith("// GENERATED")
+    assert 'import q2 from "./q2.json";\nimport q1 from "./q1.json";\n' in text
+    assert text.endswith("export default { index, answers: { q2, q1 } };\n")
+
+
+def test_render_set_refuses_an_id_that_cannot_be_an_import_name():
+    from codeask.pregen import render_set
+
+    with pytest.raises(Stop, match="import names"):
+        render_set({"questions": [{"id": "q-1"}]})
+
+
+def test_render_sets_lists_one_loader_per_repo_in_the_given_order(tmp_path):
+    from codeask.pregen import exported_slugs, render_sets
+
+    for name, slug in (("b__r", "b/r"), ("a__r", "a/r"), ("c__r", None)):
+        (tmp_path / name).mkdir()
+        if slug:
+            (tmp_path / name / "index.json").write_text(json.dumps({"repo": slug}),
+                                                         encoding="utf-8")
+    slugs = exported_slugs(tmp_path)
+    assert slugs == ["a/r", "b/r"]  # sorted; a folder without index.json isn't exported
+    assert '  "a/r": () => import("./a__r/set"),\n  "b/r": () => import("./b__r/set"),\n' \
+        in render_sets(slugs)

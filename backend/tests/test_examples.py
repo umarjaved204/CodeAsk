@@ -46,3 +46,25 @@ def test_an_exported_index_lists_only_passing_answers_for_the_pin(index_path):
         assert grade_problems(record) == [] and passes(record), q["id"]
     lead = read(index_path.parent / f"{ids[0]}.json")
     assert (index["flagship_note"] is None) == (flagship_misses(lead) == [])
+
+
+# ---------- the generated modules (step 8, D1) ----------
+def lf(path: Path) -> str:
+    """A checkout may hold CRLF (core.autocrlf); the generator writes LF."""
+    return path.read_text(encoding="utf-8").replace("\r\n", "\n")
+
+
+def test_sets_ts_is_exactly_what_export_generates_from_the_exported_folders():
+    from codeask.pregen import SETS, exported_slugs, render_sets
+
+    slugs = exported_slugs(EXAMPLES)
+    assert lf(EXAMPLES / SETS) == render_sets(slugs)
+    featured = {f["slug"] for f in read(ROOT / "frontend" / "data" / "featured.json")}
+    assert set(slugs) <= featured
+
+
+@pytest.mark.parametrize("index_path", INDEXES, ids=lambda p: p.parent.name)
+def test_each_set_ts_is_exactly_what_export_generates_from_its_index(index_path):
+    from codeask.pregen import render_set
+
+    assert lf(index_path.parent / "set.ts") == render_set(read(index_path))

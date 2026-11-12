@@ -20,6 +20,8 @@ import {
 
 const Q = "How are signatures verified?";
 const LABEL = /^Example answer, generated 2 Nov 2026/;
+// Where a refusal can't be retried, the way back is the suggestion list (step 8, D2).
+const SUGGESTION = "a suggested question";
 const T0 = Date.parse("2026-11-11T10:00:00Z");
 
 async function serverUp(api: MockApi) {
@@ -257,13 +259,13 @@ const FAILURES: { name: string; reply: Reply; text: string; action: string }[] =
   // app.py refused(): the day's token budget is spent (slice 4; the other refusals: limits.spec).
   { name: "daily limit",
     reply: apiError(429, "daily_limit", "Live questions are used up for now.", { "Retry-After": "7200" }),
-    text: dailyLimitMessage(7_200, false),
-    action: "Show the example answer" },
+    text: dailyLimitMessage(7_200, true),
+    action: SUGGESTION },
   // app.py ask(): the model check failed.
   { name: "model unavailable",
     reply: apiError(503, "model_unavailable", "Live answers are unavailable right now."),
-    text: "Live answers are unavailable right now. The example answers still work.",
-    action: "Show the example answer" },
+    text: "Live answers are unavailable right now. The suggested questions still work.",
+    action: SUGGESTION },
   // app.py classify(): anything unexpected.
   { name: "server error", reply: apiError(500, "internal_error", "Something went wrong on the server."),
     text: serverErrorMessage("a1b2c3d4"), action: "Try again" },
@@ -271,7 +273,7 @@ const FAILURES: { name: string; reply: Reply; text: string; action: string }[] =
     action: "Try again" },
   // app.py ask(): HTTPException(404) for a repo that is no longer featured.
   { name: "not found", reply: apiError(404, "not_found", "Unknown repo."),
-    text: "pallets/itsdangerous is no longer available here.", action: "Show the example answer" },
+    text: "pallets/itsdangerous is no longer available here.", action: SUGGESTION },
 ];
 
 for (const failure of FAILURES) {
@@ -285,10 +287,12 @@ for (const failure of FAILURES) {
     if (failure.name === "not found") {
       await expect.poll(() => api.count("GET /repos")).toBeGreaterThan(reposBefore); // list refreshed
     }
-    await page.getByRole("button", { name: failure.action, exact: true }).click();
     if (failure.action === "Try again") {
+      await page.getByRole("button", { name: "Try again", exact: true }).click();
       await expect.poll(() => api.count("POST /ask")).toBe(2);
     } else {
+      await expect(page.getByRole("button", { name: "Show the example answer" })).toHaveCount(0);
+      await page.getByRole("button", { name: EXAMPLE.question, exact: true }).click();
       await expect(page.getByText(LABEL)).toBeVisible();
       expect(api.count("POST /ask")).toBe(1);
     }

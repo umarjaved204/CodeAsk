@@ -14,14 +14,16 @@
 // - Shapes come from the backend, never from memory: each default names its source.
 import { test as base, expect, type Page, type Request } from "@playwright/test";
 
-import { EXAMPLES, FEATURED } from "../../lib/featured";
+import { FEATURED } from "../../lib/featured";
+import { DEFAULT_SET } from "../../lib/stored";
 import type { QueueWire, Status } from "../../lib/types";
 
 export const PORT = 3100;
 export const APP_ORIGIN = `http://localhost:${PORT}`;
 export const API = "http://api.test";
 
-export const EXAMPLE = EXAMPLES["pallets/itsdangerous"];
+// The default repo's flagship: the stored answer the page opens on (slice 5, Q54).
+export const EXAMPLE = DEFAULT_SET.answers[DEFAULT_SET.index.flagship];
 
 export type Reply =
   // expose: false leaves out Access-Control-Expose-Headers (a backend that forgot the list)

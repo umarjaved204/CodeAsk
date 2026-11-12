@@ -165,3 +165,35 @@ test.describe("service", () => {
     expect(shouldRefreshService(daily, 100_000, 130_000)).toBe(false);
   });
 });
+
+// ---------- a suggested question picked (slice 5, Q54) ----------
+test.describe("show_stored", () => {
+  const show: AskEvent = { type: "show_stored" };
+
+  test("replaces a settled answer, refusal or error with the stored answer (idle)", () => {
+    for (const after of [
+      { type: "response", requestId: 1, response: grounded },
+      { type: "response", requestId: 1, response: ungrounded },
+      { type: "failure", requestId: 1, at: 2_000,
+        failure: { kind: "api", status: 503, code: "paused", message: "", requestId: "r",
+                   retryAfterS: null } },
+      { type: "failure", requestId: 1, at: 2_000,
+        failure: { kind: "api", status: 503, code: "busy", message: "", requestId: "r",
+                   retryAfterS: 30 } },
+    ] as AskEvent[]) {
+      expect(run([submit(1), after, show])).toEqual(IDLE);
+    }
+  });
+
+  test("does nothing while a question loads or waits (the list is hidden then)", () => {
+    const loading = run([submit(1)]);
+    expect(askReducer(loading, show)).toBe(loading);
+    const waiting = run([submit(1, false)]);
+    expect(askReducer(waiting, show)).toBe(waiting);
+  });
+
+  test("keeps a settling request, so Ask stays held until it settles", () => {
+    const settling = run([submit(1), { type: "switch_repo" }]);
+    expect(askReducer(settling, show)).toBe(settling);
+  });
+});

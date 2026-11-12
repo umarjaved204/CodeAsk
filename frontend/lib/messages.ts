@@ -89,9 +89,17 @@ export function aboutTime(seconds: number): string {
   return hours === 1 ? "about 1 hour" : `about ${hours} hours`;
 }
 
-// Said only when an example is actually on screen (step 8, decision 1): on load for a repo with
-// an example, never in an /ask refusal, where the asked question has replaced it.
-export const EXAMPLE_STILL_WORKS = "The example answer above still works.";
+// Said only when the suggested questions are on screen (Q54; slice 4 step 8 said it of the one
+// example). The list stays under a refusal, so a refusal says it too; no direction word, as the
+// list moves with the layout.
+export const SUGGESTIONS_STILL_WORK = "The suggested questions still work.";
+// Under live answers only (Q8, step 8 D3); the composer's footer says it briefly as well.
+export const ON_ITS_OWN = "Each question is answered on its own; earlier questions aren’t remembered.";
+export const SET_LOADING_MESSAGE = "Loading the suggested questions…";
+
+export function setLoadFailedMessage(repo: string): string {
+  return `Couldn’t load the suggested questions for ${repo}.`;
+}
 export const IN_PROGRESS_MESSAGE =
   "Your previous question is still being answered. Try again in a moment.";
 
@@ -100,34 +108,38 @@ function sentences(...parts: (string | false | null)[]): string {
 }
 
 const tryAgain = (seconds: number | null) => seconds !== null && `Try again in ${aboutTime(seconds)}.`;
-const tail = (exampleShown: boolean) => exampleShown && EXAMPLE_STILL_WORKS;
+const tail = (listShown: boolean) => listShown && SUGGESTIONS_STILL_WORK;
 
-export function pausedMessage(exampleShown: boolean): string {
-  return sentences("Live questions are paused right now.", tail(exampleShown));
+export function pausedMessage(listShown: boolean): string {
+  return sentences("Live questions are paused right now.", tail(listShown));
 }
 
-export function dailyLimitMessage(retryAfterS: number | null, exampleShown: boolean): string {
+export function dailyLimitMessage(retryAfterS: number | null, listShown: boolean): string {
   return sentences("Live questions are used up for now.", tryAgain(retryAfterS),
                    "This demo runs on a free API tier, so live questions are capped each day.",
-                   tail(exampleShown));
+                   tail(listShown));
 }
 
-export function perVisitorMessage(retryAfterS: number | null, exampleShown: boolean): string {
+export function perVisitorMessage(retryAfterS: number | null, listShown: boolean): string {
   return sentences("You’ve reached the daily limit of live questions for one visitor.",
-                   tryAgain(retryAfterS), tail(exampleShown));
+                   tryAgain(retryAfterS), tail(listShown));
+}
+
+export function modelUnavailableMessage(listShown: boolean): string {
+  return sentences("Live answers are unavailable right now.", tail(listShown));
 }
 
 /** The composer's service line, or null when it is open or the question's own status already
  *  shows the same refusal (one owner per message, Q46 C7). The line follows `service`, so a
  *  refusal that changes it moves the line along, and returning to idle brings it back. */
-export function serviceNote(service: Service, ask: Ask, exampleShown: boolean): string | null {
+export function serviceNote(service: Service, ask: Ask, listShown: boolean): string | null {
   if (service.status === "ok") return null;
   if (ask.kind === "error" && ask.failure.kind === "api" && ask.failure.code === service.status) {
     return null;
   }
   return service.status === "paused"
-    ? pausedMessage(exampleShown)
-    : dailyLimitMessage(service.retryAfterS, exampleShown);
+    ? pausedMessage(listShown)
+    : dailyLimitMessage(service.retryAfterS, listShown);
 }
 
 /** Queued means someone is ahead: position 1 is being answered and reads as loading. */
@@ -153,20 +165,21 @@ export const BUSY_MESSAGE =
   "The demo is at capacity. This demo runs on free tiers, so only a few questions fit per minute.";
 export const BUSY_OVER_MESSAGE = "You can try again now.";
 
-export function errorMessage(failure: Failure, repo: string, online: boolean): string {
+/** `listShown`: the suggested questions are on screen under this message (Q54). */
+export function errorMessage(failure: Failure, repo: string, online: boolean,
+                             listShown = false): string {
   if (failure.kind === "unreachable") {
     return online ? CANT_REACH_MESSAGE : OFFLINE_MESSAGE;
   }
   switch (failure.code) {
-    // A refusal replaces the example on screen, so these never add the example sentence.
     case "paused":
-      return pausedMessage(false);
+      return pausedMessage(listShown);
     case "daily_limit":
-      return dailyLimitMessage(failure.retryAfterS, false);
+      return dailyLimitMessage(failure.retryAfterS, listShown);
     case "per_ip_limit":
-      return perVisitorMessage(failure.retryAfterS, false);
+      return perVisitorMessage(failure.retryAfterS, listShown);
     case "model_unavailable":
-      return "Live answers are unavailable right now. The example answers still work.";
+      return modelUnavailableMessage(listShown);
     case "not_found":
       return `${repo} is no longer available here.`;
     default:

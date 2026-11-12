@@ -107,9 +107,9 @@ const STATES: State[] = [
     await expect(page.getByText(dailyLimitMessage(7_200, true))).toBeVisible();
   } },
   { name: "daily limit, refused", setup: failing(
-    apiError(429, "daily_limit", "Used up.", { "Retry-After": "7200" }), dailyLimitMessage(7_200, false)) },
+    apiError(429, "daily_limit", "Used up.", { "Retry-After": "7200" }), dailyLimitMessage(7_200, true)) },
   { name: "per-visitor limit, refused", setup: failing(
-    apiError(429, "per_ip_limit", "Limit.", { "Retry-After": "10800" }), perVisitorMessage(10_800, false)) },
+    apiError(429, "per_ip_limit", "Limit.", { "Retry-After": "10800" }), perVisitorMessage(10_800, true)) },
   { name: "previous question in progress", setup: failing(
     apiError(429, "in_progress", "Still answering.", { "Retry-After": "40" }), IN_PROGRESS_MESSAGE) },
   { name: "model unavailable", setup: failing(apiError(503, "model_unavailable", "Unavailable."),

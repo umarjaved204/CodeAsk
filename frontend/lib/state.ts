@@ -41,7 +41,7 @@ export function connectionReducer(state: Connection, event: ConnectionEvent): Co
 type Asked = { repo: string; question: string };
 
 export type Ask =
-  // Nothing asked (the page shows the repo's example, if it has one). `settling` holds the id
+  // Nothing asked (the page shows the repo's stored answer, if it has a set). `settling` holds the id
   // of a request still in flight for a repo the visitor left: Ask stays disabled until it
   // settles, because slice 4 allows one question in flight per visitor.
   | { kind: "idle"; settling: number | null }
@@ -66,7 +66,10 @@ export type AskEvent =
   | { type: "response"; requestId: number; response: AskResponse }
   | { type: "failure"; requestId: number; failure: Failure; at: number }
   | { type: "queue_update"; requestId: number; queue: Queue | null; at: number } // a /status poll
-  | { type: "switch_repo" };
+  | { type: "switch_repo" }
+  // A suggested question was picked (Q54): its stored answer replaces whatever settled answer,
+  // refusal or error was on screen. The list is hidden while a question loads or waits.
+  | { type: "show_stored" };
 
 export const IDLE: Ask = { kind: "idle", settling: null };
 const BUSY_DEFAULT_RETRY_S = 60;
@@ -100,6 +103,9 @@ export function askReducer(state: Ask, event: AskEvent): Ask {
     case "switch_repo":
       if (state.kind === "loading") return { kind: "idle", settling: state.requestId };
       if (state.kind === "idle") return state;
+      return IDLE;
+    case "show_stored":
+      if (state.kind === "loading" || state.kind === "waiting" || state.kind === "idle") return state;
       return IDLE;
     case "response":
     case "failure": {

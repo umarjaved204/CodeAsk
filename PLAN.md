@@ -1089,6 +1089,78 @@ config gains a pinned SHA per repo, and the drift guard compares slug and SHA (Q
    default repo's whole set is heavy, import only its index and flagship statically and load the
    other answers on click. (Optional, not planned unless I choose it: prefetching other repos'
    chunks on picker focus.)
+   **Plan review (2026-11-12, mentor; author's choices D1a, D2a, D3a):**
+   - **D1, the bundle:** `pregen export` also writes `frontend/data/examples/sets.ts`.
+     - It has one loader per exported repo, in a stable order, with a "generated, do not edit"
+       header and a lint/format ignore.
+     - The default repo's set is a static import; the others are dynamic, one chunk per repo.
+     - pytest checks that it equals a fresh regeneration from the exported folders, that every
+       repo in it is in `featured.json`, and that each `index.json` `commit_sha` equals
+       `config.FEATURED_SHAS`.
+   - **D2:** the "Show the example answer" button is removed. In those states the list is on
+     screen and each item is a way back.
+   - **D3:** the note under live answers reads "Each question is answered on its own; earlier
+     questions aren't remembered."
+   - **A repo with no stored set** (requests and express today, or a repo stopped by the stop
+     rule) gets no stored answer and no list, only the composer. The loader returns "none"
+     instead of throwing. Tested.
+   - **The request-id guard:**
+     - It covers repo switches: A to B to C ends on C, and a late B never overwrites it.
+     - It covers a live question in flight at the switch: its answer never lands on the new
+       repo's page (the existing `settling` state).
+     - On a chunk failure, the selector keeps the repo whose content is on screen, and Try
+       again retries the same switch.
+   - **First-load size rule (fixed now):** record the gzip first-load JS for `/` before step 8
+     as the baseline, then re-measure after step 11 with the real answers. If the default
+     repo's set adds more than 30 kB gzip, load its answers lazily (I may change the number). A
+     measurement now understates, because only q1 exists. **Baseline (2026-11-12, before
+     step 8, `node scripts/first-load.mjs`): 216.8 kB gzip in 7 chunks.** It already includes
+     the old single fixture (today's q1).
+   - **Before deleting the old fixture:** grep its path in `tests/e2e/mocks.ts`,
+     `design/screen-fixtures.ts` and `design/render-states.spec.ts`, then diff it against the
+     exported q1. Expected differences: `lines_check` (step 5), and `grade.unsupported` and
+     `grade.omission` (step 7). q1 is the fixture copied unchanged, so it has no `question_id`
+     or `runs`. That differs from the mentor's expected list; flagged. **Checked 2026-11-12:**
+     the path appears only in `lib/featured.ts` (`EXAMPLES` is used in `App.tsx` and
+     `tests/e2e/mocks.ts`), not in `design/`. The key-by-key diff shows exactly those three
+     additions.
+   - **`aria-current`:** only when a stored answer is on screen, never for a live answer, even
+     one whose text matches a suggestion. The focus target, the question heading, has
+     `tabindex="-1"`.
+   - **Accepted, not mitigated:** a click on a suggestion replaces a live answer that cost one
+     of the visitor's daily questions.
+   **Built 2026-11-12:**
+   - **The bundle:** `lib/stored.ts` statically imports the default set (`DEFAULT_SET`) and
+     uses `LOADERS` from the generated `sets.ts` for the rest.
+   - **`loadSet()`:** returns the set, or "none" for a repo with no export; it rejects only on
+     a chunk failure.
+   - **App state:** a per-repo set cache, the picked id (null = flagship), and the pending
+     switch with its id guard.
+   - **A pending switch:** the selector shows the new repo, Ask waits, and the composer line
+     says "Loading the suggested questions…". A failed chunk keeps the repo on screen and offers
+     "Try again" for the same switch.
+   - **New reducer event `show_stored`:** it returns a settled answer, refusal or error to idle,
+     and does nothing while a question loads, waits or settles.
+   - **New component `SuggestedQuestions`:** buttons with `aria-current`, marked by a bar and a
+     weight change, not colour alone.
+   - **Messages:** `SUGGESTIONS_STILL_WORK` and `modelUnavailableMessage`; `errorMessage()` now
+     takes `listShown`, so refusals under the list add the sentence.
+   - **Removed:** the old fixture, `EXAMPLES` and the "Show the example answer" button.
+   - **Lint:** `eslint.config.mjs` ignores `data/examples/**/*.ts`.
+   - **Tests:** existing e2e and logic tests updated. New: `tests/logic/stored.spec.ts`, 3
+     `show_stored` reducer tests, 6 e2e tests in `tests/e2e/suggestions.spec.ts`, and pytest
+     checks of the generated modules.
+   - **Pending until answers exist (step 11):** the e2e cases that need two stored answers or a
+     second exported repo (rapid picks, A -> B -> C, a failed chunk), and the first-load
+     re-measure.
+   - **Checked 2026-11-12:** `check.ps1` full run: 470 backend, 90 logic and 122 e2e tests
+     pass, including 6 new e2e tests for the suggestions. First load is **217.9 kB** gzip in 8
+     chunks: +1.1 kB over the baseline, with only q1 in the set (Turbopack puts the set in its
+     own chunk, which the page still loads first).
+   - **For step 9's review:** in the answered state, axe reports `elmPartiallyObscured`
+     "incomplete" on `#suggested` (the list scrolls under the sticky composer). It's
+     "incomplete", not a violation, like the existing chip and fade cases. Check it in the
+     screenshot round.
 9. **Tests and review (Q55).** e2e: a click serves the stored answer with zero API calls;
    pre-generated answers with the backend down; repo switch opens the flagship; list hidden while
    loading; a typed suggested question goes live; keyboard/focus/scroll flow. Axe on the new

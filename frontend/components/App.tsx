@@ -5,22 +5,24 @@ import {
 } from "react";
 
 import { SERVICE_OK, getRepos, getStatus, pollQueue, postAsk, readService } from "../lib/api";
-import { DEFAULT_REPO, EXAMPLES, FEATURED } from "../lib/featured";
+import { DEFAULT_REPO, FEATURED } from "../lib/featured";
 import { safeGithubUrl } from "../lib/markdown";
 import {
-  BUSY_MESSAGE, BUSY_OVER_MESSAGE, IN_PROGRESS_MESSAGE, SETTLING_MESSAGE, WAITING_MESSAGE,
-  canRetry, connectionNote, errorMessage, isAlarm, isQueued, loadingMessage, provenance,
-  queuedAnnouncement, queuedMessage, serviceNote,
+  BUSY_MESSAGE, BUSY_OVER_MESSAGE, IN_PROGRESS_MESSAGE, ON_ITS_OWN, SETTLING_MESSAGE,
+  SET_LOADING_MESSAGE, WAITING_MESSAGE, canRetry, connectionNote, errorMessage, isAlarm, isQueued,
+  loadingMessage, provenance, queuedAnnouncement, queuedMessage, serviceNote, setLoadFailedMessage,
 } from "../lib/messages";
 import {
   IDLE, askReducer, canSubmit, connectionReducer, serviceAfterAnswer, serviceAfterFailure,
   shouldRefreshService, type Ask,
 } from "../lib/state";
-import type { AskResponse, Repo, Service } from "../lib/types";
+import { DEFAULT_SET, loadSet, shownId } from "../lib/stored";
+import type { AskResponse, Repo, Service, StoredSet } from "../lib/types";
 import { Answer } from "./Answer";
 import { Composer } from "./Composer";
 import { CodeSheet, EvidencePanel } from "./EvidencePanel";
 import { Header } from "./Header";
+import { SuggestedQuestions } from "./SuggestedQuestions";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 const POLL_MS = 2_500;
@@ -85,12 +87,12 @@ function Ungrounded({ repo, response }: { repo: string; response: AskResponse })
 
 /** The message sits in a live region that is always present; the action stays outside it, so
  *  the busy countdown isn't read out every second. */
-function AskStatus({ ask, now, online, onRetry, onShowExample }: {
+function AskStatus({ ask, now, online, listShown, onRetry }: {
   ask: Ask;
   now: number;
   online: boolean;
+  listShown: boolean; // the suggested questions are on screen below (Q54)
   onRetry: () => void;
-  onShowExample: () => void;
 }) {
   let message: ReactNode = null;
   let action: ReactNode = null;
@@ -141,13 +143,13 @@ function AskStatus({ ask, now, online, onRetry, onShowExample }: {
     case "error": {
       // Red and assertive only when something on our side failed (round 1, F5); limits,
       // offline and a removed repo are calm, so they stay in the polite status region.
-      const text = errorMessage(ask.failure, ask.repo, online);
+      // No "show the example" button (step 8, D2): the suggested questions stay on screen
+      // below, and each one is a way back.
+      const text = errorMessage(ask.failure, ask.repo, online, listShown);
       if (isAlarm(ask.failure, online)) alarm = <span className="text-error">{text}</span>;
       else message = <span>{text}</span>;
       if (canRetry(ask.failure)) {
         action = <RetryButton onClick={onRetry}>Try again</RetryButton>;
-      } else if (EXAMPLES[ask.repo]) {
-        action = <RetryButton onClick={onShowExample}>Show the example answer</RetryButton>;
       }
       break;
     }
@@ -179,6 +181,18 @@ export function App() {
   const [ask, dispatchAsk] = useReducer(askReducer, IDLE);
   const [chosenN, setChosenN] = useState<number | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  // Suggested questions (Q54, step 8). `sets` caches each repo's loaded set; null = the repo
+  // has none (composer only). `chosen`: the picked suggestion, null = the flagship.
+  // `pendingRepo`: a switch waiting for its set's chunk; the page keeps the repo on screen
+  // until it arrives, and if it fails, `setFailed` offers to try that same switch again.
+  const [sets, setSets] = useState<Record<string, StoredSet | null>>(
+    () => ({ [DEFAULT_SET.index.repo]: DEFAULT_SET }));
+  const [chosen, setChosen] = useState<string | null>(null);
+  const [pendingRepo, setPendingRepo] = useState<string | null>(null);
+  const [setFailed, setSetFailed] = useState<string | null>(null);
+  const [focusRequest, setFocusRequest] = useState(0);
+  const lastSwitch = useRef(0);
+  const heading = useRef<HTMLHeadingElement>(null);
   const [now, setNow] = useState(0);
   // Are live questions open (Q45)? From every /status reply the page already makes and from
   // /ask; never polled while idle (Q14). lastStatusAt: when /status last answered.
@@ -328,19 +342,72 @@ export function App() {
     if (serverUp) void send(requestId, target, question);
   }
 
-  function changeRepo(slug: string) {
+  function applyRepo(slug: string) {
+    setPendingRepo(null);
     setRepo(slug);
+    setChosen(null);
     setChosenN(null);
     setSheetOpen(false);
-    dispatchAsk({ type: "switch_repo" });
+    dispatchAsk({ type: "switch_repo" }); // a live question in flight settles, never lands here
   }
+
+  // Every switch takes a new id; only the latest may apply, so A -> B -> C ends on C and a late
+  // B never overwrites it (step 8 review, item 2).
+  function changeRepo(slug: string) {
+    const id = ++lastSwitch.current;
+    setSetFailed(null);
+    if (slug === repo) {
+      setPendingRepo(null); // back to the repo on screen: just cancel the pending switch
+      return;
+    }
+    if (slug in sets) {
+      applyRepo(slug);
+      return;
+    }
+    setPendingRepo(slug);
+    loadSet(slug).then(
+      (result) => {
+        if (id !== lastSwitch.current) return;
+        setSets((current) => ({ ...current, [slug]: result.kind === "set" ? result.set : null }));
+        applyRepo(slug);
+      },
+      () => {
+        if (id !== lastSwitch.current) return;
+        setPendingRepo(null); // the selector goes back to the repo whose content is on screen
+        setSetFailed(slug);
+      },
+    );
+  }
+
+  function showStored(id: string) {
+    setChosen(id);
+    setChosenN(null);
+    setSheetOpen(false);
+    dispatchAsk({ type: "show_stored" });
+    setFocusRequest((n) => n + 1);
+  }
+
+  // After a pick: focus the question heading and bring it into view (Q54), instantly when the
+  // visitor prefers reduced motion. Runs after the render that shows the new answer.
+  useEffect(() => {
+    if (focusRequest === 0 || !heading.current) return;
+    heading.current.focus({ preventScroll: true });
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    heading.current.scrollIntoView({ block: "start", behavior: reduce ? "instant" : "smooth" });
+  }, [focusRequest]);
 
   const openCitation = useCallback((n: number) => {
     setChosenN(n);
     if (!window.matchMedia(DESKTOP).matches) setSheetOpen(true);
   }, []);
 
-  const example = ask.kind === "idle" ? EXAMPLES[repo] : undefined;
+  const set = sets[repo] ?? null;
+  // The stored answer on screen: only while nothing live is (idle), so aria-current never marks
+  // a live answer, even one whose text matches a suggestion (step 8 review, item 5).
+  const storedId = set && ask.kind === "idle" ? shownId(set, chosen) : null;
+  const example = storedId !== null && set ? set.answers[storedId] : undefined;
+  const listShown = set !== null && ask.kind !== "loading" && ask.kind !== "waiting";
+  const liveAnswer = ask.kind === "answered" || ask.kind === "ungrounded";
   const question = hasQuestion(ask) ? ask.question : example?.question;
   const response = ask.kind === "answered" ? ask.response : example?.response ?? null;
   const openN = chosenN ?? response?.citations.find((c) => c.valid)?.n ?? null;
@@ -353,7 +420,8 @@ export function App() {
   // The connection wins over the service line: while the server can't be reached, the page
   // can't know whether live questions are open.
   const connectionLine = connectionNote(connection, ask, now);
-  const serviceLine = connection.kind === "up" ? serviceNote(service, ask, example !== undefined) : null;
+  const serviceLine = connection.kind === "up" ? serviceNote(service, ask, listShown) : null;
+  // The set's chunk is about the page, not the server, so it comes after the connection line.
   const composerStatus = connectionLine ? (
     <p className={connection.kind === "down" ? "text-error" : "text-text-muted"}>
       {connectionLine}{" "}
@@ -364,6 +432,16 @@ export function App() {
         </button>
       )}
     </p>
+  ) : setFailed ? (
+    <p className="text-text-muted">
+      {setLoadFailedMessage(setFailed)}{" "}
+      <button type="button" className="cursor-pointer underline"
+              onClick={() => changeRepo(setFailed)}>
+        Try again
+      </button>
+    </p>
+  ) : pendingRepo ? (
+    <p className="text-text-muted">{SET_LOADING_MESSAGE}</p>
   ) : serviceLine ? (
     <p className="text-text-muted">{serviceLine}</p>
   ) : ask.kind === "idle" && ask.settling !== null ? (
@@ -390,7 +468,9 @@ export function App() {
                  className="reading-scroll flex min-w-0 flex-col px-5 lg:min-h-0 lg:overflow-y-auto lg:px-14">
           <div className="max-w-measure pt-2 pb-8">
             {example && <p className="mb-3 text-meta text-text-muted">{provenance(example)}</p>}
-            <h1 id="question" className="font-serif text-title-sm font-medium text-balance lg:text-title">
+            {/* tabIndex -1: a picked suggestion moves focus here (Q54) */}
+            <h1 id="question" ref={heading} tabIndex={-1}
+                className="scroll-mt-4 font-serif text-title-sm font-medium text-balance lg:text-title">
               {question ?? `Ask a question about the code in ${repo}.`}
             </h1>
             {!question && (
@@ -405,12 +485,18 @@ export function App() {
                 </>
               )}
               {ask.kind === "ungrounded" && <Ungrounded repo={ask.repo} response={ask.response} />}
-              <AskStatus ask={ask} now={now} online={online} onRetry={retry}
-                         onShowExample={() => dispatchAsk({ type: "switch_repo" })} />
+              {liveAnswer && <p className="mt-4 text-meta text-text-muted">{ON_ITS_OWN}</p>}
+              <AskStatus ask={ask} now={now} online={online} listShown={listShown} onRetry={retry} />
             </div>
+            {listShown && set && (
+              <SuggestedQuestions questions={set.index.questions} current={storedId}
+                                  onPick={showStored} />
+            )}
           </div>
-          <Composer repo={repo} repos={repos} onRepoChange={changeRepo} onAsk={submit}
-                    canAsk={canSubmit(ask)}
+          {/* While a switch waits for its set, the selector shows the new repo and Ask waits:
+              a question must go to the repo whose answers are on screen. */}
+          <Composer repo={pendingRepo ?? repo} repos={repos} onRepoChange={changeRepo} onAsk={submit}
+                    canAsk={canSubmit(ask) && pendingRepo === null}
                     asking={ask.kind === "loading" || ask.kind === "waiting"}
                     status={composerStatus} />
         </section>

@@ -90,9 +90,9 @@ test("about N: up to the next 5 minutes under an hour, then the nearest hour, at
 
 const DAILY = "Live questions are used up for now. Try again in about 2 hours. This demo runs on a " +
   "free API tier, so live questions are capped each day.";
-const EXAMPLE_TAIL = " The example answer above still works.";
+const EXAMPLE_TAIL = " The suggested questions still work.";
 
-test("each message says the example still works only when an example is on screen", () => {
+test("each message says the suggested questions still work only when they are on screen", () => {
   expect(pausedMessage(false)).toBe("Live questions are paused right now.");
   expect(pausedMessage(true)).toBe(`Live questions are paused right now.${EXAMPLE_TAIL}`);
   expect(dailyLimitMessage(7_200, false)).toBe(DAILY);
@@ -107,11 +107,20 @@ test("each message says the example still works only when an example is on scree
     "on a free API tier, so live questions are capped each day.");
 });
 
-test("a refusal never says the example still works: the asked question has replaced it", () => {
+test("a refusal says the suggested questions still work only when the list is on screen", () => {
   expect(errorMessage(api("paused"), "a/b", true)).toBe("Live questions are paused right now.");
+  expect(errorMessage(api("paused"), "a/b", true, true)).toBe(
+    `Live questions are paused right now.${EXAMPLE_TAIL}`);
   expect(errorMessage(api("daily_limit", "r", 7_200), "a/b", true)).toBe(DAILY);
+  expect(errorMessage(api("daily_limit", "r", 7_200), "a/b", true, true)).toBe(DAILY + EXAMPLE_TAIL);
   expect(errorMessage(api("per_ip_limit", "r", 10_800), "a/b", true)).toBe(
     "You’ve reached the daily limit of live questions for one visitor. Try again in about 3 hours.");
+  expect(errorMessage(api("model_unavailable"), "a/b", true)).toBe(
+    "Live answers are unavailable right now.");
+  expect(errorMessage(api("model_unavailable"), "a/b", true, true)).toBe(
+    `Live answers are unavailable right now.${EXAMPLE_TAIL}`);
+  // A removed repo or a server error never adds it: trying a suggestion isn't the advice there.
+  expect(errorMessage(api("not_found"), "a/b", true, true)).toBe("a/b is no longer available here.");
 });
 
 test.describe("the composer's service line: one owner per message", () => {

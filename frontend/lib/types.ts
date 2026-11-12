@@ -82,6 +82,9 @@ export type Grade = {
   correct: string;
   grounded: string;
   citations_valid: string;
+  // Slice 5 (Q51): pass and flagship are computed from these by `pregen export`, never stored.
+  unsupported?: string;
+  omission?: string;
   // Who checked it (Q37). One typed field, so the label can't contradict the record; who,
   // where and what is still pending goes in `note`, which the label never shows.
   reviewer: "claude" | "author";
@@ -89,8 +92,10 @@ export type Grade = {
   note: string;
 };
 
-// A pre-generated answer (frontend/data/examples/*.json, written by `ask --save`).
+// A stored answer (frontend/data/examples/<owner>__<name>/<id>.json, written by
+// `pregen generate`; itsdangerous q1 is the slice 3 fixture, kept unchanged).
 export type Example = {
+  question_id?: string;
   question: string;
   repo: string;
   repo_url: string;
@@ -101,3 +106,16 @@ export type Example = {
   grade: Grade | null; // "checked by the author" only when reviewer is "author"
   response: AskResponse;
 };
+
+// A repo's suggested questions, as `pregen export` writes them (index.json): passing answers
+// only, flagship first (Q48).
+export type StoredIndex = {
+  repo: string;
+  commit_sha: string;
+  exported_at: string;
+  flagship: string;
+  flagship_note: string | null;
+  questions: { id: string; question: string }[];
+};
+
+export type StoredSet = { index: StoredIndex; answers: Record<string, Example> };

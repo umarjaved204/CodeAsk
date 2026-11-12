@@ -2,11 +2,11 @@
 // owner per message, the refresh on return to the tab, and the long line's layout.
 //
 // "Never both, never neither": in a refusal the composer line would say exactly the same text as
-// the question's own status (no example is on screen then), so toHaveCount(1) on that exact
-// text fails if both speak and if neither does.
+// the question's own status (both end "The suggested questions still work.", the list being on
+// screen, Q54), so toHaveCount(1) on that exact text fails if both speak and if neither does.
 import type { Page } from "@playwright/test";
 
-import { apiError, expect, statusWith, test, type MockApi } from "./mocks";
+import { EXAMPLE, apiError, expect, statusWith, test, type MockApi } from "./mocks";
 import {
   IN_PROGRESS_MESSAGE, dailyLimitMessage, pausedMessage, perVisitorMessage,
 } from "../../lib/messages";
@@ -61,9 +61,9 @@ test("a paused refusal: said once, under the question; the line returns with the
   await up(page, api);
   await ask(page);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(Q);
-  await expect(exact(page, pausedMessage(false))).toHaveCount(1); // never both, never neither
+  await expect(exact(page, pausedMessage(true))).toHaveCount(1); // never both, never neither
   await expect(page.getByRole("button", { name: "Try again", exact: true })).toHaveCount(0);
-  await page.getByRole("button", { name: "Show the example answer", exact: true }).click();
+  await page.getByRole("button", { name: EXAMPLE.question, exact: true }).click(); // the way back
   await expect(page.getByText(LABEL)).toBeVisible();
   await expect(exact(page, pausedMessage(true))).toBeVisible(); // derived from state: it's back
 });
@@ -74,7 +74,7 @@ test("a refusal that changes the service moves the line along, then it goes quie
   await up(page, api);
   await expect(exact(page, pausedMessage(true))).toBeVisible();
   await ask(page);
-  await expect(exact(page, dailyLimitMessage(7_200, false))).toHaveCount(1);
+  await expect(exact(page, dailyLimitMessage(7_200, true))).toHaveCount(1);
   await expect(page.getByText(/^Live questions are paused/)).toHaveCount(0); // no stale line
 });
 
@@ -82,10 +82,10 @@ test("per-visitor limit: a calm 429 with its time, and no retry", async ({ page,
   api.on("POST /ask", () => apiError(429, "per_ip_limit", "Limit.", { "Retry-After": "10800" }));
   await up(page, api);
   await ask(page);
-  await expect(exact(page, perVisitorMessage(10_800, false))).toHaveCount(1); // "about 3 hours"
+  await expect(exact(page, perVisitorMessage(10_800, true))).toHaveCount(1); // "about 3 hours"
   await expect(alarm(page)).toHaveText(""); // calm: the polite region speaks
   await expect(page.getByRole("button", { name: "Try again", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Show the example answer", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: EXAMPLE.question, exact: true })).toBeVisible();
 });
 
 test("previous question in progress: the busy countdown, with its own sentence", async ({ page, api }) => {
