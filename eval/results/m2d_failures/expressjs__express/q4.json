@@ -1,0 +1,200 @@
+{
+ "question": "How does Express choose a template engine and find the view file for `res.render`?",
+ "repo": "expressjs/express",
+ "repo_url": "https://github.com/expressjs/express",
+ "commit_sha": "1c6f1b0fe4000977b9a7b4f34097e4d527dd9824",
+ "generated_at": "2026-11-12T21:29:10+00:00",
+ "model": "qwen/qwen3.8-27b",
+ "prompt_version": 3,
+ "generation": {
+  "temperature": 0,
+  "max_completion_tokens": 600,
+  "model_options": {
+   "reasoning_effort": "none"
+  }
+ },
+ "packer": {
+  "retrieve_k": 15,
+  "budget": 2000,
+  "per_file_cap": null,
+  "merge_max_gap_lines": 5
+ },
+ "usage": {
+  "queue_time": 0.127915075,
+  "prompt_tokens": 2752,
+  "prompt_time": 0.24496994,
+  "completion_tokens": 381,
+  "completion_time": 0.828515512,
+  "total_tokens": 3133,
+  "total_time": 1.073485452
+ },
+ "retries_429": 0,
+ "attempt": 1,
+ "attempt_note": null,
+ "grade": {
+  "correct": "incorrect",
+  "grounded": "yes",
+  "citations_valid": "7/7 strict",
+  "unsupported": "minor",
+  "omission": "material",
+  "claims": [
+   {
+    "claim": "res.render delegates to app.render",
+    "verdict": "unsupported",
+    "blocks": [
+     "application.js:522-575"
+    ]
+   },
+   {
+    "claim": "app.render passes engines, the 'view engine' default and the 'views' root to the View constructor",
+    "verdict": "supported",
+    "blocks": [
+     "application.js:552-556"
+    ]
+   },
+   {
+    "claim": "View: no extension -> the default engine's; require(ext).__express when not cached",
+    "verdict": "supported",
+    "blocks": [
+     "view.js:56-88"
+    ],
+    "risky": true
+   },
+   {
+    "claim": "View calls this.lookup(fileName) to resolve the file relative to root",
+    "verdict": "unsupported",
+    "blocks": [
+     "view.js:94"
+    ]
+   },
+   {
+    "claim": "if view.path is not found, app.render throws an error",
+    "verdict": "incorrect",
+    "blocks": [
+     "application.js:558-565"
+    ],
+    "risky": true
+   },
+   {
+    "claim": "app.engine(ext, fn) stores the engine so require is skipped",
+    "verdict": "supported",
+    "blocks": [
+     "application.js:294-308"
+    ]
+   }
+  ],
+  "reviewer": "author",
+  "date": "2026-11-12",
+  "note": "Drafted by Claude (Q51), claim by claim against the cited blocks and the files at 1c6f1b0; claims marked risky are the ones for the author's spot-check. FAILS (Q50 rule 1, an incorrect claim, on finding the view file): app.render does not throw when the view is not found; it builds the Error and returns it through the callback (return done(err), application.js 564). A generation error. Unsupported, minor: res.render's delegation and lookup's behaviour (not in the context). Material omission: how lookup and resolve search the roots (name.ext, then name/index.ext), view.js 104-187, which were retrieved but not packed (Q49). Spot-checked by the author on 2026-11-12 (UTC) at 1c6f1b0 and ruled a failure: \"throws\", while application.js 558-565 returns the error through done(err), on the point the question asks (the same test as requests r1)."
+ },
+ "response": {
+  "grounded": true,
+  "answer": "When `res.render` is called, it delegates to `app.render` (shown in [1](cite:1)). The engine selection and file lookup work as follows:\n\n1.  **Engine Selection**: `app.render` passes the `engines` object, the `defaultEngine` (from `app.set('view engine')`), and the `root` (from `app.set('views')`) to the `View` constructor [2](cite:2).\n2.  **Extension Determination**: Inside the `View` constructor, Express checks if the view name has a file extension. If not, it uses the `defaultEngine` to determine the extension [3](cite:3).\n3.  **Engine Loading**: If the engine for that extension is not already in the `engines` cache, Express attempts to `require` the module corresponding to the extension (e.g., `require('ejs')`) and expects it to export a function via the `.__express` property [4](cite:4).\n4.  **File Lookup**: The `View` constructor calls `this.lookup(fileName)` to resolve the actual file path on the disk relative to the `root` directory [5](cite:5).\n5.  **Error Handling**: If `view.path` is not found after the lookup, `app.render` throws an error indicating the view could not be found in the specified directories [6](cite:6).\n\nDevelopers can also manually register engines using `app.engine(ext, fn)`, which stores the callback in `this.engines` so it is used instead of the automatic `require` logic [7](cite:7).",
+  "citations": [
+   {
+    "n": 1,
+    "path": "lib/application.js",
+    "start": 522,
+    "end": 575,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/application.js#L522-L575",
+    "block": 0
+   },
+   {
+    "n": 2,
+    "path": "lib/application.js",
+    "start": 552,
+    "end": 556,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/application.js#L552-L556",
+    "block": 0
+   },
+   {
+    "n": 3,
+    "path": "lib/view.js",
+    "start": 56,
+    "end": 73,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/view.js#L56-L73",
+    "block": 1
+   },
+   {
+    "n": 4,
+    "path": "lib/view.js",
+    "start": 75,
+    "end": 88,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/view.js#L75-L88",
+    "block": 1
+   },
+   {
+    "n": 5,
+    "path": "lib/view.js",
+    "start": 94,
+    "end": 94,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/view.js#L94",
+    "block": 1
+   },
+   {
+    "n": 6,
+    "path": "lib/application.js",
+    "start": 558,
+    "end": 565,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/application.js#L558-L565",
+    "block": 0
+   },
+   {
+    "n": 7,
+    "path": "lib/application.js",
+    "start": 294,
+    "end": 308,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/application.js#L294-L308",
+    "block": 2
+   }
+  ],
+  "blocks": [
+   {
+    "path": "lib/application.js",
+    "start": 505,
+    "end": 575,
+    "content": "/**\n * Render the given view `name` name with `options`\n * and a callback accepting an error and the\n * rendered template string.\n *\n * Example:\n *\n *    app.render('email', { name: 'Tobi' }, function(err, html){\n *      // ...\n *    })\n *\n * @param {String} name\n * @param {Object|Function} options or fn\n * @param {Function} callback\n * @public\n */\n\napp.render = function render(name, options, callback) {\n  var cache = this.cache;\n  var done = callback;\n  var engines = this.engines;\n  var opts = options || {};\n  var view;\n\n  // support callback function as second arg\n  if (typeof options === 'function') {\n    done = options;\n    opts = {};\n  }\n\n  // merge options\n  var renderOptions = { ...this.locals, ...opts._locals, ...opts };\n\n  // set .cache unless explicitly provided\n  if (renderOptions.cache == null) {\n    renderOptions.cache = this.enabled('view cache');\n  }\n\n  // primed cache\n  if (renderOptions.cache) {\n    view = cache[name];\n  }\n\n  // view\n  if (!view) {\n    var View = this.get('view');\n\n    view = new View(name, {\n      defaultEngine: this.get('view engine'),\n      root: this.get('views'),\n      engines: engines\n    });\n\n    if (!view.path) {\n      var dirs = Array.isArray(view.root) && view.root.length > 1\n        ? 'directories \"' + view.root.slice(0, -1).join('\", \"') + '\" or \"' + view.root[view.root.length - 1] + '\"'\n        : 'directory \"' + view.root + '\"'\n      var err = new Error('Failed to lookup view \"' + name + '\" in views ' + dirs);\n      err.view = view;\n      return done(err);\n    }\n\n    // prime the cache\n    if (renderOptions.cache) {\n      cache[name] = view;\n    }\n  }\n\n  // render\n  tryRender(view, renderOptions, done);\n};"
+   },
+   {
+    "path": "lib/view.js",
+    "start": 9,
+    "end": 95,
+    "content": "'use strict';\n\n/**\n * Module dependencies.\n * @private\n */\n\nvar debug = require('debug')('express:view');\nvar path = require('node:path');\nvar fs = require('node:fs');\n\n/**\n * Module variables.\n * @private\n */\n\nvar dirname = path.dirname;\nvar basename = path.basename;\nvar extname = path.extname;\nvar join = path.join;\nvar resolve = path.resolve;\n\n/**\n * Module exports.\n * @public\n */\n\nmodule.exports = View;\n\n/**\n * Initialize a new `View` with the given `name`.\n *\n * Options:\n *\n *   - `defaultEngine` the default template engine name\n *   - `engines` template engine require() cache\n *   - `root` root path for view lookup\n *\n * @param {string} name\n * @param {object} options\n * @public\n */\n\nfunction View(name, options) {\n  var opts = options || {};\n\n  this.defaultEngine = opts.defaultEngine;\n  this.ext = extname(name);\n  this.name = name;\n  this.root = opts.root;\n\n  if (!this.ext && !this.defaultEngine) {\n    throw new Error('No default engine was specified and no extension was provided.');\n  }\n\n  var fileName = name;\n\n  if (!this.ext) {\n    // get extension from default engine name\n    this.ext = this.defaultEngine[0] !== '.'\n      ? '.' + this.defaultEngine\n      : this.defaultEngine;\n\n    fileName += this.ext;\n  }\n\n  if (!opts.engines[this.ext]) {\n    // load engine\n    var mod = this.ext.slice(1)\n    debug('require \"%s\"', mod)\n\n    // default engine export\n    var fn = require(mod).__express\n\n    if (typeof fn !== 'function') {\n      throw new Error('Module \"' + mod + '\" does not provide a view engine.')\n    }\n\n    opts.engines[this.ext] = fn\n  }\n\n  // store loaded engine\n  this.engine = opts.engines[this.ext];\n\n  // lookup path\n  this.path = this.lookup(fileName);\n}"
+   },
+   {
+    "path": "lib/application.js",
+    "start": 260,
+    "end": 308,
+    "content": "/**\n * Register the given template engine callback `fn`\n * as `ext`.\n *\n * By default will `require()` the engine based on the\n * file extension. For example if you try to render\n * a \"foo.ejs\" file Express will invoke the following internally:\n *\n *     app.engine('ejs', require('ejs').__express);\n *\n * For engines that do not provide `.__express` out of the box,\n * or if you wish to \"map\" a different extension to the template engine\n * you may use this method. For example mapping the EJS template engine to\n * \".html\" files:\n *\n *     app.engine('html', require('ejs').renderFile);\n *\n * In this case EJS provides a `.renderFile()` method with\n * the same signature that Express expects: `(path, options, callback)`,\n * though note that it aliases this method as `ejs.__express` internally\n * so if you're using \".ejs\" extensions you don't need to do anything.\n *\n * Some template engines do not follow this convention, the\n * [Consolidate.js](https://github.com/tj/consolidate.js)\n * library was created to map all of node's popular template\n * engines to follow this convention, thus allowing them to\n * work seamlessly within Express.\n *\n * @param {String} ext\n * @param {Function} fn\n * @return {app} for chaining\n * @public\n */\n\napp.engine = function engine(ext, fn) {\n  if (typeof fn !== 'function') {\n    throw new Error('callback function required');\n  }\n\n  // get file extension\n  var extension = ext[0] !== '.'\n    ? '.' + ext\n    : ext;\n\n  // store engine\n  this.engines[extension] = fn;\n\n  return this;\n};"
+   }
+  ],
+  "possibly_relevant": [],
+  "model": "qwen/qwen3.8-27b",
+  "prompt_version": 3
+ },
+ "question_id": "q4",
+ "runs": [
+  {
+   "id": "q4",
+   "at": "2026-11-12T21:29:10+00:00",
+   "outcome": "answered",
+   "tokens": 3133,
+   "estimated": false,
+   "error": null
+  }
+ ],
+ "lines_check": {
+  "ok": true,
+  "commit_sha": "1c6f1b0fe4000977b9a7b4f34097e4d527dd9824",
+  "checked_at": "2026-11-12T21:30:21+00:00",
+  "blocks": 3,
+  "problems": []
+ }
+}

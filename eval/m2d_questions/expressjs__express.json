@@ -3,7 +3,9 @@
  "commit_sha": "1c6f1b0fe4000977b9a7b4f34097e4d527dd9824",
  "about": "Slice 5 (M2d) suggested questions, in index order (the first passing entry that meets the Q48 flagship criteria leads), with expected chunks. Questions proposed by the mentor chat (Claude) from general knowledge before any generated answer existed, selected and accepted by the author (Q48 amendment, 2026-11-12). Expected chunks drafted by Claude on 2026-11-12 from a fresh clone at commit_sha (express 5.3.0; routing, body parsing, static files, proxy-address parsing and ETag hashing live in npm packages, not in this repo); ranges are the statement itself (from `x.y = function` or `function` to its closing brace, without the JSDoc above it), 1-based inclusive. 'required' = an answer can't be complete and grounded without it; 'supporting' = helpful, not used by the Q49 rule. A range counts as packed when every NON-BLANK line of it lies inside the packed blocks after merging (the rule of eval/m2_pack_compare.py; partial overlap does not count). The chunker attaches a JSDoc block to the unit below it, so a packed chunk holding the statement covers the range; JSDoc lines are not required. Frozen once confirmed: later changes are amendments with a reason; rewording a question is a replacement (Q48).",
  "confirmed": {"date": "2026-11-12", "by": "author", "spot_checked": ["q2", "q3"], "note": "Author spot-checked these questions' ranges against the files at commit_sha; the mentor reviewed the table's structure and consistency, not the line numbers. Frozen from here: committed before the Q49 packer comparison and before any generation."},
- "amendments": [],
+ "amendments": [
+  {"date": "2026-11-12", "change": "q4 failed and moved to `failed`; reserve r1 promoted into q4's slot (index order q1, q2, q3, r1, q5, q6); r2 stays a reserve and is promoted only if r1 fails.", "reason": "Q50 replacement 1 of at most 3 for this repo (failures: 1; the stop rule fires at more than N/2 = 3 with N = 6). Committed before r1 is generated (Q48)."}
+ ],
  "questions": [
   {
    "id": "q1",
@@ -52,19 +54,14 @@
    ]
   },
   {
-   "id": "q4",
-   "question": "How does Express choose a template engine and find the view file for `res.render`?",
+   "id": "r1",
+   "question": "How does `res.redirect` build the Location header and pick the status code?",
    "required": [
-    {"path": "lib/application.js", "start": 522, "end": 575, "name": "app.render"},
-    {"path": "lib/view.js", "start": 52, "end": 95, "name": "View"},
-    {"path": "lib/view.js", "start": 104, "end": 123, "name": "View.prototype.lookup"},
-    {"path": "lib/view.js", "start": 169, "end": 187, "name": "View.prototype.resolve"}
+    {"path": "lib/response.js", "start": 815, "end": 867, "name": "res.redirect"},
+    {"path": "lib/response.js", "start": 797, "end": 799, "name": "res.location"}
    ],
    "supporting": [
-    {"path": "lib/application.js", "start": 294, "end": 308, "name": "app.engine"},
-    {"path": "lib/application.js", "start": 625, "end": 631, "name": "tryRender"},
-    {"path": "lib/response.js", "start": 897, "end": 921, "name": "res.render"},
-    {"path": "lib/view.js", "start": 133, "end": 159, "name": "View.prototype.render"}
+    {"path": "lib/response.js", "start": 574, "end": 599, "name": "res.format"}
    ]
   },
   {
@@ -94,18 +91,27 @@
    ]
   }
  ],
- "reserves": [
+ "failed": [
   {
-   "id": "r1",
-   "question": "How does `res.redirect` build the Location header and pick the status code?",
+   "id": "q4",
+   "question": "How does Express choose a template engine and find the view file for `res.render`?",
    "required": [
-    {"path": "lib/response.js", "start": 815, "end": 867, "name": "res.redirect"},
-    {"path": "lib/response.js", "start": 797, "end": 799, "name": "res.location"}
+    {"path": "lib/application.js", "start": 522, "end": 575, "name": "app.render"},
+    {"path": "lib/view.js", "start": 52, "end": 95, "name": "View"},
+    {"path": "lib/view.js", "start": 104, "end": 123, "name": "View.prototype.lookup"},
+    {"path": "lib/view.js", "start": 169, "end": 187, "name": "View.prototype.resolve"}
    ],
    "supporting": [
-    {"path": "lib/response.js", "start": 574, "end": 599, "name": "res.format"}
-   ]
-  },
+    {"path": "lib/application.js", "start": 294, "end": 308, "name": "app.engine"},
+    {"path": "lib/application.js", "start": 625, "end": 631, "name": "tryRender"},
+    {"path": "lib/response.js", "start": 897, "end": 921, "name": "res.render"},
+    {"path": "lib/view.js", "start": 133, "end": 159, "name": "View.prototype.render"}
+   ],
+   "attempt": "generated 2026-11-12; the answer and its grade are in eval/results/m2d_failures/expressjs__express/q4.json",
+   "reason": "Q50 rule 1, an incorrect claim on the point the question asks: app.render is said to throw when the view is not found, while application.js 558-565 returns the error through the callback (return done(err)). A generation error. Also a material omission: lookup and resolve (view.js 104-187) were not packed, a Q49 budget miss."
+  }
+ ],
+ "reserves": [
   {
    "id": "r2",
    "question": "How does content negotiation work in `req.accepts` and `res.format`?",

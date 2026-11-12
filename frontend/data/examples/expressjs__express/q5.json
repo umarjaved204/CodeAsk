@@ -1,0 +1,176 @@
+{
+ "question": "How are settings like `etag`, `query parser` and `trust proxy` compiled when you call `app.set`?",
+ "repo": "expressjs/express",
+ "repo_url": "https://github.com/expressjs/express",
+ "commit_sha": "1c6f1b0fe4000977b9a7b4f34097e4d527dd9824",
+ "generated_at": "2026-11-12T21:29:13+00:00",
+ "model": "qwen/qwen3.8-27b",
+ "prompt_version": 3,
+ "generation": {
+  "temperature": 0,
+  "max_completion_tokens": 600,
+  "model_options": {
+   "reasoning_effort": "none"
+  }
+ },
+ "packer": {
+  "retrieve_k": 15,
+  "budget": 2000,
+  "per_file_cap": null,
+  "merge_max_gap_lines": 5
+ },
+ "usage": {
+  "queue_time": 0.004426598,
+  "prompt_tokens": 2841,
+  "prompt_time": 0.261253046,
+  "completion_tokens": 369,
+  "completion_time": 0.756480044,
+  "total_tokens": 3210,
+  "total_time": 1.01773309
+ },
+ "retries_429": 0,
+ "attempt": 1,
+ "attempt_note": null,
+ "grade": {
+  "correct": "correct",
+  "grounded": "yes",
+  "citations_valid": "5/5 strict",
+  "unsupported": "none",
+  "omission": "minor",
+  "claims": [
+   {
+    "claim": "app.set stores the raw value, then a switch compiles it into a derived '... fn' setting",
+    "verdict": "supported",
+    "blocks": [
+     "application.js:351-383"
+    ],
+    "risky": true
+   },
+   {
+    "claim": "compileETag: a function as is; true/'weak' -> wetag, 'strong' -> etag, false -> undefined, else TypeError",
+    "verdict": "supported",
+    "blocks": [
+     "utils.js:130-152"
+    ],
+    "risky": true
+   },
+   {
+    "claim": "compileQueryParser: a function as is; true/'simple' -> querystring.parse, 'extended' -> parseExtendedQueryString, false -> undefined, else TypeError",
+    "verdict": "supported",
+    "blocks": [
+     "utils.js:162-184"
+    ]
+   },
+   {
+    "claim": "trust proxy: compileTrust(val) into 'trust proxy fn', plus the back-compat symbol set to false",
+    "verdict": "supported",
+    "blocks": [
+     "application.js:370-379"
+    ],
+    "risky": true
+   },
+   {
+    "claim": "defaults: etag 'weak', query parser 'simple', trust proxy false",
+    "verdict": "supported",
+    "blocks": [
+     "application.js:90-99"
+    ]
+   }
+  ],
+  "reviewer": "author",
+  "date": "2026-11-12",
+  "note": "Drafted by Claude (Q51), claim by claim against the cited blocks and the files at 1c6f1b0; claims marked risky are the ones for the author's spot-check. Every claim checked against application.js 90-99 and 351-383 and utils.js 122-184 at 1c6f1b0. Minor omission: what compileTrust maps each value to (utils.js 194-214, not packed within the budget, Q49). Spot-checked and agreed by the author on 2026-11-12 (UTC) against the files at 1c6f1b0: application.js 351-383 and utils.js 122-184."
+ },
+ "response": {
+  "grounded": true,
+  "answer": "When `app.set` is called with a specific setting name, it stores the raw value in `this.settings[setting]` and then runs a `switch` statement to compile that value into a function stored under a derived key [1](cite:1).\n\n- **`etag`**: Calls `compileETag(val)` and stores the result as `etag fn`. `compileETag` returns the value directly if it is already a function; otherwise it maps `true`/`'weak'` to `exports.wetag`, `'strong'` to `exports.etag`, and `false` to `undefined`, throwing a `TypeError` for unknown values [2](cite:2).\n- **`query parser`**: Calls `compileQueryParser(val)` and stores the result as `query parser fn`. `compileQueryParser` returns the value if it is a function; otherwise it maps `true`/`'simple'` to `querystring.parse`, `'extended'` to `parseExtendedQueryString`, and `false` to `undefined`, throwing a `TypeError` for unknown values [3](cite:3).\n- **`trust proxy`**: Calls `compileTrust(val)` and stores the result as `trust proxy fn`. It also sets the `trustProxyDefaultSymbol` property on `this.settings` to `false` to handle inheritance back-compatibility [4](cite:4).\n\nThe default values for these settings are established in `defaultConfiguration`, where `etag` is set to `'weak'`, `query parser` to `'simple'`, and `trust proxy` to `false` [5](cite:5).",
+  "citations": [
+   {
+    "n": 1,
+    "path": "lib/application.js",
+    "start": 351,
+    "end": 383,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/application.js#L351-L383",
+    "block": 0
+   },
+   {
+    "n": 2,
+    "path": "lib/utils.js",
+    "start": 130,
+    "end": 152,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/utils.js#L130-L152",
+    "block": 1
+   },
+   {
+    "n": 3,
+    "path": "lib/utils.js",
+    "start": 162,
+    "end": 184,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/utils.js#L162-L184",
+    "block": 1
+   },
+   {
+    "n": 4,
+    "path": "lib/application.js",
+    "start": 370,
+    "end": 379,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/application.js#L370-L379",
+    "block": 0
+   },
+   {
+    "n": 5,
+    "path": "lib/application.js",
+    "start": 90,
+    "end": 99,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/application.js#L90-L99",
+    "block": 2
+   }
+  ],
+  "blocks": [
+   {
+    "path": "lib/application.js",
+    "start": 336,
+    "end": 383,
+    "content": "/**\n * Assign `setting` to `val`, or return `setting`'s value.\n *\n *    app.set('foo', 'bar');\n *    app.set('foo');\n *    // => \"bar\"\n *\n * Mounted servers inherit their parent server's settings.\n *\n * @param {String} setting\n * @param {*} [val]\n * @return {Server} for chaining\n * @public\n */\n\napp.set = function set(setting, val) {\n  if (arguments.length === 1) {\n    // app.get(setting)\n    return this.settings[setting];\n  }\n\n  debug('set \"%s\" to %o', setting, val);\n\n  // set value\n  this.settings[setting] = val;\n\n  // trigger matched settings\n  switch (setting) {\n    case 'etag':\n      this.set('etag fn', compileETag(val));\n      break;\n    case 'query parser':\n      this.set('query parser fn', compileQueryParser(val));\n      break;\n    case 'trust proxy':\n      this.set('trust proxy fn', compileTrust(val));\n\n      // trust proxy inherit back-compat\n      Object.defineProperty(this.settings, trustProxyDefaultSymbol, {\n        configurable: true,\n        value: false\n      });\n\n      break;\n  }\n\n  return this;\n};"
+   },
+   {
+    "path": "lib/utils.js",
+    "start": 122,
+    "end": 184,
+    "content": "/**\n * Compile \"etag\" value to function.\n *\n * @param  {Boolean|String|Function} val\n * @return {Function}\n * @api private\n */\n\nexports.compileETag = function(val) {\n  var fn;\n\n  if (typeof val === 'function') {\n    return val;\n  }\n\n  switch (val) {\n    case true:\n    case 'weak':\n      fn = exports.wetag;\n      break;\n    case false:\n      break;\n    case 'strong':\n      fn = exports.etag;\n      break;\n    default:\n      throw new TypeError('unknown value for etag function: ' + val);\n  }\n\n  return fn;\n}\n\n/**\n * Compile \"query parser\" value to function.\n *\n * @param  {String|Function} val\n * @return {Function}\n * @api private\n */\n\nexports.compileQueryParser = function compileQueryParser(val) {\n  var fn;\n\n  if (typeof val === 'function') {\n    return val;\n  }\n\n  switch (val) {\n    case true:\n    case 'simple':\n      fn = querystring.parse;\n      break;\n    case false:\n      break;\n    case 'extended':\n      fn = parseExtendedQueryString;\n      break;\n    default:\n      throw new TypeError('unknown value for query parser function: ' + val);\n  }\n\n  return fn;\n}"
+   },
+   {
+    "path": "lib/application.js",
+    "start": 85,
+    "end": 141,
+    "content": "/**\n * Initialize application configuration.\n * @private\n */\n\napp.defaultConfiguration = function defaultConfiguration() {\n  var env = process.env.NODE_ENV || 'development';\n\n  // default settings\n  this.enable('x-powered-by');\n  this.set('etag', 'weak');\n  this.set('env', env);\n  this.set('query parser', 'simple')\n  this.set('subdomain offset', 2);\n  this.set('trust proxy', false);\n\n  // trust proxy inherit back-compat\n  Object.defineProperty(this.settings, trustProxyDefaultSymbol, {\n    configurable: true,\n    value: true\n  });\n\n  debug('booting in %s mode', env);\n\n  this.on('mount', function onmount(parent) {\n    // inherit trust proxy\n    if (this.settings[trustProxyDefaultSymbol] === true\n      && typeof parent.settings['trust proxy fn'] === 'function') {\n      delete this.settings['trust proxy'];\n      delete this.settings['trust proxy fn'];\n    }\n\n    // inherit protos\n    Object.setPrototypeOf(this.request, parent.request)\n    Object.setPrototypeOf(this.response, parent.response)\n    Object.setPrototypeOf(this.engines, parent.engines)\n    Object.setPrototypeOf(this.settings, parent.settings)\n  });\n\n  // setup locals\n  this.locals = Object.create(null);\n\n  // top-most app is mounted at /\n  this.mountpath = '/';\n\n  // default locals\n  this.locals.settings = this.settings;\n\n  // default configuration\n  this.set('view', View);\n  this.set('views', resolve('views'));\n  this.set('jsonp callback name', 'callback');\n\n  if (env === 'production') {\n    this.enable('view cache');\n  }\n};"
+   }
+  ],
+  "possibly_relevant": [],
+  "model": "qwen/qwen3.8-27b",
+  "prompt_version": 3
+ },
+ "question_id": "q5",
+ "runs": [
+  {
+   "id": "q5",
+   "at": "2026-11-12T21:29:13+00:00",
+   "outcome": "answered",
+   "tokens": 3210,
+   "estimated": false,
+   "error": null
+  }
+ ],
+ "lines_check": {
+  "ok": true,
+  "commit_sha": "1c6f1b0fe4000977b9a7b4f34097e4d527dd9824",
+  "checked_at": "2026-11-12T21:30:21+00:00",
+  "blocks": 3,
+  "problems": []
+ }
+}

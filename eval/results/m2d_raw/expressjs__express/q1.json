@@ -1,0 +1,140 @@
+{
+ "question_id": "q1",
+ "question": "How do `req` and `res` get Express's extra methods on top of Node's built-in ones?",
+ "generated_at": "2026-11-12T21:26:56+00:00",
+ "grounded": true,
+ "possibly_relevant": [],
+ "answer": "Express extends Node's built-in request and response objects through prototype inheritance:\n\n1. **Prototype creation**: `req` is created as `Object.create(http.IncomingMessage.prototype)` [1](cite:1), and `res` is created as `Object.create(http.ServerResponse.prototype)` [2](cite:2). This means both inherit all of Node's built-in methods while providing a base for Express-specific additions.\n\n2. **Per-app instances**: When an Express app is created, `createApplication()` builds app-specific prototypes using `Object.create(req, { app: {...} })` and `Object.create(res, { app: {...} })` [3](cite:3). These store a reference back to the app instance.\n\n3. **Runtime prototype swapping**: During request handling, `app.handle()` calls `Object.setPrototypeOf(req, this.request)` and `Object.setPrototypeOf(res, this.response)` [4](cite:4). This replaces the original Node prototypes with the Express-enhanced ones, giving each incoming request/response access to Express methods like `req.query`, `res.json()`, etc.\n\nThe actual Express-specific methods (e.g., `req.get()`, `res.send()`) are defined on the prototypes in `lib/request.js` and `lib/response.js` beyond the lines shown here, but the mechanism for attaching them to live request/response objects is the `setPrototypeOf` call during dispatch.",
+ "raw_answer": "Express extends Node's built-in request and response objects through prototype inheritance:\n\n1. **Prototype creation**: `req` is created as `Object.create(http.IncomingMessage.prototype)` [lib/request.js:30], and `res` is created as `Object.create(http.ServerResponse.prototype)` [lib/response.js:43]. This means both inherit all of Node's built-in methods while providing a base for Express-specific additions.\n\n2. **Per-app instances**: When an Express app is created, `createApplication()` builds app-specific prototypes using `Object.create(req, { app: {...} })` and `Object.create(res, { app: {...} })` [lib/express.js:45-52]. These store a reference back to the app instance.\n\n3. **Runtime prototype swapping**: During request handling, `app.handle()` calls `Object.setPrototypeOf(req, this.request)` and `Object.setPrototypeOf(res, this.response)` [lib/application.js:169-170]. This replaces the original Node prototypes with the Express-enhanced ones, giving each incoming request/response access to Express methods like `req.query`, `res.json()`, etc.\n\nThe actual Express-specific methods (e.g., `req.get()`, `res.send()`) are defined on the prototypes in `lib/request.js` and `lib/response.js` beyond the lines shown here, but the mechanism for attaching them to live request/response objects is the `setPrototypeOf` call during dispatch.",
+ "citations": [
+  {
+   "n": 1,
+   "path": "lib/request.js",
+   "start": 30,
+   "end": 30,
+   "valid": true,
+   "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/request.js#L30"
+  },
+  {
+   "n": 2,
+   "path": "lib/response.js",
+   "start": 43,
+   "end": 43,
+   "valid": true,
+   "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L43"
+  },
+  {
+   "n": 3,
+   "path": "lib/express.js",
+   "start": 45,
+   "end": 52,
+   "valid": true,
+   "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/express.js#L45-L52"
+  },
+  {
+   "n": 4,
+   "path": "lib/application.js",
+   "start": 169,
+   "end": 170,
+   "valid": true,
+   "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/application.js#L169-L170"
+  }
+ ],
+ "stats": {
+  "markers": 4,
+  "attempted": 4,
+  "valid": 4,
+  "unverified": 0
+ },
+ "blocks": [
+  "lib/express.js:1-81",
+  "lib/request.js:1-37",
+  "lib/application.js:1-47",
+  "lib/application.js:143-178",
+  "index.js:1-7",
+  "lib/response.js:30-50"
+ ],
+ "context": [
+  {
+   "path": "lib/express.js",
+   "start": 1,
+   "end": 81,
+   "content": "/*!\n * express\n * Copyright(c) 2009-2013 TJ Holowaychuk\n * Copyright(c) 2013 Roman Shtylman\n * Copyright(c) 2014-2015 Douglas Christopher Wilson\n * MIT Licensed\n */\n\n'use strict';\n\n/**\n * Module dependencies.\n */\n\nvar bodyParser = require('body-parser')\nvar EventEmitter = require('node:events').EventEmitter;\nvar mixin = require('merge-descriptors');\nvar proto = require('./application');\nvar Router = require('router');\nvar req = require('./request');\nvar res = require('./response');\n\n/**\n * Expose `createApplication()`.\n */\n\nexports = module.exports = createApplication;\n\n/**\n * Create an express application.\n *\n * @return {Function}\n * @api public\n */\n\nfunction createApplication() {\n  var app = function(req, res, next) {\n    app.handle(req, res, next);\n  };\n\n  mixin(app, EventEmitter.prototype, false);\n  mixin(app, proto, false);\n\n  // expose the prototype that will get set on requests\n  app.request = Object.create(req, {\n    app: { configurable: true, enumerable: true, writable: true, value: app }\n  })\n\n  // expose the prototype that will get set on responses\n  app.response = Object.create(res, {\n    app: { configurable: true, enumerable: true, writable: true, value: app }\n  })\n\n  app.init();\n  return app;\n}\n\n/**\n * Expose the prototypes.\n */\n\nexports.application = proto;\nexports.request = req;\nexports.response = res;\n\n/**\n * Expose constructors.\n */\n\nexports.Route = Router.Route;\nexports.Router = Router;\n\n/**\n * Expose middleware\n */\n\nexports.json = bodyParser.json\nexports.raw = bodyParser.raw\nexports.static = require('serve-static');\nexports.text = bodyParser.text\nexports.urlencoded = bodyParser.urlencoded"
+  },
+  {
+   "path": "lib/request.js",
+   "start": 1,
+   "end": 37,
+   "content": "/*!\n * express\n * Copyright(c) 2009-2013 TJ Holowaychuk\n * Copyright(c) 2013 Roman Shtylman\n * Copyright(c) 2014-2015 Douglas Christopher Wilson\n * MIT Licensed\n */\n\n'use strict';\n\n/**\n * Module dependencies.\n * @private\n */\n\nvar accepts = require('accepts');\nvar isIP = require('node:net').isIP;\nvar typeis = require('type-is');\nvar http = require('node:http');\nvar fresh = require('fresh');\nvar parseRange = require('range-parser');\nvar parse = require('parseurl');\nvar proxyaddr = require('proxy-addr');\n\n/**\n * Request prototype.\n * @public\n */\n\nvar req = Object.create(http.IncomingMessage.prototype)\n\n/**\n * Module exports.\n * @public\n */\n\nmodule.exports = req"
+  },
+  {
+   "path": "lib/application.js",
+   "start": 1,
+   "end": 47,
+   "content": "/*!\n * express\n * Copyright(c) 2009-2013 TJ Holowaychuk\n * Copyright(c) 2013 Roman Shtylman\n * Copyright(c) 2014-2015 Douglas Christopher Wilson\n * MIT Licensed\n */\n\n'use strict';\n\n/**\n * Module dependencies.\n * @private\n */\n\nvar finalhandler = require('finalhandler');\nvar debug = require('debug')('express:application');\nvar View = require('./view');\nvar http = require('node:http');\nvar methods = require('./utils').methods;\nvar compileETag = require('./utils').compileETag;\nvar compileQueryParser = require('./utils').compileQueryParser;\nvar compileTrust = require('./utils').compileTrust;\nvar resolve = require('node:path').resolve;\nvar once = require('once')\nvar Router = require('router');\n\n/**\n * Module variables.\n * @private\n */\n\nvar slice = Array.prototype.slice;\nvar flatten = Array.prototype.flat;\n\n/**\n * Application prototype.\n */\n\nvar app = exports = module.exports = {};\n\n/**\n * Variable for trust proxy inheritance back-compat\n * @private\n */\n\nvar trustProxyDefaultSymbol = '@@symbol:trust_proxy_default';"
+  },
+  {
+   "path": "lib/application.js",
+   "start": 143,
+   "end": 178,
+   "content": "/**\n * Dispatch a req, res pair into the application. Starts pipeline processing.\n *\n * If no callback is provided, then default error handlers will respond\n * in the event of an error bubbling through the stack.\n *\n * @private\n */\n\napp.handle = function handle(req, res, callback) {\n  // final handler\n  var done = callback || finalhandler(req, res, {\n    env: this.get('env'),\n    onerror: logerror.bind(this)\n  });\n\n  // set powered by header\n  if (this.enabled('x-powered-by')) {\n    res.setHeader('X-Powered-By', 'Express');\n  }\n\n  // set circular references\n  req.res = res;\n  res.req = req;\n\n  // alter the prototypes\n  Object.setPrototypeOf(req, this.request)\n  Object.setPrototypeOf(res, this.response)\n\n  // setup locals\n  if (!res.locals) {\n    res.locals = Object.create(null);\n  }\n\n  this.router.handle(req, res, done);\n};"
+  },
+  {
+   "path": "index.js",
+   "start": 1,
+   "end": 7,
+   "content": "/*!\n * express\n * Copyright(c) 2009-2013 TJ Holowaychuk\n * Copyright(c) 2013 Roman Shtylman\n * Copyright(c) 2014-2015 Douglas Christopher Wilson\n * MIT Licensed\n */"
+  },
+  {
+   "path": "lib/response.js",
+   "start": 30,
+   "end": 50,
+   "content": "var cookie = require('cookie');\nvar send = require('send');\nvar extname = path.extname;\nvar resolve = path.resolve;\nvar basename = path.basename;\nvar vary = require('vary');\nconst { Buffer } = require('node:buffer');\n\n/**\n * Response prototype.\n * @public\n */\n\nvar res = Object.create(http.ServerResponse.prototype)\n\n/**\n * Module exports.\n * @public\n */\n\nmodule.exports = res"
+  }
+ ],
+ "outlines": [],
+ "dropped": [
+  [
+   "examples/mvc/index.js:22-31",
+   "budget"
+  ],
+  [
+   "lib/application.js:471-482",
+   "budget"
+  ],
+  [
+   "lib/response.js:1-29",
+   "budget"
+  ],
+  [
+   "lib/view.js:1-7",
+   "budget"
+  ]
+ ],
+ "context_estimate": 1985,
+ "model": "qwen/qwen3.8-27b",
+ "prompt_version": 3,
+ "usage": {
+  "queue_time": 0.004647215,
+  "prompt_tokens": 2703,
+  "prompt_time": 0.23304186,
+  "completion_tokens": 304,
+  "completion_time": 0.732359227,
+  "total_tokens": 3007,
+  "total_time": 0.965401087
+ },
+ "headers": {
+  "x-ratelimit-limit-requests": "1000",
+  "x-ratelimit-remaining-requests": "999",
+  "x-ratelimit-reset-requests": "1m26.4s",
+  "x-ratelimit-limit-tokens": "8000",
+  "x-ratelimit-remaining-tokens": "4697",
+  "x-ratelimit-reset-tokens": "24.772s"
+ },
+ "reasoning_chars": 0,
+ "timings_s": {
+  "retrieve": 1.82,
+  "llm": 1.54
+ },
+ "retries": 0
+}

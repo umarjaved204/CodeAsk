@@ -1,0 +1,161 @@
+{
+ "question": "How do the \"trust proxy\" setting and the request's protocol, hostname and IP relate to each other?",
+ "repo": "expressjs/express",
+ "repo_url": "https://github.com/expressjs/express",
+ "commit_sha": "1c6f1b0fe4000977b9a7b4f34097e4d527dd9824",
+ "generated_at": "2026-11-12T21:27:00+00:00",
+ "model": "qwen/qwen3.8-27b",
+ "prompt_version": 3,
+ "generation": {
+  "temperature": 0,
+  "max_completion_tokens": 600,
+  "model_options": {
+   "reasoning_effort": "none"
+  }
+ },
+ "packer": {
+  "retrieve_k": 15,
+  "budget": 2000,
+  "per_file_cap": null,
+  "merge_max_gap_lines": 5
+ },
+ "usage": {
+  "queue_time": 0.053771813,
+  "prompt_tokens": 2729,
+  "prompt_time": 0.230805483,
+  "completion_tokens": 375,
+  "completion_time": 0.77497182,
+  "total_tokens": 3104,
+  "total_time": 1.005777303
+ },
+ "retries_429": 0,
+ "attempt": 1,
+ "attempt_note": null,
+ "grade": {
+  "correct": "correct",
+  "grounded": "yes",
+  "citations_valid": "4/4 strict",
+  "unsupported": "minor",
+  "omission": "minor",
+  "claims": [
+   {
+    "claim": "protocol: https/http from socket.encrypted; X-Forwarded-Proto (first value) only if trust(remoteAddress, 0)",
+    "verdict": "supported",
+    "blocks": [
+     "request.js:297-315"
+    ],
+    "risky": true
+   },
+   {
+    "claim": "ip: proxyaddr(this, trust)",
+    "verdict": "supported",
+    "blocks": [
+     "request.js:340-343"
+    ]
+   },
+   {
+    "claim": "so ip comes from X-Forwarded-For when the proxy is trusted",
+    "verdict": "unsupported",
+    "blocks": [
+     "request.js:340-343"
+    ],
+    "risky": true
+   },
+   {
+    "claim": "host: X-Forwarded-Host (first value) only if present and trusted, else Host",
+    "verdict": "supported",
+    "blocks": [
+     "request.js:418-431"
+    ],
+    "risky": true
+   },
+   {
+    "claim": "hostname: from host, minus the port, with IPv6 literals handled",
+    "verdict": "supported",
+    "blocks": [
+     "request.js:444-458"
+    ]
+   }
+  ],
+  "reviewer": "author",
+  "date": "2026-11-12",
+  "note": "Drafted by Claude (Q51), claim by claim against the cited blocks and the files at 1c6f1b0; claims marked risky are the ones for the author's spot-check. Every claim checked against request.js 297-458 at 1c6f1b0. Unsupported, minor by the deletion test: the X-Forwarded-For detail is proxy-addr's (an npm package, not this repo); without it the cited proxyaddr(this, trust) call still answers how trust relates to the IP. Minor omission: how the 'trust proxy' value becomes 'trust proxy fn' (app.set and compileTrust, not retrieved within the budget, Q49). Spot-checked and agreed by the author on 2026-11-12 (UTC) against the files at 1c6f1b0: request.js 297-315 and 418-458 (protocol, host, hostname), 340-343 (ip)."
+ },
+ "response": {
+  "grounded": true,
+  "answer": "The \"trust proxy\" setting acts as a gatekeeper that determines whether Express trusts headers supplied by a reverse proxy. It is accessed via `this.app.get('trust proxy fn')` and evaluated against the socket's remote address.\n\n1.  **Protocol**: The `protocol` getter first checks if the socket is encrypted to determine if it is `https` or `http`. If the trust proxy function returns true for the socket address, Express then checks the `X-Forwarded-Proto` header. If present, it uses that value (taking the first value if a comma-separated list is provided) instead of the socket's encryption status [1](cite:1).\n2.  **IP**: The `ip` getter uses the `proxyaddr` module, passing the request and the trust proxy function. This allows Express to return the client's IP address from the `X-Forwarded-For` header if the proxy is trusted, rather than the immediate socket address [2](cite:2).\n3.  **Hostname**: The `host` getter checks the `X-Forwarded-Host` header. If the trust proxy function returns true for the socket address and the header exists, it uses that value (handling comma-separated lists by taking the first entry). Otherwise, it falls back to the standard `Host` header [3](cite:3). The `hostname` getter then parses this `host` value to extract just the hostname, accounting for IPv6 literals and port numbers [4](cite:4).\n\nIn summary, the \"trust proxy\" setting enables Express to override the default socket-based values for protocol, IP, and hostname with values provided by trusted proxies via specific HTTP headers.",
+  "citations": [
+   {
+    "n": 1,
+    "path": "lib/request.js",
+    "start": 297,
+    "end": 315,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/request.js#L297-L315",
+    "block": 0
+   },
+   {
+    "n": 2,
+    "path": "lib/request.js",
+    "start": 340,
+    "end": 343,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/request.js#L340-L343",
+    "block": 0
+   },
+   {
+    "n": 3,
+    "path": "lib/request.js",
+    "start": 418,
+    "end": 431,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/request.js#L418-L431",
+    "block": 1
+   },
+   {
+    "n": 4,
+    "path": "lib/request.js",
+    "start": 444,
+    "end": 458,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/request.js#L444-L458",
+    "block": 1
+   }
+  ],
+  "blocks": [
+   {
+    "path": "lib/request.js",
+    "start": 283,
+    "end": 366,
+    "content": "/**\n * Return the protocol string \"http\" or \"https\"\n * when requested with TLS. When the \"trust proxy\"\n * setting trusts the socket address, the\n * \"X-Forwarded-Proto\" header field will be trusted\n * and used if present.\n *\n * If you're running behind a reverse proxy that\n * supplies https for you this may be enabled.\n *\n * @return {String}\n * @public\n */\n\ndefineGetter(req, 'protocol', function protocol(){\n  var proto = this.socket.encrypted\n    ? 'https'\n    : 'http';\n  var trust = this.app.get('trust proxy fn');\n\n  if (!trust(this.socket.remoteAddress, 0)) {\n    return proto;\n  }\n\n  // Note: X-Forwarded-Proto is normally only ever a\n  //       single value, but this is to be safe.\n  var header = this.get('X-Forwarded-Proto') || proto\n  var index = header.indexOf(',')\n\n  return index !== -1\n    ? header.substring(0, index).trim()\n    : header.trim()\n});\n\n/**\n * Short-hand for:\n *\n *    req.protocol === 'https'\n *\n * @return {Boolean}\n * @public\n */\n\ndefineGetter(req, 'secure', function secure(){\n  return this.protocol === 'https';\n});\n\n/**\n * Return the remote address from the trusted proxy.\n *\n * This is the remote address on the socket unless\n * \"trust proxy\" is set.\n *\n * @return {String}\n * @public\n */\n\ndefineGetter(req, 'ip', function ip(){\n  var trust = this.app.get('trust proxy fn');\n  return proxyaddr(this, trust);\n});\n\n/**\n * When \"trust proxy\" is set, trusted proxy addresses + client.\n *\n * For example if the value were \"client, proxy1, proxy2\"\n * you would receive the array `[\"client\", \"proxy1\", \"proxy2\"]`\n * where \"proxy2\" is the furthest down-stream and \"proxy1\" and\n * \"proxy2\" were trusted.\n *\n * @return {Array}\n * @public\n */\n\ndefineGetter(req, 'ips', function ips() {\n  var trust = this.app.get('trust proxy fn');\n  var addrs = proxyaddr.all(this, trust);\n\n  // reverse the order (to farthest -> closest)\n  // and remove socket address\n  addrs.reverse().pop()\n\n  return addrs\n});"
+   },
+   {
+    "path": "lib/request.js",
+    "start": 396,
+    "end": 458,
+    "content": "/**\n * Short-hand for `url.parse(req.url).pathname`.\n *\n * @return {String}\n * @public\n */\n\ndefineGetter(req, 'path', function path() {\n  return parse(this).pathname;\n});\n\n/**\n * Parse the \"Host\" header field to a host.\n *\n * When the \"trust proxy\" setting trusts the socket\n * address, the \"X-Forwarded-Host\" header field will\n * be trusted.\n *\n * @return {String}\n * @public\n */\n\ndefineGetter(req, 'host', function host(){\n  var trust = this.app.get('trust proxy fn');\n  var val = this.get('X-Forwarded-Host');\n\n  if (!val || !trust(this.socket.remoteAddress, 0)) {\n    val = this.get('Host');\n  } else if (val.indexOf(',') !== -1) {\n    // Note: X-Forwarded-Host is normally only ever a\n    //       single value, but this is to be safe.\n    val = val.substring(0, val.indexOf(',')).trimEnd()\n  }\n\n  return val || undefined;\n});\n\n/**\n * Parse the \"Host\" header field to a hostname.\n *\n * When the \"trust proxy\" setting trusts the socket\n * address, the \"X-Forwarded-Host\" header field will\n * be trusted.\n *\n * @return {String}\n * @api public\n */\n\ndefineGetter(req, 'hostname', function hostname(){\n  var host = this.host;\n\n  if (!host) return;\n\n  // IPv6 literal support\n  var offset = host[0] === '['\n    ? host.indexOf(']') + 1\n    : 0;\n  var index = host.indexOf(':', offset);\n\n  return index !== -1\n    ? host.substring(0, index)\n    : host;\n});"
+   }
+  ],
+  "possibly_relevant": [],
+  "model": "qwen/qwen3.8-27b",
+  "prompt_version": 3
+ },
+ "question_id": "q2",
+ "runs": [
+  {
+   "id": "q2",
+   "at": "2026-11-12T21:27:00+00:00",
+   "outcome": "answered",
+   "tokens": 3104,
+   "estimated": false,
+   "error": null
+  }
+ ],
+ "lines_check": {
+  "ok": true,
+  "commit_sha": "1c6f1b0fe4000977b9a7b4f34097e4d527dd9824",
+  "checked_at": "2026-11-12T21:30:21+00:00",
+  "blocks": 2,
+  "problems": []
+ }
+}

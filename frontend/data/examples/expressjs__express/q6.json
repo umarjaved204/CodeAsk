@@ -1,0 +1,168 @@
+{
+ "question": "Which built-in middleware does the express module expose, and where does it come from?",
+ "repo": "expressjs/express",
+ "repo_url": "https://github.com/expressjs/express",
+ "commit_sha": "1c6f1b0fe4000977b9a7b4f34097e4d527dd9824",
+ "generated_at": "2026-11-12T21:30:16+00:00",
+ "model": "qwen/qwen3.8-27b",
+ "prompt_version": 3,
+ "generation": {
+  "temperature": 0,
+  "max_completion_tokens": 600,
+  "model_options": {
+   "reasoning_effort": "none"
+  }
+ },
+ "packer": {
+  "retrieve_k": 15,
+  "budget": 2000,
+  "per_file_cap": null,
+  "merge_max_gap_lines": 5
+ },
+ "usage": {
+  "queue_time": 0.004244645,
+  "prompt_tokens": 2719,
+  "prompt_time": 0.224262526,
+  "completion_tokens": 218,
+  "completion_time": 0.487975037,
+  "total_tokens": 2937,
+  "total_time": 0.712237563
+ },
+ "retries_429": 0,
+ "attempt": 1,
+ "attempt_note": null,
+ "grade": {
+  "correct": "correct",
+  "grounded": "yes",
+  "citations_valid": "5/5 strict",
+  "unsupported": "none",
+  "omission": "none",
+  "claims": [
+   {
+    "claim": "five middleware: json, raw, text, urlencoded from body-parser; static = require('serve-static')",
+    "verdict": "supported",
+    "blocks": [
+     "express.js:77-81",
+     "express.js:15"
+    ],
+    "risky": true
+   },
+   {
+    "claim": "Router and Route come from the router package",
+    "verdict": "supported",
+    "blocks": [
+     "express.js:70-71"
+    ]
+   },
+   {
+    "claim": "the prototypes application, request and response are exposed",
+    "verdict": "supported",
+    "blocks": [
+     "express.js:62-64"
+    ]
+   },
+   {
+    "claim": "index.js re-exports ./lib/express",
+    "verdict": "supported",
+    "blocks": [
+     "index.js:11"
+    ]
+   }
+  ],
+  "reviewer": "author",
+  "date": "2026-11-12",
+  "note": "Drafted by Claude (Q51), claim by claim against the cited blocks and the files at 1c6f1b0; claims marked risky are the ones for the author's spot-check. Every claim checked against express.js 1-81 and index.js at 1c6f1b0. Spot-checked and agreed by the author on 2026-11-12 (UTC) against the files at 1c6f1b0: express.js 58-81 and index.js 11."
+ },
+ "response": {
+  "grounded": true,
+  "answer": "The express module exposes five built-in middleware functions, all sourced from the `body-parser` and `serve-static` packages:\n\n- `express.json` — from `bodyParser.json`\n- `express.raw` — from `bodyParser.raw`\n- `express.text` — from `bodyParser.text`\n- `express.urlencoded` — from `bodyParser.urlencoded`\n- `express.static` — from `require('serve-static')`\n\nThese are assigned in [1](cite:1). The `bodyParser` dependency is imported at the top of the same file [2](cite:2).\n\nAdditionally, the module exposes `express.Router` and `express.Route` (from the `router` package) [3](cite:3), and the prototypes `express.application`, `express.request`, and `express.response` [4](cite:4). The main entry point simply re-exports `./lib/express` [5](cite:5).",
+  "citations": [
+   {
+    "n": 1,
+    "path": "lib/express.js",
+    "start": 77,
+    "end": 81,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/express.js#L77-L81",
+    "block": 0
+   },
+   {
+    "n": 2,
+    "path": "lib/express.js",
+    "start": 15,
+    "end": 15,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/express.js#L15",
+    "block": 1
+   },
+   {
+    "n": 3,
+    "path": "lib/express.js",
+    "start": 70,
+    "end": 71,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/express.js#L70-L71",
+    "block": 0
+   },
+   {
+    "n": 4,
+    "path": "lib/express.js",
+    "start": 62,
+    "end": 64,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/express.js#L62-L64",
+    "block": 0
+   },
+   {
+    "n": 5,
+    "path": "index.js",
+    "start": 11,
+    "end": 11,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/index.js#L11",
+    "block": 2
+   }
+  ],
+  "blocks": [
+   {
+    "path": "lib/express.js",
+    "start": 58,
+    "end": 81,
+    "content": "/**\n * Expose the prototypes.\n */\n\nexports.application = proto;\nexports.request = req;\nexports.response = res;\n\n/**\n * Expose constructors.\n */\n\nexports.Route = Router.Route;\nexports.Router = Router;\n\n/**\n * Expose middleware\n */\n\nexports.json = bodyParser.json\nexports.raw = bodyParser.raw\nexports.static = require('serve-static');\nexports.text = bodyParser.text\nexports.urlencoded = bodyParser.urlencoded"
+   },
+   {
+    "path": "lib/express.js",
+    "start": 1,
+    "end": 27,
+    "content": "/*!\n * express\n * Copyright(c) 2009-2013 TJ Holowaychuk\n * Copyright(c) 2013 Roman Shtylman\n * Copyright(c) 2014-2015 Douglas Christopher Wilson\n * MIT Licensed\n */\n\n'use strict';\n\n/**\n * Module dependencies.\n */\n\nvar bodyParser = require('body-parser')\nvar EventEmitter = require('node:events').EventEmitter;\nvar mixin = require('merge-descriptors');\nvar proto = require('./application');\nvar Router = require('router');\nvar req = require('./request');\nvar res = require('./response');\n\n/**\n * Expose `createApplication()`.\n */\n\nexports = module.exports = createApplication;"
+   },
+   {
+    "path": "index.js",
+    "start": 1,
+    "end": 11,
+    "content": "/*!\n * express\n * Copyright(c) 2009-2013 TJ Holowaychuk\n * Copyright(c) 2013 Roman Shtylman\n * Copyright(c) 2014-2015 Douglas Christopher Wilson\n * MIT Licensed\n */\n\n'use strict';\n\nmodule.exports = require('./lib/express');"
+   }
+  ],
+  "possibly_relevant": [],
+  "model": "qwen/qwen3.8-27b",
+  "prompt_version": 3
+ },
+ "question_id": "q6",
+ "runs": [
+  {
+   "id": "q6",
+   "at": "2026-11-12T21:30:16+00:00",
+   "outcome": "answered",
+   "tokens": 2937,
+   "estimated": false,
+   "error": null
+  }
+ ],
+ "lines_check": {
+  "ok": true,
+  "commit_sha": "1c6f1b0fe4000977b9a7b4f34097e4d527dd9824",
+  "checked_at": "2026-11-12T21:30:21+00:00",
+  "blocks": 3,
+  "problems": []
+ }
+}

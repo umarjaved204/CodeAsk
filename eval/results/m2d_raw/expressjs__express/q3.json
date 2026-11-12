@@ -1,0 +1,204 @@
+{
+ "question_id": "q3",
+ "question": "How does `res.send` decide the Content-Type, the ETag, and whether to send a body?",
+ "generated_at": "2026-11-12T21:28:03+00:00",
+ "grounded": true,
+ "possibly_relevant": [],
+ "answer": "Based on the provided code in `lib/response.js`, here is how `res.send` handles these three aspects:\n\n**1. Content-Type**\nThe `Content-Type` is determined by the `typeof` the `body` argument [1](cite:1):\n*   **String:** Defaults to `html` if no `Content-Type` header is already set; otherwise, it ensures the existing type has a `utf-8` charset [2](cite:2).\n*   **Buffer/ArrayBuffer View:** Defaults to `bin` if no `Content-Type` is set [3](cite:3).\n*   **Object/Number/Boolean:** If the body is an object (and not null or a Buffer view), it delegates to `this.json(chunk)`, which sets the type to JSON [4](cite:4).\n\n**2. ETag**\nThe ETag is generated only if it is not already set in the headers and the application has an `etag fn` configured [5](cite:5). If these conditions are met and the body length (`len`) is defined, the `etagFn` is called with the chunk and encoding to generate the tag, which is then set in the `ETag` header [6](cite:6).\n\n**3. Body Transmission**\nWhether a body is sent depends on the HTTP status code and method [7](cite:7):\n*   **HEAD Requests:** The body is skipped entirely, and `this.end()` is called with no arguments [8](cite:8).\n*   **204/304 Status:** If the status is 204 or 304, the `Content-Type`, `Content-Length`, and `Transfer-Encoding` headers are removed, and the chunk is set to an empty string [9](cite:9).\n*   **205 Status:** The `Content-Length` is set to '0', `Transfer-Encoding` is removed, and the chunk is set to an empty string [10](cite:10).\n*   **Other Cases:** The body is sent via `this.end(chunk, encoding)` [11](cite:11).",
+ "raw_answer": "Based on the provided code in `lib/response.js`, here is how `res.send` handles these three aspects:\n\n**1. Content-Type**\nThe `Content-Type` is determined by the `typeof` the `body` argument [lib/response.js:134-158]:\n*   **String:** Defaults to `html` if no `Content-Type` header is already set; otherwise, it ensures the existing type has a `utf-8` charset [lib/response.js:136-144].\n*   **Buffer/ArrayBuffer View:** Defaults to `bin` if no `Content-Type` is set [lib/response.js:151-154].\n*   **Object/Number/Boolean:** If the body is an object (and not null or a Buffer view), it delegates to `this.json(chunk)`, which sets the type to JSON [lib/response.js:148-157].\n\n**2. ETag**\nThe ETag is generated only if it is not already set in the headers and the application has an `etag fn` configured [lib/response.js:162-163]. If these conditions are met and the body length (`len`) is defined, the `etagFn` is called with the chunk and encoding to generate the tag, which is then set in the `ETag` header [lib/response.js:188-193].\n\n**3. Body Transmission**\nWhether a body is sent depends on the HTTP status code and method [lib/response.js:196-219]:\n*   **HEAD Requests:** The body is skipped entirely, and `this.end()` is called with no arguments [lib/response.js:213-215].\n*   **204/304 Status:** If the status is 204 or 304, the `Content-Type`, `Content-Length`, and `Transfer-Encoding` headers are removed, and the chunk is set to an empty string [lib/response.js:199-204].\n*   **205 Status:** The `Content-Length` is set to '0', `Transfer-Encoding` is removed, and the chunk is set to an empty string [lib/response.js:207-211].\n*   **Other Cases:** The body is sent via `this.end(chunk, encoding)` [lib/response.js:216-218].",
+ "citations": [
+  {
+   "n": 1,
+   "path": "lib/response.js",
+   "start": 134,
+   "end": 158,
+   "valid": true,
+   "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L134-L158"
+  },
+  {
+   "n": 2,
+   "path": "lib/response.js",
+   "start": 136,
+   "end": 144,
+   "valid": true,
+   "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L136-L144"
+  },
+  {
+   "n": 3,
+   "path": "lib/response.js",
+   "start": 151,
+   "end": 154,
+   "valid": true,
+   "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L151-L154"
+  },
+  {
+   "n": 4,
+   "path": "lib/response.js",
+   "start": 148,
+   "end": 157,
+   "valid": true,
+   "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L148-L157"
+  },
+  {
+   "n": 5,
+   "path": "lib/response.js",
+   "start": 162,
+   "end": 163,
+   "valid": true,
+   "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L162-L163"
+  },
+  {
+   "n": 6,
+   "path": "lib/response.js",
+   "start": 188,
+   "end": 193,
+   "valid": true,
+   "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L188-L193"
+  },
+  {
+   "n": 7,
+   "path": "lib/response.js",
+   "start": 196,
+   "end": 219,
+   "valid": true,
+   "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L196-L219"
+  },
+  {
+   "n": 8,
+   "path": "lib/response.js",
+   "start": 213,
+   "end": 215,
+   "valid": true,
+   "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L213-L215"
+  },
+  {
+   "n": 9,
+   "path": "lib/response.js",
+   "start": 199,
+   "end": 204,
+   "valid": true,
+   "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L199-L204"
+  },
+  {
+   "n": 10,
+   "path": "lib/response.js",
+   "start": 207,
+   "end": 211,
+   "valid": true,
+   "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L207-L211"
+  },
+  {
+   "n": 11,
+   "path": "lib/response.js",
+   "start": 216,
+   "end": 218,
+   "valid": true,
+   "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L216-L218"
+  }
+ ],
+ "stats": {
+  "markers": 11,
+  "attempted": 11,
+  "valid": 11,
+  "unverified": 0
+ },
+ "blocks": [
+  "lib/response.js:113-222",
+  "lib/response.js:334-417"
+ ],
+ "context": [
+  {
+   "path": "lib/response.js",
+   "start": 113,
+   "end": 222,
+   "content": "/**\n * Send a response.\n *\n * Examples:\n *\n *     res.send(Buffer.from('wahoo'));\n *     res.send({ some: 'json' });\n *     res.send('<p>some html</p>');\n *\n * @param {string|number|boolean|object|Buffer} body\n * @public\n */\n\nres.send = function send(body) {\n  var chunk = body;\n  var encoding;\n  var req = this.req;\n\n  // settings\n  var app = this.app;\n\n  switch (typeof chunk) {\n    // string defaulting to html\n    case 'string':\n      encoding = 'utf8';\n      const type = this.get('Content-Type');\n\n      if (typeof type === 'string') {\n        this.set('Content-Type', setCharset(type, 'utf-8'));\n      } else {\n        this.type('html');\n      }\n      break;\n    case 'boolean':\n    case 'number':\n    case 'object':\n      if (chunk === null) {\n        chunk = '';\n      } else if (ArrayBuffer.isView(chunk)) {\n        if (!this.get('Content-Type')) {\n          this.type('bin');\n        }\n      } else {\n        return this.json(chunk);\n      }\n      break;\n  }\n\n  // determine if ETag should be generated\n  var etagFn = app.get('etag fn')\n  var generateETag = !this.get('ETag') && typeof etagFn === 'function'\n\n  var len;\n  if (chunk !== undefined) {\n    if (Buffer.isBuffer(chunk)) {\n      // get length of Buffer\n      len = chunk.length\n    } else if (!generateETag && chunk.length < 1000) {\n      // just calculate length when no ETag + small chunk\n      len = Buffer.byteLength(chunk, encoding)\n    } else {\n      // convert chunk to Buffer and calculate\n      chunk = Buffer.from(chunk, encoding)\n      encoding = undefined;\n      len = chunk.length\n    }\n\n    // Because Content-Length and Transfer-Encoding can't be present in the response headers together,\n    // Content-Length should be added only if there is no Transfer-Encoding header\n    if (!this.get('Transfer-Encoding')) {\n      this.set('Content-Length', len);\n    }\n  }\n\n  // populate ETag\n  var etag;\n  if (generateETag && len !== undefined) {\n    if ((etag = etagFn(chunk, encoding))) {\n      this.set('ETag', etag);\n    }\n  }\n\n  // freshness\n  if (req.fresh) this.status(304);\n\n  // strip irrelevant headers\n  if (204 === this.statusCode || 304 === this.statusCode) {\n    this.removeHeader('Content-Type');\n    this.removeHeader('Content-Length');\n    this.removeHeader('Transfer-Encoding');\n    chunk = '';\n  }\n\n  // alter headers for 205\n  if (this.statusCode === 205) {\n    this.set('Content-Length', '0')\n    this.removeHeader('Transfer-Encoding')\n    chunk = ''\n  }\n\n  if (req.method === 'HEAD') {\n    // skip body for HEAD\n    this.end();\n  } else {\n    // respond\n    this.end(chunk, encoding);\n  }\n\n  return this;\n};"
+  },
+  {
+   "path": "lib/response.js",
+   "start": 334,
+   "end": 417,
+   "content": "/**\n * Transfer the file at the given `path`.\n *\n * Automatically sets the _Content-Type_ response header field.\n * The callback `callback(err)` is invoked when the transfer is complete\n * or when an error occurs. Be sure to check `res.headersSent`\n * if you wish to attempt responding, as the header and some data\n * may have already been transferred.\n *\n * Options:\n *\n *   - `maxAge`   defaulting to 0 (can be string converted by `ms`)\n *   - `root`     root directory for relative filenames\n *   - `headers`  object of headers to serve with file\n *   - `dotfiles` serve dotfiles, defaulting to false; can be `\"allow\"` to send them\n *\n * Other options are passed along to `send`.\n *\n * Examples:\n *\n *  The following example illustrates how `res.sendFile()` may\n *  be used as an alternative for the `static()` middleware for\n *  dynamic situations. The code backing `res.sendFile()` is actually\n *  the same code, so HTTP cache support etc is identical.\n *\n *     app.get('/user/:uid/photos/:file', function(req, res){\n *       var uid = req.params.uid\n *         , file = req.params.file;\n *\n *       req.user.mayViewFilesFrom(uid, function(yes){\n *         if (yes) {\n *           res.sendFile('/uploads/' + uid + '/' + file);\n *         } else {\n *           res.send(403, 'Sorry! you can\\'t see that.');\n *         }\n *       });\n *     });\n *\n * @public\n */\n\nres.sendFile = function sendFile(path, options, callback) {\n  var done = callback;\n  var req = this.req;\n  var res = this;\n  var next = req.next;\n  var opts = options || {};\n\n  if (!path) {\n    throw new TypeError('path argument is required to res.sendFile');\n  }\n\n  if (typeof path !== 'string') {\n    throw new TypeError('path must be a string to res.sendFile')\n  }\n\n  // support function as second arg\n  if (typeof options === 'function') {\n    done = options;\n    opts = {};\n  }\n\n  if (!opts.root && !pathIsAbsolute(path)) {\n    throw new TypeError('path must be absolute or specify root to res.sendFile');\n  }\n\n  // create file stream\n  var pathname = encodeURI(path);\n\n  // wire application etag option to send\n  opts.etag = this.app.enabled('etag');\n  var file = send(req, pathname, opts);\n\n  // transfer\n  sendfile(res, file, opts, function (err) {\n    if (done) return done(err);\n    if (err && err.code === 'EISDIR') return next();\n\n    // next() all but write errors\n    if (err && err.code !== 'ECONNABORTED' && err.syscall !== 'write') {\n      next(err);\n    }\n  });\n};"
+  }
+ ],
+ "outlines": [],
+ "dropped": [
+  [
+   "lib/response.js:224-250",
+   "budget"
+  ],
+  [
+   "lib/response.js:516-599",
+   "budget"
+  ],
+  [
+   "lib/response.js:1-29",
+   "budget"
+  ],
+  [
+   "lib/response.js:30-50",
+   "budget"
+  ],
+  [
+   "lib/response.js:488-505",
+   "budget"
+  ],
+  [
+   "lib/response.js:884-921",
+   "budget"
+  ],
+  [
+   "lib/response.js:923-1012",
+   "budget"
+  ],
+  [
+   "examples/content-negotiation/index.js:7-27",
+   "budget"
+  ],
+  [
+   "lib/utils.js:240-257",
+   "budget"
+  ],
+  [
+   "lib/response.js:252-308",
+   "budget"
+  ],
+  [
+   "lib/response.js:310-332",
+   "budget"
+  ],
+  [
+   "lib/response.js:419-486",
+   "budget"
+  ],
+  [
+   "lib/utils.js:1-38",
+   "budget"
+  ]
+ ],
+ "context_estimate": 1908,
+ "model": "qwen/qwen3.8-27b",
+ "prompt_version": 3,
+ "usage": {
+  "queue_time": 0.004656684,
+  "prompt_tokens": 2673,
+  "prompt_time": 0.217863318,
+  "completion_tokens": 521,
+  "completion_time": 1.063847158,
+  "total_tokens": 3194,
+  "total_time": 1.281710476
+ },
+ "headers": {
+  "x-ratelimit-limit-requests": "1000",
+  "x-ratelimit-remaining-requests": "997",
+  "x-ratelimit-reset-requests": "4m19.2s",
+  "x-ratelimit-limit-tokens": "8000",
+  "x-ratelimit-remaining-tokens": "5023",
+  "x-ratelimit-reset-tokens": "22.327s"
+ },
+ "reasoning_chars": 0,
+ "timings_s": {
+  "retrieve": 2.12,
+  "llm": 1.84
+ },
+ "retries": 0
+}

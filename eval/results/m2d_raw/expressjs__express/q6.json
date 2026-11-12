@@ -1,0 +1,168 @@
+{
+ "question_id": "q6",
+ "question": "Which built-in middleware does the express module expose, and where does it come from?",
+ "generated_at": "2026-11-12T21:30:16+00:00",
+ "grounded": true,
+ "possibly_relevant": [],
+ "answer": "The express module exposes five built-in middleware functions, all sourced from the `body-parser` and `serve-static` packages:\n\n- `express.json` — from `bodyParser.json`\n- `express.raw` — from `bodyParser.raw`\n- `express.text` — from `bodyParser.text`\n- `express.urlencoded` — from `bodyParser.urlencoded`\n- `express.static` — from `require('serve-static')`\n\nThese are assigned in [1](cite:1). The `bodyParser` dependency is imported at the top of the same file [2](cite:2).\n\nAdditionally, the module exposes `express.Router` and `express.Route` (from the `router` package) [3](cite:3), and the prototypes `express.application`, `express.request`, and `express.response` [4](cite:4). The main entry point simply re-exports `./lib/express` [5](cite:5).",
+ "raw_answer": "The express module exposes five built-in middleware functions, all sourced from the `body-parser` and `serve-static` packages:\n\n- `express.json` — from `bodyParser.json`\n- `express.raw` — from `bodyParser.raw`\n- `express.text` — from `bodyParser.text`\n- `express.urlencoded` — from `bodyParser.urlencoded`\n- `express.static` — from `require('serve-static')`\n\nThese are assigned in [lib/express.js:77-81]. The `bodyParser` dependency is imported at the top of the same file [lib/express.js:15].\n\nAdditionally, the module exposes `express.Router` and `express.Route` (from the `router` package) [lib/express.js:70-71], and the prototypes `express.application`, `express.request`, and `express.response` [lib/express.js:62-64]. The main entry point simply re-exports `./lib/express` [index.js:11].",
+ "citations": [
+  {
+   "n": 1,
+   "path": "lib/express.js",
+   "start": 77,
+   "end": 81,
+   "valid": true,
+   "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/express.js#L77-L81"
+  },
+  {
+   "n": 2,
+   "path": "lib/express.js",
+   "start": 15,
+   "end": 15,
+   "valid": true,
+   "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/express.js#L15"
+  },
+  {
+   "n": 3,
+   "path": "lib/express.js",
+   "start": 70,
+   "end": 71,
+   "valid": true,
+   "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/express.js#L70-L71"
+  },
+  {
+   "n": 4,
+   "path": "lib/express.js",
+   "start": 62,
+   "end": 64,
+   "valid": true,
+   "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/express.js#L62-L64"
+  },
+  {
+   "n": 5,
+   "path": "index.js",
+   "start": 11,
+   "end": 11,
+   "valid": true,
+   "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/index.js#L11"
+  }
+ ],
+ "stats": {
+  "markers": 5,
+  "attempted": 5,
+  "valid": 5,
+  "unverified": 0
+ },
+ "blocks": [
+  "lib/express.js:1-27",
+  "lib/express.js:58-81",
+  "index.js:1-11",
+  "lib/application.js:1-47",
+  "lib/request.js:1-7",
+  "lib/view.js:1-7",
+  "examples/static-files/index.js:1-22",
+  "lib/utils.js:1-38",
+  "examples/mvc/index.js:33-50",
+  "examples/mvc/lib/boot.js:1-9"
+ ],
+ "context": [
+  {
+   "path": "lib/express.js",
+   "start": 1,
+   "end": 27,
+   "content": "/*!\n * express\n * Copyright(c) 2009-2013 TJ Holowaychuk\n * Copyright(c) 2013 Roman Shtylman\n * Copyright(c) 2014-2015 Douglas Christopher Wilson\n * MIT Licensed\n */\n\n'use strict';\n\n/**\n * Module dependencies.\n */\n\nvar bodyParser = require('body-parser')\nvar EventEmitter = require('node:events').EventEmitter;\nvar mixin = require('merge-descriptors');\nvar proto = require('./application');\nvar Router = require('router');\nvar req = require('./request');\nvar res = require('./response');\n\n/**\n * Expose `createApplication()`.\n */\n\nexports = module.exports = createApplication;"
+  },
+  {
+   "path": "lib/express.js",
+   "start": 58,
+   "end": 81,
+   "content": "/**\n * Expose the prototypes.\n */\n\nexports.application = proto;\nexports.request = req;\nexports.response = res;\n\n/**\n * Expose constructors.\n */\n\nexports.Route = Router.Route;\nexports.Router = Router;\n\n/**\n * Expose middleware\n */\n\nexports.json = bodyParser.json\nexports.raw = bodyParser.raw\nexports.static = require('serve-static');\nexports.text = bodyParser.text\nexports.urlencoded = bodyParser.urlencoded"
+  },
+  {
+   "path": "index.js",
+   "start": 1,
+   "end": 11,
+   "content": "/*!\n * express\n * Copyright(c) 2009-2013 TJ Holowaychuk\n * Copyright(c) 2013 Roman Shtylman\n * Copyright(c) 2014-2015 Douglas Christopher Wilson\n * MIT Licensed\n */\n\n'use strict';\n\nmodule.exports = require('./lib/express');"
+  },
+  {
+   "path": "lib/application.js",
+   "start": 1,
+   "end": 47,
+   "content": "/*!\n * express\n * Copyright(c) 2009-2013 TJ Holowaychuk\n * Copyright(c) 2013 Roman Shtylman\n * Copyright(c) 2014-2015 Douglas Christopher Wilson\n * MIT Licensed\n */\n\n'use strict';\n\n/**\n * Module dependencies.\n * @private\n */\n\nvar finalhandler = require('finalhandler');\nvar debug = require('debug')('express:application');\nvar View = require('./view');\nvar http = require('node:http');\nvar methods = require('./utils').methods;\nvar compileETag = require('./utils').compileETag;\nvar compileQueryParser = require('./utils').compileQueryParser;\nvar compileTrust = require('./utils').compileTrust;\nvar resolve = require('node:path').resolve;\nvar once = require('once')\nvar Router = require('router');\n\n/**\n * Module variables.\n * @private\n */\n\nvar slice = Array.prototype.slice;\nvar flatten = Array.prototype.flat;\n\n/**\n * Application prototype.\n */\n\nvar app = exports = module.exports = {};\n\n/**\n * Variable for trust proxy inheritance back-compat\n * @private\n */\n\nvar trustProxyDefaultSymbol = '@@symbol:trust_proxy_default';"
+  },
+  {
+   "path": "lib/request.js",
+   "start": 1,
+   "end": 7,
+   "content": "/*!\n * express\n * Copyright(c) 2009-2013 TJ Holowaychuk\n * Copyright(c) 2013 Roman Shtylman\n * Copyright(c) 2014-2015 Douglas Christopher Wilson\n * MIT Licensed\n */"
+  },
+  {
+   "path": "lib/view.js",
+   "start": 1,
+   "end": 7,
+   "content": "/*!\n * express\n * Copyright(c) 2009-2013 TJ Holowaychuk\n * Copyright(c) 2013 Roman Shtylman\n * Copyright(c) 2014-2015 Douglas Christopher Wilson\n * MIT Licensed\n */"
+  },
+  {
+   "path": "examples/static-files/index.js",
+   "start": 1,
+   "end": 22,
+   "content": "'use strict'\n\n/**\n * Module dependencies.\n */\n\nvar express = require('../..');\nvar logger = require('morgan');\nvar path = require('node:path');\nvar app = express();\n\n// log requests\napp.use(logger('dev'));\n\n// express on its own has no notion\n// of a \"file\". The express.static()\n// middleware checks for a file matching\n// the `req.path` within the directory\n// that you pass it. In this case \"GET /js/app.js\"\n// will look for \"./public/js/app.js\".\n\napp.use(express.static(path.join(__dirname, 'public')));"
+  },
+  {
+   "path": "lib/utils.js",
+   "start": 1,
+   "end": 38,
+   "content": "/*!\n * express\n * Copyright(c) 2009-2013 TJ Holowaychuk\n * Copyright(c) 2014-2015 Douglas Christopher Wilson\n * MIT Licensed\n */\n\n'use strict';\n\n/**\n * Module dependencies.\n * @api private\n */\n\nvar { METHODS } = require('node:http');\nvar contentType = require('content-type');\nvar etag = require('etag');\nvar mime = require('mime-types')\nvar proxyaddr = require('proxy-addr');\nvar qs = require('qs');\nvar querystring = require('node:querystring');\nconst { Buffer } = require('node:buffer');\n\n\n/**\n * A list of lowercased HTTP methods that are supported by Node.js.\n * @api private\n */\nexports.methods = METHODS.map((method) => method.toLowerCase());\n\n/**\n * Return strong ETag for `body`.\n *\n * @param {String|Buffer} body\n * @param {String} [encoding]\n * @return {String}\n * @api private\n */"
+  },
+  {
+   "path": "examples/mvc/index.js",
+   "start": 33,
+   "end": 50,
+   "content": "// log\nif (!module.parent) app.use(logger('dev'));\n\n// serve static files\napp.use(express.static(path.join(__dirname, 'public')));\n\n// session support\napp.use(session({\n  resave: false, // don't save session if unmodified\n  saveUninitialized: false, // don't create session until something stored\n  secret: 'some secret here'\n}));\n\n// parse request bodies (req.body)\napp.use(express.urlencoded({ extended: true }))\n\n// allow overriding methods in query (?_method=put)\napp.use(methodOverride('_method'));"
+  },
+  {
+   "path": "examples/mvc/lib/boot.js",
+   "start": 1,
+   "end": 9,
+   "content": "'use strict'\n\n/**\n * Module dependencies.\n */\n\nvar express = require('../../..');\nvar fs = require('node:fs');\nvar path = require('node:path');"
+  }
+ ],
+ "outlines": [],
+ "dropped": [
+  [
+   "lib/view.js:9-36",
+   "budget"
+  ],
+  [
+   "lib/response.js:1-29",
+   "budget"
+  ]
+ ],
+ "context_estimate": 1941,
+ "model": "qwen/qwen3.8-27b",
+ "prompt_version": 3,
+ "usage": {
+  "queue_time": 0.004244645,
+  "prompt_tokens": 2719,
+  "prompt_time": 0.224262526,
+  "completion_tokens": 218,
+  "completion_time": 0.487975037,
+  "total_tokens": 2937,
+  "total_time": 0.712237563
+ },
+ "headers": {
+  "x-ratelimit-limit-requests": "1000",
+  "x-ratelimit-remaining-requests": "994",
+  "x-ratelimit-reset-requests": "8m38.4s",
+  "x-ratelimit-limit-tokens": "8000",
+  "x-ratelimit-remaining-tokens": "4760",
+  "x-ratelimit-reset-tokens": "24.3s"
+ },
+ "reasoning_chars": 0,
+ "timings_s": {
+  "retrieve": 1.55,
+  "llm": 1.19
+ },
+ "retries": 0
+}

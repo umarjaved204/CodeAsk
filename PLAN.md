@@ -1326,6 +1326,22 @@ config gains a pinned SHA per repo, and the drift guard compares slug and SHA (Q
       - **Label check (author's question):** Q37's "Checked by the author." doesn't say what was
         checked, so it can be read as "complete". requests q1 passes as incomplete. Reworded with
         the author's option (a); see the Q37 amendment. The logic and smoke tests are updated.
+    - **2026-11-12, express:**
+      - `generate` answered q1-q6 in one run: all grounded, 0 unverified citations, 18,585
+        tokens, no errors. `verify`: 6/6 ok at `1c6f1b0`.
+      - **Grades** (Claude's drafts; the author spot-checked all six): q1 (flagship), q2, q3,
+        q5 and q6 pass and were flipped to `reviewer: "author"`. q3 passes as incomplete, with
+        a material omission (`req.fresh` -> 304, `response.js` 196), so it's not flagship.
+      - **q4 fails** (Q50 rule 1, an incorrect claim on the point asked, the same test as
+        requests r1): "app.render throws an error" when the view isn't found, while
+        `application.js` 558-565 returns it through `done(err)`. Moved to
+        `eval/results/m2d_failures/expressjs__express/`. Failures: 1 of N = 6.
+      - **Amendment, committed before r1 runs:** q4 to `failed`; reserve r1 (`res.redirect`)
+        promoted into q4's slot (order q1, q2, q3, r1, q5, q6). r2 stays unpromoted unless r1
+        fails.
+      - **Pattern for M3:** the q3 (`req.fresh`) and q4 (`lookup`/`resolve`) omissions are
+        budget misses: retrieved but not packed within 2,000 tokens, as Q49 predicted for
+        `lookup`/`resolve`. q4's "throws" is a generation misread.
 
 ### [ ] Slice 6 (M2e): deploy
 **Gate from slice 4 (Q44):** before going public, compare the client IP the API sees with my

@@ -1,0 +1,218 @@
+{
+ "question": "How does `res.send` decide the Content-Type, the ETag, and whether to send a body?",
+ "repo": "expressjs/express",
+ "repo_url": "https://github.com/expressjs/express",
+ "commit_sha": "1c6f1b0fe4000977b9a7b4f34097e4d527dd9824",
+ "generated_at": "2026-11-12T21:28:03+00:00",
+ "model": "qwen/qwen3.8-27b",
+ "prompt_version": 3,
+ "generation": {
+  "temperature": 0,
+  "max_completion_tokens": 600,
+  "model_options": {
+   "reasoning_effort": "none"
+  }
+ },
+ "packer": {
+  "retrieve_k": 15,
+  "budget": 2000,
+  "per_file_cap": null,
+  "merge_max_gap_lines": 5
+ },
+ "usage": {
+  "queue_time": 0.004656684,
+  "prompt_tokens": 2673,
+  "prompt_time": 0.217863318,
+  "completion_tokens": 521,
+  "completion_time": 1.063847158,
+  "total_tokens": 3194,
+  "total_time": 1.281710476
+ },
+ "retries_429": 0,
+ "attempt": 1,
+ "attempt_note": null,
+ "grade": {
+  "correct": "incomplete",
+  "grounded": "yes",
+  "citations_valid": "11/11 strict",
+  "unsupported": "none",
+  "omission": "material",
+  "claims": [
+   {
+    "claim": "string: html if no Content-Type, else utf-8 charset on the existing type",
+    "verdict": "supported",
+    "blocks": [
+     "response.js:136-144"
+    ]
+   },
+   {
+    "claim": "an ArrayBuffer view: bin if no Content-Type",
+    "verdict": "supported",
+    "blocks": [
+     "response.js:151-154"
+    ]
+   },
+   {
+    "claim": "object/number/boolean (not null, not a buffer view) go to this.json",
+    "verdict": "supported",
+    "blocks": [
+     "response.js:148-157"
+    ]
+   },
+   {
+    "claim": "ETag only if not set and an 'etag fn' exists, and only with a known length",
+    "verdict": "supported",
+    "blocks": [
+     "response.js:162-163",
+     "response.js:188-193"
+    ],
+    "risky": true
+   },
+   {
+    "claim": "HEAD skips the body; 204/304 strip the content headers and the body; 205 sets Content-Length 0",
+    "verdict": "supported",
+    "blocks": [
+     "response.js:199-215"
+    ],
+    "risky": true
+   }
+  ],
+  "reviewer": "author",
+  "date": "2026-11-12",
+  "note": "Drafted by Claude (Q51), claim by claim against the cited blocks and the files at 1c6f1b0; claims marked risky are the ones for the author's spot-check. Every claim checked against response.js 126-222 at 1c6f1b0. Material omission: req.fresh -> status 304 (line 196), the conditional-GET step that turns a matching ETag into a bodiless 304, so it is central to both 'the ETag' and 'whether to send a body'. Also null becomes an empty body (149-150). Passes as incomplete; not flagship-eligible. Spot-checked and agreed by the author on 2026-11-12 (UTC) against the files at 1c6f1b0: response.js 126-222 (types, ETag, HEAD/204/304/205), including the omitted req.fresh at 196."
+ },
+ "response": {
+  "grounded": true,
+  "answer": "Based on the provided code in `lib/response.js`, here is how `res.send` handles these three aspects:\n\n**1. Content-Type**\nThe `Content-Type` is determined by the `typeof` the `body` argument [1](cite:1):\n*   **String:** Defaults to `html` if no `Content-Type` header is already set; otherwise, it ensures the existing type has a `utf-8` charset [2](cite:2).\n*   **Buffer/ArrayBuffer View:** Defaults to `bin` if no `Content-Type` is set [3](cite:3).\n*   **Object/Number/Boolean:** If the body is an object (and not null or a Buffer view), it delegates to `this.json(chunk)`, which sets the type to JSON [4](cite:4).\n\n**2. ETag**\nThe ETag is generated only if it is not already set in the headers and the application has an `etag fn` configured [5](cite:5). If these conditions are met and the body length (`len`) is defined, the `etagFn` is called with the chunk and encoding to generate the tag, which is then set in the `ETag` header [6](cite:6).\n\n**3. Body Transmission**\nWhether a body is sent depends on the HTTP status code and method [7](cite:7):\n*   **HEAD Requests:** The body is skipped entirely, and `this.end()` is called with no arguments [8](cite:8).\n*   **204/304 Status:** If the status is 204 or 304, the `Content-Type`, `Content-Length`, and `Transfer-Encoding` headers are removed, and the chunk is set to an empty string [9](cite:9).\n*   **205 Status:** The `Content-Length` is set to '0', `Transfer-Encoding` is removed, and the chunk is set to an empty string [10](cite:10).\n*   **Other Cases:** The body is sent via `this.end(chunk, encoding)` [11](cite:11).",
+  "citations": [
+   {
+    "n": 1,
+    "path": "lib/response.js",
+    "start": 134,
+    "end": 158,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L134-L158",
+    "block": 0
+   },
+   {
+    "n": 2,
+    "path": "lib/response.js",
+    "start": 136,
+    "end": 144,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L136-L144",
+    "block": 0
+   },
+   {
+    "n": 3,
+    "path": "lib/response.js",
+    "start": 151,
+    "end": 154,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L151-L154",
+    "block": 0
+   },
+   {
+    "n": 4,
+    "path": "lib/response.js",
+    "start": 148,
+    "end": 157,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L148-L157",
+    "block": 0
+   },
+   {
+    "n": 5,
+    "path": "lib/response.js",
+    "start": 162,
+    "end": 163,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L162-L163",
+    "block": 0
+   },
+   {
+    "n": 6,
+    "path": "lib/response.js",
+    "start": 188,
+    "end": 193,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L188-L193",
+    "block": 0
+   },
+   {
+    "n": 7,
+    "path": "lib/response.js",
+    "start": 196,
+    "end": 219,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L196-L219",
+    "block": 0
+   },
+   {
+    "n": 8,
+    "path": "lib/response.js",
+    "start": 213,
+    "end": 215,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L213-L215",
+    "block": 0
+   },
+   {
+    "n": 9,
+    "path": "lib/response.js",
+    "start": 199,
+    "end": 204,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L199-L204",
+    "block": 0
+   },
+   {
+    "n": 10,
+    "path": "lib/response.js",
+    "start": 207,
+    "end": 211,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L207-L211",
+    "block": 0
+   },
+   {
+    "n": 11,
+    "path": "lib/response.js",
+    "start": 216,
+    "end": 218,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L216-L218",
+    "block": 0
+   }
+  ],
+  "blocks": [
+   {
+    "path": "lib/response.js",
+    "start": 113,
+    "end": 222,
+    "content": "/**\n * Send a response.\n *\n * Examples:\n *\n *     res.send(Buffer.from('wahoo'));\n *     res.send({ some: 'json' });\n *     res.send('<p>some html</p>');\n *\n * @param {string|number|boolean|object|Buffer} body\n * @public\n */\n\nres.send = function send(body) {\n  var chunk = body;\n  var encoding;\n  var req = this.req;\n\n  // settings\n  var app = this.app;\n\n  switch (typeof chunk) {\n    // string defaulting to html\n    case 'string':\n      encoding = 'utf8';\n      const type = this.get('Content-Type');\n\n      if (typeof type === 'string') {\n        this.set('Content-Type', setCharset(type, 'utf-8'));\n      } else {\n        this.type('html');\n      }\n      break;\n    case 'boolean':\n    case 'number':\n    case 'object':\n      if (chunk === null) {\n        chunk = '';\n      } else if (ArrayBuffer.isView(chunk)) {\n        if (!this.get('Content-Type')) {\n          this.type('bin');\n        }\n      } else {\n        return this.json(chunk);\n      }\n      break;\n  }\n\n  // determine if ETag should be generated\n  var etagFn = app.get('etag fn')\n  var generateETag = !this.get('ETag') && typeof etagFn === 'function'\n\n  var len;\n  if (chunk !== undefined) {\n    if (Buffer.isBuffer(chunk)) {\n      // get length of Buffer\n      len = chunk.length\n    } else if (!generateETag && chunk.length < 1000) {\n      // just calculate length when no ETag + small chunk\n      len = Buffer.byteLength(chunk, encoding)\n    } else {\n      // convert chunk to Buffer and calculate\n      chunk = Buffer.from(chunk, encoding)\n      encoding = undefined;\n      len = chunk.length\n    }\n\n    // Because Content-Length and Transfer-Encoding can't be present in the response headers together,\n    // Content-Length should be added only if there is no Transfer-Encoding header\n    if (!this.get('Transfer-Encoding')) {\n      this.set('Content-Length', len);\n    }\n  }\n\n  // populate ETag\n  var etag;\n  if (generateETag && len !== undefined) {\n    if ((etag = etagFn(chunk, encoding))) {\n      this.set('ETag', etag);\n    }\n  }\n\n  // freshness\n  if (req.fresh) this.status(304);\n\n  // strip irrelevant headers\n  if (204 === this.statusCode || 304 === this.statusCode) {\n    this.removeHeader('Content-Type');\n    this.removeHeader('Content-Length');\n    this.removeHeader('Transfer-Encoding');\n    chunk = '';\n  }\n\n  // alter headers for 205\n  if (this.statusCode === 205) {\n    this.set('Content-Length', '0')\n    this.removeHeader('Transfer-Encoding')\n    chunk = ''\n  }\n\n  if (req.method === 'HEAD') {\n    // skip body for HEAD\n    this.end();\n  } else {\n    // respond\n    this.end(chunk, encoding);\n  }\n\n  return this;\n};"
+   }
+  ],
+  "possibly_relevant": [],
+  "model": "qwen/qwen3.8-27b",
+  "prompt_version": 3
+ },
+ "question_id": "q3",
+ "runs": [
+  {
+   "id": "q3",
+   "at": "2026-11-12T21:28:03+00:00",
+   "outcome": "answered",
+   "tokens": 3194,
+   "estimated": false,
+   "error": null
+  }
+ ],
+ "lines_check": {
+  "ok": true,
+  "commit_sha": "1c6f1b0fe4000977b9a7b4f34097e4d527dd9824",
+  "checked_at": "2026-11-12T21:30:21+00:00",
+  "blocks": 1,
+  "problems": []
+ }
+}
