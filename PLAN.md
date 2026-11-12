@@ -1231,6 +1231,33 @@ config gains a pinned SHA per repo, and the drift guard compares slug and SHA (Q
     not slice 5's scope, flagged here so it isn't lost.
 11. **Generation run** on the dev DB, at least 24 h before launch (Q53), then the Q42 budget
     raise; PLAN.md records counts, tokens and findings.
+    **Log (dates UTC):**
+    - **2026-11-12, itsdangerous:**
+      - Live budget lowered 120,000 -> 60,000 for the day (admin).
+      - `generate` answered q2-q6 in one run: all grounded, 0 unverified citations, 13,962
+        tokens, no errors.
+      - `verify`: 6/6 ok at `672971d`.
+      - Claude drafted the grades claim by claim (`reviewer: "claude"`): q2, q3, q4 and q6
+        pass; q5 fails.
+      - **q5 failure:** Q50 pass rule 1, an incorrect claim on the very threshold the question
+        asks about. The summary says compressed output must be "at least 1 byte shorter";
+        `url_safe.py` 60 (`len(compressed) < len(json) - 1`) requires 2. Its earlier sentence
+        quotes the condition correctly.
+        - **Classified as a generation error,** not a retrieval or packer miss: `url_safe.py`
+          1-76 was retrieved and packed. Not regenerated (it had answer text, so no re-roll).
+        - **Noted for the M3 write-up;** no prompt tuning now.
+        - The answer and its grade moved to `eval/results/m2d_failures/pallets__itsdangerous/`.
+          The questions file records it under `failed`.
+        - Reserve r1 is promoted into q5's slot (index order q1, q2, q3, q4, r1, q6) by an
+          amendment committed before r1 runs.
+        - Failures so far: 1 of N = 6 (the stop rule needs more than 3); replacements used: 1
+          of 3.
+      - **Minor flags, accepted under Q50:** unsupported background claims in q3 (the derived
+        key feeds the algorithm) and q4 ("HMAC"). q4's omission (the payload part is base64
+        JSON, compressed with a '.' prefix) is the known Q49 retrieval miss of `url_safe.py`
+        55-69: recorded as a note, not a rule change.
+      - **Waiting on:** the author's spot-check of q2, q3, q4 and q6 (then `reviewer: "author"`),
+        and r1's generation, verify and grade.
 
 ### [ ] Slice 6 (M2e): deploy
 **Gate from slice 4 (Q44):** before going public, compare the client IP the API sees with my

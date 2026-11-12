@@ -1,0 +1,220 @@
+{
+ "question": "What does a signed token look like, and what does the library do overall?",
+ "repo": "pallets/itsdangerous",
+ "repo_url": "https://github.com/pallets/itsdangerous",
+ "commit_sha": "672971d66a2ef9f85151e53283113f33d642dabd",
+ "generated_at": "2026-11-12T20:02:36+00:00",
+ "model": "qwen/qwen3.8-27b",
+ "prompt_version": 3,
+ "generation": {
+  "temperature": 0,
+  "max_completion_tokens": 600,
+  "model_options": {
+   "reasoning_effort": "none"
+  }
+ },
+ "packer": {
+  "retrieve_k": 15,
+  "budget": 2000,
+  "per_file_cap": null,
+  "merge_max_gap_lines": 5
+ },
+ "usage": {
+  "queue_time": 0.004115754,
+  "prompt_tokens": 2483,
+  "prompt_time": 0.182881821,
+  "completion_tokens": 396,
+  "completion_time": 0.783821616,
+  "total_tokens": 2879,
+  "total_time": 0.966703437
+ },
+ "retries_429": 0,
+ "attempt": 1,
+ "attempt_note": null,
+ "grade": {
+  "correct": "correct",
+  "grounded": "yes",
+  "citations_valid": "7/7 strict",
+  "unsupported": "minor",
+  "omission": "minor",
+  "claims": [
+   {
+    "claim": "the library signs data passed to untrusted environments; custom serialization, compression, timestamps",
+    "verdict": "supported",
+    "blocks": [
+     "README.md:7-13"
+    ]
+   },
+   {
+    "claim": "the README's URLSafeSerializer token example",
+    "verdict": "supported",
+    "blocks": [
+     "README.md:21-31"
+    ]
+   },
+   {
+    "claim": "Signer.sign returns value + sep + get_signature(value)",
+    "verdict": "supported",
+    "blocks": [
+     "signer.py:222-225"
+    ],
+    "risky": true
+   },
+   {
+    "claim": "the signature is a base64-encoded HMAC from a derived key",
+    "verdict": "unsupported",
+    "blocks": [
+     "signer.py:215-220"
+    ],
+    "risky": true
+   },
+   {
+    "claim": "TimestampSigner puts a base64 timestamp between value and signature",
+    "verdict": "supported",
+    "blocks": [
+     "timed.py:45-51"
+    ]
+   },
+   {
+    "claim": "unsign splits on the last separator, verifies, returns the value or raises BadSignature",
+    "verdict": "supported",
+    "blocks": [
+     "signer.py:244-256"
+    ]
+   },
+   {
+    "claim": "dumps serializes, signs and returns bytes or a UTF-8 string",
+    "verdict": "supported",
+    "blocks": [
+     "serializer.py:309-320"
+    ],
+    "risky": true
+   }
+  ],
+  "reviewer": "claude",
+  "date": "2026-11-12",
+  "note": "Drafted by Claude (Q51), claim by claim against the cited blocks and the files at the pin; claims marked risky are the ones for the author's spot-check. Every claim checked against the README and signer/timed/serializer at 672971d. Unsupported, minor background: 'HMAC' (the default algorithm, not in the cited block 215-220). Minor omission: the payload part is base64 JSON, compressed with a '.' prefix when shorter (url_safe.py 55-69 was not retrieved, a known Q49 miss)."
+ },
+ "response": {
+  "grounded": true,
+  "answer": "**What the library does**\n\nItsDangerous provides helpers to pass data to untrusted environments and get it back safely. Data is cryptographically signed so a token cannot be tampered with. It supports custom serialization, compression, and optional timestamps that can be verified on load [1](cite:1).\n\n**What a signed token looks like**\n\nA token is the serialized payload, a separator, and a base64-encoded signature. For example, `URLSafeSerializer` produces:\n\n```\neyJpZCI6NSwibmFtZSI6Iml0c2Rhbmdlcm91cyJ9.6YP6T0BaO67XP--9UzTrmurXSmg\n```\n\n[2](cite:2)\n\nInternally, `Signer.sign` concatenates the value, a separator, and the signature: `value + self.sep + self.get_signature(value)` [3](cite:3). The signature itself is a base64-encoded HMAC computed from a derived key [4](cite:4).\n\nWhen a timestamp is used, `TimestampSigner.sign` appends a base64-encoded timestamp before the signature: `value + sep + timestamp + sep + signature` [5](cite:5).\n\nTo verify, `unsign` splits on the last separator, checks the signature, and returns the original value or raises `BadSignature` [6](cite:6). The `Serializer.dumps` method serializes the object, signs it, and returns either bytes or a UTF-8 string depending on the serializer type [7](cite:7).",
+  "citations": [
+   {
+    "n": 1,
+    "path": "README.md",
+    "start": 7,
+    "end": 13,
+    "valid": true,
+    "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/README.md#L7-L13",
+    "block": 0
+   },
+   {
+    "n": 2,
+    "path": "README.md",
+    "start": 21,
+    "end": 31,
+    "valid": true,
+    "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/README.md#L21-L31",
+    "block": 0
+   },
+   {
+    "n": 3,
+    "path": "src/itsdangerous/signer.py",
+    "start": 222,
+    "end": 225,
+    "valid": true,
+    "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L222-L225",
+    "block": 1
+   },
+   {
+    "n": 4,
+    "path": "src/itsdangerous/signer.py",
+    "start": 215,
+    "end": 220,
+    "valid": true,
+    "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L215-L220",
+    "block": 1
+   },
+   {
+    "n": 5,
+    "path": "src/itsdangerous/timed.py",
+    "start": 45,
+    "end": 51,
+    "valid": true,
+    "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/timed.py#L45-L51",
+    "block": 2
+   },
+   {
+    "n": 6,
+    "path": "src/itsdangerous/signer.py",
+    "start": 244,
+    "end": 256,
+    "valid": true,
+    "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L244-L256",
+    "block": 3
+   },
+   {
+    "n": 7,
+    "path": "src/itsdangerous/serializer.py",
+    "start": 309,
+    "end": 320,
+    "valid": true,
+    "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/serializer.py#L309-L320",
+    "block": 4
+   }
+  ],
+  "blocks": [
+   {
+    "path": "README.md",
+    "start": 1,
+    "end": 32,
+    "content": "<div align=\"center\"><img src=\"https://raw.githubusercontent.com/pallets/itsdangerous/refs/heads/stable/docs/_static/itsdangerous-name.svg\" alt=\"\" height=\"150\"></div>\n\n# ItsDangerous\n\n... so better sign this\n\nVarious helpers to pass data to untrusted environments and to get it\nback safe and sound. Data is cryptographically signed to ensure that a\ntoken has not been tampered with.\n\nIt's possible to customize how data is serialized. Data is compressed as\nneeded. A timestamp can be added and verified automatically while\nloading a token.\n\n\n## A Simple Example\n\nHere's how you could generate a token for transmitting a user's id and\nname between web requests.\n\n```python\nfrom itsdangerous import URLSafeSerializer\nauth_s = URLSafeSerializer(\"secret key\", \"auth\")\ntoken = auth_s.dumps({\"id\": 5, \"name\": \"itsdangerous\"})\n\nprint(token)\n# eyJpZCI6NSwibmFtZSI6Iml0c2Rhbmdlcm91cyJ9.6YP6T0BaO67XP--9UzTrmurXSmg\n\ndata = auth_s.loads(token)\nprint(data[\"name\"])\n# itsdangerous\n```"
+   },
+   {
+    "path": "src/itsdangerous/signer.py",
+    "start": 215,
+    "end": 225,
+    "content": "    def get_signature(self, value: str | bytes) -> bytes:\n        \"\"\"Returns the signature for the given value.\"\"\"\n        value = want_bytes(value)\n        key = self.derive_key()\n        sig = self.algorithm.get_signature(key, value)\n        return base64_encode(sig)\n\n    def sign(self, value: str | bytes) -> bytes:\n        \"\"\"Signs the given string.\"\"\"\n        value = want_bytes(value)\n        return value + self.sep + self.get_signature(value)"
+   },
+   {
+    "path": "src/itsdangerous/timed.py",
+    "start": 45,
+    "end": 51,
+    "content": "    def sign(self, value: str | bytes) -> bytes:\n        \"\"\"Signs the given string and also attaches time information.\"\"\"\n        value = want_bytes(value)\n        timestamp = base64_encode(int_to_bytes(self.get_timestamp()))\n        sep = want_bytes(self.sep)\n        value = value + sep + timestamp\n        return value + sep + self.get_signature(value)"
+   },
+   {
+    "path": "src/itsdangerous/signer.py",
+    "start": 244,
+    "end": 256,
+    "content": "    def unsign(self, signed_value: str | bytes) -> bytes:\n        \"\"\"Unsigns the given string.\"\"\"\n        signed_value = want_bytes(signed_value)\n\n        if self.sep not in signed_value:\n            raise BadSignature(f\"No {self.sep!r} found in value\")\n\n        value, sig = signed_value.rsplit(self.sep, 1)\n\n        if self.verify_signature(value, sig):\n            return value\n\n        raise BadSignature(f\"Signature {sig!r} does not match\", payload=value)"
+   },
+   {
+    "path": "src/itsdangerous/serializer.py",
+    "start": 309,
+    "end": 320,
+    "content": "    def dumps(self, obj: t.Any, salt: str | bytes | None = None) -> _TSerialized:\n        \"\"\"Returns a signed string serialized with the internal\n        serializer. The return value can be either a byte or unicode\n        string depending on the format of the internal serializer.\n        \"\"\"\n        payload = want_bytes(self.dump_payload(obj))\n        rv = self.make_signer(salt).sign(payload)\n\n        if self.is_text_serializer:\n            return rv.decode(\"utf-8\")  # type: ignore[return-value]\n\n        return rv  # type: ignore[return-value]"
+   }
+  ],
+  "possibly_relevant": [],
+  "model": "qwen/qwen3.8-27b",
+  "prompt_version": 3
+ },
+ "question_id": "q4",
+ "runs": [
+  {
+   "id": "q4",
+   "at": "2026-11-12T20:02:36+00:00",
+   "outcome": "answered",
+   "tokens": 2879,
+   "estimated": false,
+   "error": null
+  }
+ ],
+ "lines_check": {
+  "ok": true,
+  "commit_sha": "672971d66a2ef9f85151e53283113f33d642dabd",
+  "checked_at": "2026-11-12T20:04:28+00:00",
+  "blocks": 5,
+  "problems": []
+ }
+}

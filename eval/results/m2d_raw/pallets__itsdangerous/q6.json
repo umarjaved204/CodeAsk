@@ -1,0 +1,172 @@
+{
+ "question_id": "q6",
+ "question": "What exceptions can be raised when a signature is bad, and how do they differ?",
+ "generated_at": "2026-11-12T20:03:42+00:00",
+ "grounded": true,
+ "possibly_relevant": [],
+ "answer": "When a signature is bad, several exceptions can be raised, all inheriting from `BadData` [1](cite:1):\n\n1.  **`BadSignature`**: The base exception for signature failures. It stores the `payload` that failed the test, allowing inspection even if tampered with [2](cite:2). It is raised by `Signer.unsign` if the separator is missing or the signature doesn't match [3](cite:3).\n\n2.  **`BadTimeSignature`**: A subclass of `BadSignature` for time-based signatures. It adds a `date_signed` attribute (timezone-aware) to indicate when the signature was created, which is useful for reporting how long a link has been stale [4](cite:4).\n\n3.  **`SignatureExpired`**: A subclass of `BadTimeSignature` raised specifically when a signature's timestamp is older than the allowed `max_age` [5](cite:5).\n\n4.  **`BadHeader`**: A subclass of `BadSignature` raised when a signed header is invalid. It includes `header` (if available but malformed) and `original_error` (the underlying exception) [6](cite:6).\n\n5.  **`BadPayload`**: A subclass of `BadData` (not `BadSignature`) raised when the payload itself is invalid, such as during deserialization mismatches. It stores the `original_error` that occurred during loading [7](cite:7).\n\nAll these exceptions are exported from the package root [8](cite:8).",
+ "raw_answer": "When a signature is bad, several exceptions can be raised, all inheriting from `BadData` [src/itsdangerous/exc.py:7-12]:\n\n1.  **`BadSignature`**: The base exception for signature failures. It stores the `payload` that failed the test, allowing inspection even if tampered with [src/itsdangerous/exc.py:22-33]. It is raised by `Signer.unsign` if the separator is missing or the signature doesn't match [src/itsdangerous/signer.py:248-256].\n\n2.  **`BadTimeSignature`**: A subclass of `BadSignature` for time-based signatures. It adds a `date_signed` attribute (timezone-aware) to indicate when the signature was created, which is useful for reporting how long a link has been stale [src/itsdangerous/exc.py:36-57].\n\n3.  **`SignatureExpired`**: A subclass of `BadTimeSignature` raised specifically when a signature's timestamp is older than the allowed `max_age` [src/itsdangerous/exc.py:60-63].\n\n4.  **`BadHeader`**: A subclass of `BadSignature` raised when a signed header is invalid. It includes `header` (if available but malformed) and `original_error` (the underlying exception) [src/itsdangerous/exc.py:66-89].\n\n5.  **`BadPayload`**: A subclass of `BadData` (not `BadSignature`) raised when the payload itself is invalid, such as during deserialization mismatches. It stores the `original_error` that occurred during loading [src/itsdangerous/exc.py:92-106].\n\nAll these exceptions are exported from the package root [src/itsdangerous/__init__.py:4-9].",
+ "citations": [
+  {
+   "n": 1,
+   "path": "src/itsdangerous/exc.py",
+   "start": 7,
+   "end": 12,
+   "valid": true,
+   "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/exc.py#L7-L12"
+  },
+  {
+   "n": 2,
+   "path": "src/itsdangerous/exc.py",
+   "start": 22,
+   "end": 33,
+   "valid": true,
+   "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/exc.py#L22-L33"
+  },
+  {
+   "n": 3,
+   "path": "src/itsdangerous/signer.py",
+   "start": 248,
+   "end": 256,
+   "valid": true,
+   "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/signer.py#L248-L256"
+  },
+  {
+   "n": 4,
+   "path": "src/itsdangerous/exc.py",
+   "start": 36,
+   "end": 57,
+   "valid": true,
+   "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/exc.py#L36-L57"
+  },
+  {
+   "n": 5,
+   "path": "src/itsdangerous/exc.py",
+   "start": 60,
+   "end": 63,
+   "valid": true,
+   "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/exc.py#L60-L63"
+  },
+  {
+   "n": 6,
+   "path": "src/itsdangerous/exc.py",
+   "start": 66,
+   "end": 89,
+   "valid": true,
+   "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/exc.py#L66-L89"
+  },
+  {
+   "n": 7,
+   "path": "src/itsdangerous/exc.py",
+   "start": 92,
+   "end": 106,
+   "valid": true,
+   "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/exc.py#L92-L106"
+  },
+  {
+   "n": 8,
+   "path": "src/itsdangerous/__init__.py",
+   "start": 4,
+   "end": 9,
+   "valid": true,
+   "url": "https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/src/itsdangerous/__init__.py#L4-L9"
+  }
+ ],
+ "stats": {
+  "markers": 8,
+  "attempted": 8,
+  "valid": 8,
+  "unverified": 0
+ },
+ "blocks": [
+  "src/itsdangerous/exc.py:7-106",
+  "src/itsdangerous/signer.py:1-12",
+  "src/itsdangerous/signer.py:244-256",
+  "src/itsdangerous/serializer.py:1-11",
+  "src/itsdangerous/__init__.py:1-17",
+  "src/itsdangerous/timed.py:1-19"
+ ],
+ "context": [
+  {
+   "path": "src/itsdangerous/exc.py",
+   "start": 7,
+   "end": 106,
+   "content": "class BadData(Exception):\n    \"\"\"Raised if bad data of any sort was encountered. This is the base\n    for all exceptions that ItsDangerous defines.\n\n    .. versionadded:: 0.15\n    \"\"\"\n\n    def __init__(self, message: str):\n        super().__init__(message)\n        self.message = message\n\n    def __str__(self) -> str:\n        return self.message\n\n\nclass BadSignature(BadData):\n    \"\"\"Raised if a signature does not match.\"\"\"\n\n    def __init__(self, message: str, payload: t.Any | None = None):\n        super().__init__(message)\n\n        #: The payload that failed the signature test. In some\n        #: situations you might still want to inspect this, even if\n        #: you know it was tampered with.\n        #:\n        #: .. versionadded:: 0.14\n        self.payload: t.Any | None = payload\n\n\nclass BadTimeSignature(BadSignature):\n    \"\"\"Raised if a time-based signature is invalid. This is a subclass\n    of :class:`BadSignature`.\n    \"\"\"\n\n    def __init__(\n        self,\n        message: str,\n        payload: t.Any | None = None,\n        date_signed: datetime | None = None,\n    ):\n        super().__init__(message, payload)\n\n        #: If the signature expired this exposes the date of when the\n        #: signature was created. This can be helpful in order to\n        #: tell the user how long a link has been gone stale.\n        #:\n        #: .. versionchanged:: 2.0\n        #:     The datetime value is timezone-aware rather than naive.\n        #:\n        #: .. versionadded:: 0.14\n        self.date_signed = date_signed\n\n\nclass SignatureExpired(BadTimeSignature):\n    \"\"\"Raised if a signature timestamp is older than ``max_age``. This\n    is a subclass of :exc:`BadTimeSignature`.\n    \"\"\"\n\n\nclass BadHeader(BadSignature):\n    \"\"\"Raised if a signed header is invalid in some form. This only\n    happens for serializers that have a header that goes with the\n    signature.\n\n    .. versionadded:: 0.24\n    \"\"\"\n\n    def __init__(\n        self,\n        message: str,\n        payload: t.Any | None = None,\n        header: t.Any | None = None,\n        original_error: Exception | None = None,\n    ):\n        super().__init__(message, payload)\n\n        #: If the header is actually available but just malformed it\n        #: might be stored here.\n        self.header: t.Any | None = header\n\n        #: If available, the error that indicates why the payload was\n        #: not valid. This might be ``None``.\n        self.original_error: Exception | None = original_error\n\n\nclass BadPayload(BadData):\n    \"\"\"Raised if a payload is invalid. This could happen if the payload\n    is loaded despite an invalid signature, or if there is a mismatch\n    between the serializer and deserializer. The original exception\n    that occurred during loading is stored on as :attr:`original_error`.\n\n    .. versionadded:: 0.15\n    \"\"\"\n\n    def __init__(self, message: str, original_error: Exception | None = None):\n        super().__init__(message)\n\n        #: If available, the error that indicates why the payload was\n        #: not valid. This might be ``None``.\n        self.original_error: Exception | None = original_error"
+  },
+  {
+   "path": "src/itsdangerous/signer.py",
+   "start": 1,
+   "end": 12,
+   "content": "from __future__ import annotations\n\nimport collections.abc as cabc\nimport hashlib\nimport hmac\nimport typing as t\n\nfrom .encoding import _base64_alphabet\nfrom .encoding import base64_decode\nfrom .encoding import base64_encode\nfrom .encoding import want_bytes\nfrom .exc import BadSignature"
+  },
+  {
+   "path": "src/itsdangerous/signer.py",
+   "start": 244,
+   "end": 256,
+   "content": "    def unsign(self, signed_value: str | bytes) -> bytes:\n        \"\"\"Unsigns the given string.\"\"\"\n        signed_value = want_bytes(signed_value)\n\n        if self.sep not in signed_value:\n            raise BadSignature(f\"No {self.sep!r} found in value\")\n\n        value, sig = signed_value.rsplit(self.sep, 1)\n\n        if self.verify_signature(value, sig):\n            return value\n\n        raise BadSignature(f\"Signature {sig!r} does not match\", payload=value)"
+  },
+  {
+   "path": "src/itsdangerous/serializer.py",
+   "start": 1,
+   "end": 11,
+   "content": "from __future__ import annotations\n\nimport collections.abc as cabc\nimport json\nimport typing as t\n\nfrom .encoding import want_bytes\nfrom .exc import BadPayload\nfrom .exc import BadSignature\nfrom .signer import _make_keys_list\nfrom .signer import Signer"
+  },
+  {
+   "path": "src/itsdangerous/__init__.py",
+   "start": 1,
+   "end": 17,
+   "content": "from .encoding import base64_decode as base64_decode\nfrom .encoding import base64_encode as base64_encode\nfrom .encoding import want_bytes as want_bytes\nfrom .exc import BadData as BadData\nfrom .exc import BadHeader as BadHeader\nfrom .exc import BadPayload as BadPayload\nfrom .exc import BadSignature as BadSignature\nfrom .exc import BadTimeSignature as BadTimeSignature\nfrom .exc import SignatureExpired as SignatureExpired\nfrom .serializer import Serializer as Serializer\nfrom .signer import HMACAlgorithm as HMACAlgorithm\nfrom .signer import NoneAlgorithm as NoneAlgorithm\nfrom .signer import Signer as Signer\nfrom .timed import TimedSerializer as TimedSerializer\nfrom .timed import TimestampSigner as TimestampSigner\nfrom .url_safe import URLSafeSerializer as URLSafeSerializer\nfrom .url_safe import URLSafeTimedSerializer as URLSafeTimedSerializer"
+  },
+  {
+   "path": "src/itsdangerous/timed.py",
+   "start": 1,
+   "end": 19,
+   "content": "from __future__ import annotations\n\nimport collections.abc as cabc\nimport time\nimport typing as t\nfrom datetime import datetime\nfrom datetime import timezone\n\nfrom .encoding import base64_decode\nfrom .encoding import base64_encode\nfrom .encoding import bytes_to_int\nfrom .encoding import int_to_bytes\nfrom .encoding import want_bytes\nfrom .exc import BadSignature\nfrom .exc import BadTimeSignature\nfrom .exc import SignatureExpired\nfrom .serializer import _TSerialized\nfrom .serializer import Serializer\nfrom .signer import Signer"
+  }
+ ],
+ "outlines": [],
+ "dropped": [
+  [
+   "src/itsdangerous/signer.py:227-242",
+   "budget"
+  ],
+  [
+   "src/itsdangerous/serializer.py:328-343",
+   "budget"
+  ],
+  [
+   "src/itsdangerous/signer.py:258-266",
+   "budget"
+  ],
+  [
+   "src/itsdangerous/exc.py:1-4",
+   "budget"
+  ]
+ ],
+ "context_estimate": 1964,
+ "model": "qwen/qwen3.8-27b",
+ "prompt_version": 3,
+ "usage": {
+  "queue_time": 0.004214523,
+  "prompt_tokens": 2460,
+  "prompt_time": 0.189330721,
+  "completion_tokens": 401,
+  "completion_time": 0.766827707,
+  "total_tokens": 2861,
+  "total_time": 0.956158428
+ },
+ "headers": {
+  "x-ratelimit-limit-requests": "1000",
+  "x-ratelimit-remaining-requests": "995",
+  "x-ratelimit-reset-requests": "7m12s",
+  "x-ratelimit-limit-tokens": "8000",
+  "x-ratelimit-remaining-tokens": "5144",
+  "x-ratelimit-reset-tokens": "21.42s"
+ },
+ "reasoning_chars": 0,
+ "timings_s": {
+  "retrieve": 1.49,
+  "llm": 1.69
+ },
+ "retries": 0
+}

@@ -172,7 +172,9 @@ test("at 390: the room for the bar never adds a line to a frozen question", asyn
   const dir = path.resolve(__dirname, "..", "..", "..", "eval", "m2d_questions");
   const questions = fs.readdirSync(dir).filter((f) => f.endsWith(".json")).flatMap((f) => {
     const data = JSON.parse(fs.readFileSync(path.join(dir, f), "utf8"));
-    return [...data.questions, ...data.reserves].map((q: { question: string }) => q.question);
+    // Failed entries (Q50) count too: the set stays the 24 frozen questions, wherever each sits.
+    return [...data.questions, ...data.reserves, ...(data.failed ?? [])]
+      .map((q: { question: string }) => q.question);
   });
   expect(questions.length).toBe(24);
   await page.setViewportSize({ width: 390, height: 844 });

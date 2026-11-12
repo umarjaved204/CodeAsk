@@ -3,7 +3,9 @@
  "commit_sha": "672971d66a2ef9f85151e53283113f33d642dabd",
  "about": "Slice 5 (M2d) suggested questions, in index order (the first passing entry that meets the Q48 flagship criteria leads), with expected chunks. Questions proposed by the mentor chat (Claude) from general knowledge before any generated answer existed, selected and accepted by the author (Q48 amendment, 2026-11-12). Expected chunks drafted by Claude on 2026-11-12 from a fresh clone at commit_sha; ranges are whole functions/classes (decorators included), or the statement itself for module-level code, 1-based inclusive. q1 reuses the confirmed ranges of eval/m2_expected.json Q5 (the existing fixture's question). 'required' = an answer can't be complete and grounded without it; 'supporting' = helpful, not used by the Q49 rule. A range counts as packed when every NON-BLANK line of it lies inside the packed blocks after merging (the rule of eval/m2_pack_compare.py; partial overlap does not count). Frozen once confirmed: later changes are amendments with a reason; rewording a question is a replacement (Q48).",
  "confirmed": {"date": "2026-11-12", "by": "author", "spot_checked": ["q1"], "note": "Author spot-checked these questions' ranges against the files at commit_sha; the mentor reviewed the table's structure and consistency, not the line numbers. Frozen from here: committed before the Q49 packer comparison and before any generation."},
- "amendments": [],
+ "amendments": [
+  {"date": "2026-11-12", "change": "q5 failed and moved to `failed`; reserve r1 promoted into `questions` in q5's slot (index order q1, q2, q3, q4, r1, q6); r2 is the remaining reserve.", "reason": "Q50 replacement 1 of at most 3 for this repo (failures: 1; the stop rule needs more than N/2 = 3 with N = 6). Committed before r1 is generated (Q48)."}
+ ],
  "questions": [
   {
    "id": "q1",
@@ -59,13 +61,13 @@
    ]
   },
   {
-   "id": "q5",
-   "question": "How does the URL-safe serializer decide whether to compress a payload, and how does it mark compressed data?",
+   "id": "r1",
+   "question": "How does the library compare signatures safely?",
    "required": [
-    {"path": "src/itsdangerous/url_safe.py", "start": 55, "end": 69, "name": "URLSafeSerializerMixin > dump_payload"}
+    {"path": "src/itsdangerous/signer.py", "start": 24, "end": 28, "name": "SigningAlgorithm > verify_signature"}
    ],
    "supporting": [
-    {"path": "src/itsdangerous/url_safe.py", "start": 23, "end": 53, "name": "URLSafeSerializerMixin > load_payload"}
+    {"path": "src/itsdangerous/signer.py", "start": 227, "end": 242, "name": "Signer > verify_signature"}
    ]
   },
   {
@@ -85,17 +87,21 @@
    ]
   }
  ],
- "reserves": [
+ "failed": [
   {
-   "id": "r1",
-   "question": "How does the library compare signatures safely?",
+   "id": "q5",
+   "question": "How does the URL-safe serializer decide whether to compress a payload, and how does it mark compressed data?",
    "required": [
-    {"path": "src/itsdangerous/signer.py", "start": 24, "end": 28, "name": "SigningAlgorithm > verify_signature"}
+    {"path": "src/itsdangerous/url_safe.py", "start": 55, "end": 69, "name": "URLSafeSerializerMixin > dump_payload"}
    ],
    "supporting": [
-    {"path": "src/itsdangerous/signer.py", "start": 227, "end": 242, "name": "Signer > verify_signature"}
-   ]
-  },
+    {"path": "src/itsdangerous/url_safe.py", "start": 23, "end": 53, "name": "URLSafeSerializerMixin > load_payload"}
+   ],
+   "attempt": "generated 2026-11-12; the answer and its grade are in eval/results/m2d_failures/pallets__itsdangerous/q5.json",
+   "reason": "Q50 pass rule 1: an incorrect claim on the threshold the question asks about (the summary says compressed output must be at least 1 byte shorter; url_safe.py 60 requires at least 2). A generation error: the deciding chunk was retrieved and packed. Not regenerated: it had answer text, so no re-roll."
+  }
+ ],
+ "reserves": [
   {
    "id": "r2",
    "question": "How can the payload of a value with a bad signature still be inspected?",
