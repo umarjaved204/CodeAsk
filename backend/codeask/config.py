@@ -110,6 +110,8 @@ PER_IP_DAILY_DEFAULT = 5  # prod; the dev database's row is raised so my own che
 # The most `admin budget` sets without --force: Groq's 200K/day minus >= 30K for my own tests
 # and pre-generation, which the budget doesn't track (Q42).
 PUBLIC_BUDGET_MAX_TOKENS = 170_000
+# Slice 5 pre-generation (python -m codeask.pregen): the default per-run token guard (Q53).
+PREGEN_MAX_TOKENS = 100_000
 # Reserved per question in flight and for the new one at admission (~3,000 measured + margin).
 QUESTION_RESERVE_TOKENS = 3_500
 # Counted when a Groq request was started but no usage came back (timeout, error): Groq may

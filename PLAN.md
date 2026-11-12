@@ -1011,6 +1011,28 @@ config gains a pinned SHA per repo, and the drift guard compares slug and SHA (Q
    `fixture()` record (plus the run log) to `frontend/data/examples/<owner>__<name>/<id>.json`,
    prints a running token total, and stops before a question that would pass `--max-tokens`
    (default 100K; failed runs count).
+   **Built 2026-11-12** as `python -m codeask.pregen generate <slug>`; `verify` and `export`
+   become sibling subcommands.
+   - **Before it runs:** it refuses a questions file that isn't confirmed, or whose SHA differs
+     from the pin or the DB.
+   - **Which entries:** it answers each `questions` entry whose answer file and
+     `eval/results/m2d_failures/` file are both absent. A replacement is a reserve moved into
+     `questions` by a committed amendment.
+   - **Re-runs:** every run (answered or error, with tokens and whether they are estimated) is
+     appended to `eval/results/m2d_runs_<owner>__<name>.jsonl`, so the 2-re-run limit survives
+     restarts. A third error stops the run.
+   - **Errors:** a Groq error, timeout, deadline, network or DB error can be re-run. Anything
+     else is a bug and isn't re-run. Groq's daily limit (a 429 asking for more than 120 s) stops
+     the run.
+   - **Tokens:** the guard uses the same per-question reserve (3.5K) as the API. A failed run
+     counts the API's 3.3K estimate if Groq was called.
+   - **What it writes:** the answer JSON carries `question_id` and `runs`. The full result (raw
+     answer, whole context, dropped chunks) goes to `eval/results/m2d_raw/<owner>__<name>/` for
+     grading and M3, and never ships.
+   - **itsdangerous q1** is the existing fixture, copied byte for byte to
+     `frontend/data/examples/pallets__itsdangerous/q1.json`. The old file stays until step 8
+     moves the import.
+   - **Tests:** 16 offline tests in `backend/tests/test_pregen.py`.
 5. **Cited-lines check** `python -m codeask.pregen verify <slug>` (Q51): a fresh clone at the
    pinned SHA (`ingest.clone`, no symlinks followed); every block's lines must equal the file's
    lines `start..end` exactly (split on `"\n"`); the result (ok, SHA, date) is written into each
