@@ -1274,6 +1274,11 @@ config gains a pinned SHA per repo, and the drift guard compares slug and SHA (Q
       - **itsdangerous result:** 6 passing answers (q1, q2, q3, q4, r1, q6), 1 failure (q5), 1
         replacement used; 16,555 tokens generated today (13,962 + 2,593). Export order: q1
         (flagship), q2, q3, q4, r1, q6.
+      - **Export and checks:** the full `check.ps1` passes with the 6-answer set (470 backend,
+        90 logic, 135 e2e).
+      - **First-load re-measure (the step 8 rule; itsdangerous is the set that ships with the
+        page):** 227.1 kB gzip, **+10.3 kB** over the 216.8 kB baseline. The set's own chunk
+        grew 3.6 -> 12.8 kB. That's under the 30 kB limit, so the set stays a static import.
 
 ### [ ] Slice 6 (M2e): deploy
 **Gate from slice 4 (Q44):** before going public, compare the client IP the API sees with my
