@@ -1,0 +1,8 @@
+[
+ {"slug": "pallets/itsdangerous", "url": "https://github.com/pallets/itsdangerous",
+  "commit_sha": "672971d66a2ef9f85151e53283113f33d642dabd"},
+ {"slug": "psf/requests", "url": "https://github.com/psf/requests",
+  "commit_sha": "3c7baaa05ab4aa49cc819ce3a819d260de19c157"},
+ {"slug": "expressjs/express", "url": "https://github.com/expressjs/express",
+  "commit_sha": "1c6f1b0fe4000977b9a7b4f34097e4d527dd9824"}
+]

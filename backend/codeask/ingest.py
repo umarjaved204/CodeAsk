@@ -176,7 +176,8 @@ def clone(owner: str, name: str, ref: str | None, dest: Path) -> str:
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("url")
-    parser.add_argument("--ref", help="commit SHA (40 hex) or branch/tag; default: HEAD")
+    parser.add_argument("--ref", help="commit SHA (40 hex) or branch/tag; default: the pinned "
+                                      "commit for a featured repo, else HEAD")
     parser.add_argument("--tests", action="store_true", help="include test files")
     parser.add_argument("--docs", action="store_true", help="include docs beyond the README")
     parser.add_argument("--yes", action="store_true", help="skip the confirmation prompt")
@@ -190,6 +191,9 @@ def main():
     except ValueError as error:
         sys.exit(str(error))
     slug = f"{owner}/{name}".lower()
+    if ref is None and slug in config.FEATURED_SHAS:
+        ref = config.FEATURED_SHAS[slug]  # a featured repo defaults to its pinned commit (Q52)
+        print(f"{slug} is featured: using its pinned commit")
 
     from codeask.embedder import VoyageEmbedder
     from codeask.store import Store, connect

@@ -93,7 +93,14 @@ MODEL_CHECK_TTL_S = 600  # re-check that the model still exists at most this oft
 
 # ---------- API ----------
 # The only repos the public API answers about (Q1, Q12). CodeAsk itself joins once public.
-FEATURED_REPOS = ("pallets/itsdangerous", "psf/requests", "expressjs/express")
+# Each is pinned to the commit its stored answers were generated at (Q52): ingest defaults to
+# it, and tests/test_featured.py checks it against frontend/data/featured.json.
+FEATURED_SHAS = {
+    "pallets/itsdangerous": "672971d66a2ef9f85151e53283113f33d642dabd",
+    "psf/requests": "3c7baaa05ab4aa49cc819ce3a819d260de19c157",
+    "expressjs/express": "1c6f1b0fe4000977b9a7b4f34097e4d527dd9824",
+}
+FEATURED_REPOS = tuple(FEATURED_SHAS)
 
 # ---------- slice 4: budget and abuse controls (PLAN.md Q42-Q46) ----------
 # Seed values for the usage_settings row only; after setup the database is the truth, changed
