@@ -2,6 +2,7 @@
 
 Run: python -m codeask.pregen generate pallets/itsdangerous [--max-tokens 100000]
      python -m codeask.pregen verify pallets/itsdangerous
+     python -m codeask.pregen export pallets/itsdangerous
 
 Answers, in order, each entry of the repo's frozen `questions` list (eval/m2d_questions/
 <owner>__<name>.json, Q48) that has no stored attempt yet. A replacement (Q50) is a reserve moved
@@ -26,6 +27,20 @@ requires each shown block's content to equal the file's lines start..end exactly
 decoded as ingest decodes it (strict UTF-8, BOM stripped, CRLF -> LF) and split on "\n". No
 symlink is followed, and no path may leave the clone. The result (ok, SHA, time, problems) is
 written into each answer's JSON as `lines_check`. No API is called and the DB isn't used.
+
+`export` (build step 7) writes frontend/data/examples/<owner>__<name>/index.json. The index
+holds the passing answers' ids and questions, flagship first and the rest in question order.
+
+Export writes nothing if any of these hold:
+- the pins disagree (config, featured.json, the dev DB);
+- an answer is for another commit;
+- an answer has no grade, or a grade with an unknown value;
+- an answer's lines check isn't ok;
+- a stored question differs from the frozen one;
+- no answer passes.
+
+An answer that doesn't pass (Q50) is left out and reported; step 6 moves it to failures. Pass
+and flagship are computed from the grade's typed fields, never stored.
 """
 
 from __future__ import annotations
@@ -51,6 +66,7 @@ from codeask.filters import decode
 from codeask.llm import GroqError, RateLimited
 
 ROOT = Path(__file__).resolve().parents[2]
+INDEX = "index.json"  # the per-repo order the frontend reads (Q47); every other file is an answer
 MAX_ERRORS = 3  # the first run plus at most 2 re-runs (Q50)
 # Ends with no answer text: re-run. Anything else is a bug and stops the run.
 TRANSIENT = (GroqError, DeadlineExceeded, requests.RequestException, psycopg.Error)
@@ -68,6 +84,9 @@ class Paths:
         self.raw = root / "eval" / "results" / "m2d_raw" / name
         self.failures = root / "eval" / "results" / "m2d_failures" / name
         self.log = root / "eval" / "results" / f"m2d_runs_{name}.jsonl"
+
+    def answer_files(self) -> list[Path]:
+        return sorted(f for f in self.answers.glob("*.json") if f.name != INDEX)
 
     def stored(self, qid: str) -> bool:
         """An attempt exists: a kept answer, or one that failed grading (step 6 moves it)."""
@@ -225,7 +244,7 @@ def check_record(record: dict, root: Path, sha: str) -> list[str]:
 def verify(paths: Paths, root: Path, sha: str, now: datetime) -> dict[str, list[str]]:
     """Checks every stored answer and writes the result into it; returns the problems by id."""
     results = {}
-    for file in sorted(paths.answers.glob("*.json")):
+    for file in paths.answer_files():
         record = json.loads(file.read_text(encoding="utf-8"))
         problems = check_record(record, root, sha)
         record["lines_check"] = {"ok": not problems, "commit_sha": sha,
@@ -245,7 +264,7 @@ def main_verify(slug: str) -> None:
     if pin is None:
         sys.exit(f"{slug} is not a featured repo")
     paths = Paths(slug)
-    if not any(paths.answers.glob("*.json")):
+    if not paths.answer_files():
         sys.exit(f"no stored answers in {paths.answers}")
     owner, name = slug.split("/")
     dest = Path(tempfile.mkdtemp(prefix="codeask-verify-")) / "repo"
@@ -270,6 +289,139 @@ def main_verify(slug: str) -> None:
         sys.exit(1)
 
 
+# ---------- export (build step 7, Q47, Q48, Q50, Q52) ----------
+# A grade's typed fields and their allowed values. Pass and flagship are computed from them,
+# never stored, so no field can contradict another (Q37).
+GRADE_VALUES = {
+    "correct": {"correct", "incomplete", "incorrect"},
+    "grounded": {"yes", "no"},
+    "unsupported": {"none", "minor", "load-bearing"},
+    "omission": {"none", "minor", "material"},
+    "reviewer": {"claude", "author"},
+}
+FLAGSHIP_MIN_CITATIONS = 3
+
+
+def grade_problems(record: dict) -> list[str]:
+    grade = record.get("grade")
+    if not grade:
+        return ["no grade"]
+    return [f"grade.{k} is {grade.get(k)!r}, not one of {sorted(v)}"
+            for k, v in GRADE_VALUES.items() if grade.get(k) not in v]
+
+
+def valid_citations(record: dict) -> int:
+    return sum(1 for c in record["response"]["citations"] if c["valid"])
+
+
+def passes(record: dict) -> bool:
+    """Q50 (with the unsupported-claims amendment): grounded, every citation valid, no
+    incorrect claim, no load-bearing unsupported claim, and the cited lines checked."""
+    g, citations = record["grade"], record["response"]["citations"]
+    return (g["grounded"] == "yes" and g["correct"] != "incorrect"
+            and g["unsupported"] != "load-bearing" and record["response"]["grounded"]
+            and bool(citations) and all(c["valid"] for c in citations)
+            and record.get("lines_check", {}).get("ok") is True)
+
+
+def truncated(record: dict) -> bool:
+    """Hit the output cap: that is when Groq stops with finish_reason "length"."""
+    return (record.get("usage") or {}).get("completion_tokens", 0) >= config.ANSWER_MAX_TOKENS
+
+
+def flagship_misses(record: dict) -> list[str]:
+    """Why a passing answer can't lead its repo (Q48); [] = it can."""
+    g, misses = record["grade"], []
+    if g["correct"] != "correct":
+        misses.append(f"graded {g['correct']}")
+    if g["omission"] == "material":
+        misses.append("a material omission")
+    if valid_citations(record) < FLAGSHIP_MIN_CITATIONS:
+        misses.append(f"{valid_citations(record)} valid citations")
+    if truncated(record):
+        misses.append("truncated")
+    return misses
+
+
+def build_index(data: dict, records: dict[str, dict], pins: list[str],
+                now: datetime) -> tuple[dict, list[str]]:
+    """The repo's index.json and what was left out, or Stop if anything must be fixed first.
+    `records` maps question id -> stored answer; `pins` are the SHAs that must all agree
+    (config, featured.json, the dev DB)."""
+    sha = data["commit_sha"]
+    problems = [f"pins differ: {sorted({p[:7] for p in pins + [sha]})}"] \
+        if any(p != sha for p in pins) else []
+    for qid, record in records.items():
+        if record["commit_sha"] != sha:
+            problems.append(f"{qid}: answer is for {record['commit_sha'][:7]}, pin {sha[:7]}")
+        if record.get("question_id") not in (None, qid):
+            problems.append(f"{qid}: the file says it answers {record['question_id']}")
+        if not (record.get("lines_check") or {}).get("ok"):
+            problems.append(f"{qid}: lines_check is not ok (run verify)")
+        problems += [f"{qid}: {p}" for p in grade_problems(record)]
+    if problems:
+        raise Stop("; ".join(problems))
+
+    order = [e for e in data["questions"] if e["id"] in records]
+    left_out = [f"{e['id']}: not generated yet" for e in data["questions"]
+                if e["id"] not in records]
+    passed = []
+    for e in order:
+        if records[e["id"]]["question"] != e["question"]:
+            raise Stop(f"{e['id']}: the stored question differs from the frozen one (Q48)")
+        if passes(records[e["id"]]):
+            passed.append(e)
+        else:
+            left_out.append(f"{e['id']}: does not pass (Q50); step 6 moves it to failures")
+    if not passed:
+        raise Stop("no passing answer to export")
+    lead = next((e for e in passed if not flagship_misses(records[e["id"]])), None)
+    note = None
+    if lead is None:
+        lead = passed[0]
+        note = (f"no passing answer meets the flagship rule (Q48); {lead['id']} leads as the "
+                f"first passing: {', '.join(flagship_misses(records[lead['id']]))}")
+    ordered = [lead] + [e for e in passed if e is not lead]
+    index = {"repo": data["repo"], "commit_sha": sha,
+             "exported_at": now.isoformat(timespec="seconds"),
+             "flagship": lead["id"], "flagship_note": note,
+             "questions": [{"id": e["id"], "question": e["question"]} for e in ordered]}
+    return index, left_out
+
+
+def main_export(slug: str) -> None:
+    from codeask.store import Store, connect
+
+    store = Store(connect())
+    repo = store.repo(slug.lower())
+    if repo is None:
+        sys.exit(f"{slug} is not ingested")
+    paths = Paths(repo["slug"])
+    featured = json.loads((ROOT / "frontend" / "data" / "featured.json")
+                          .read_text(encoding="utf-8"))
+    listed = {f["slug"]: f["commit_sha"] for f in featured}
+    try:
+        data = load_questions(paths.questions, repo)
+        if repo["slug"] not in listed:
+            raise Stop(f"{repo['slug']} is not in featured.json")
+        records = {f.stem: json.loads(f.read_text(encoding="utf-8"))
+                   for f in paths.answer_files()}
+        unknown = sorted(set(records) - {e["id"] for e in data["questions"]})
+        if unknown:
+            raise Stop(f"answers for ids not in `questions`: {', '.join(unknown)}")
+        index, left_out = build_index(data, records, [listed[repo["slug"]], repo["commit_sha"]],
+                                      datetime.now(timezone.utc))
+    except Stop as stop:
+        sys.exit(f"refused, nothing written: {stop}")
+    write_json(paths.answers / INDEX, index)
+    for line in left_out:
+        print(f"left out {line}")
+    if index["flagship_note"]:
+        print(f"NOTE: {index['flagship_note']}")
+    print(f"wrote {paths.answers / INDEX}: {len(index['questions'])} answers, "
+          f"flagship {index['flagship']}")
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     commands = parser.add_subparsers(dest="command", required=True)
@@ -279,9 +431,13 @@ def main(argv: list[str] | None = None) -> None:
                      help="stop before a question that could pass this many tokens (Q53)")
     ver = commands.add_parser("verify", help="check stored answers' lines against a fresh clone")
     ver.add_argument("slug", help="owner/name, a featured repo")
+    exp = commands.add_parser("export", help="write index.json from the passing answers")
+    exp.add_argument("slug", help="owner/name, a featured repo")
     args = parser.parse_args(argv)
     if args.command == "verify":
         return main_verify(args.slug)
+    if args.command == "export":
+        return main_export(args.slug)
     if args.max_tokens <= 0:
         parser.error("--max-tokens must be positive")
 

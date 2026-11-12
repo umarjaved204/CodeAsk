@@ -268,3 +268,84 @@ def test_verify_writes_the_result_into_each_answer(tmp_path):
                                  "checked_at": "2026-11-13T10:00:00+00:00", "blocks": 1,
                                  "problems": []}
     assert q1["question"] == "g?" and q2["lines_check"]["ok"] is False
+
+
+# ---------- export (build step 7): pass and flagship computed from the grade ----------
+GOOD_GRADE = {"correct": "correct", "grounded": "yes", "citations_valid": "3/3",
+              "unsupported": "none", "omission": "none", "reviewer": "claude",
+              "date": "2026-11-13", "note": ""}
+
+
+def stored(qid, valid=(True, True, True), completion=300, lines_ok=True, sha=SHA, graded=True,
+           **grade):
+    return {"question_id": qid, "question": f"How does {qid} work?", "commit_sha": sha,
+            "usage": {"completion_tokens": completion},
+            "grade": {**GOOD_GRADE, **grade} if graded else None,
+            "lines_check": {"ok": lines_ok},
+            "response": {"grounded": any(valid),
+                         "citations": [{"n": i, "valid": v} for i, v in enumerate(valid, 1)]}}
+
+
+def frozen(*ids):
+    return {"repo": "o/r", "commit_sha": SHA,
+            "questions": [{"id": i, "question": f"How does {i} work?"} for i in ids]}
+
+
+def export(records, ids=("q1", "q2", "q3"), pins=(SHA, SHA)):
+    from codeask.pregen import build_index
+    return build_index(frozen(*ids), records, list(pins), NOW)
+
+
+def test_the_first_passing_answer_that_meets_the_flagship_rule_leads(tmp_path):
+    index, left_out = export({"q1": stored("q1", correct="incomplete"), "q2": stored("q2"),
+                              "q3": stored("q3", omission="minor")})
+    assert index["flagship"] == "q2" and index["flagship_note"] is None
+    assert [q["id"] for q in index["questions"]] == ["q2", "q1", "q3"]
+    assert index["questions"][0] == {"id": "q2", "question": "How does q2 work?"}
+    assert index["commit_sha"] == SHA and index["exported_at"] == "2026-11-13T10:00:00+00:00"
+    assert left_out == []
+
+
+@pytest.mark.parametrize("record, reason", [
+    (stored("q1", correct="incomplete"), "graded incomplete"),
+    (stored("q1", omission="material"), "a material omission"),
+    (stored("q1", valid=(True, True)), "2 valid citations"),
+    (stored("q1", completion=config.ANSWER_MAX_TOKENS), "truncated"),
+])
+def test_with_no_qualifying_answer_the_first_passing_leads_with_the_reason(record, reason):
+    index, _ = export({"q1": record}, ids=("q1",))
+    assert index["flagship"] == "q1" and reason in index["flagship_note"]
+
+
+@pytest.mark.parametrize("record", [
+    stored("q2", correct="incorrect"),
+    stored("q2", unsupported="load-bearing"),
+    stored("q2", grounded="no"),
+    stored("q2", valid=(True, False, True)),
+    stored("q2", valid=(False,)),
+])
+def test_an_answer_that_does_not_pass_is_left_out(record):
+    index, left_out = export({"q1": stored("q1"), "q2": record})
+    assert [q["id"] for q in index["questions"]] == ["q1"]
+    assert left_out == ["q3: not generated yet",
+                        "q2: does not pass (Q50); step 6 moves it to failures"]
+
+
+def test_minor_unsupported_claims_still_pass():
+    index, _ = export({"q1": stored("q1", unsupported="minor")}, ids=("q1",))
+    assert index["flagship"] == "q1"
+
+
+@pytest.mark.parametrize("records, pins, message", [
+    ({"q1": stored("q1")}, (SHA, "b" * 40), "pins differ"),
+    ({"q1": stored("q1", sha="b" * 40)}, (SHA, SHA), "answer is for bbbbbbb"),
+    ({"q1": stored("q1", lines_ok=False)}, (SHA, SHA), "lines_check is not ok"),
+    ({"q1": stored("q1", graded=False)}, (SHA, SHA), "no grade"),
+    ({"q1": stored("q1", omission="slight")}, (SHA, SHA), "grade.omission is 'slight'"),
+    ({"q1": {**stored("q1"), "question_id": "q9"}}, (SHA, SHA), "answers q9"),
+    ({"q1": {**stored("q1"), "question": "Reworded?"}}, (SHA, SHA), "differs from the frozen"),
+    ({"q1": stored("q1", correct="incorrect")}, (SHA, SHA), "no passing answer"),
+])
+def test_export_refuses(records, pins, message):
+    with pytest.raises(Stop, match=message):
+        export(records, pins=pins)

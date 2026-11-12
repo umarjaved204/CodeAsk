@@ -1,0 +1,13 @@
+{
+ "repo": "pallets/itsdangerous",
+ "commit_sha": "672971d66a2ef9f85151e53283113f33d642dabd",
+ "exported_at": "2026-11-12T16:14:10+00:00",
+ "flagship": "q1",
+ "flagship_note": null,
+ "questions": [
+  {
+   "id": "q1",
+   "question": "How does it support rotating to a new secret key while old keys still work?"
+  }
+ ]
+}

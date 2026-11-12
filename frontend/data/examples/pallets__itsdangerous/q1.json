@@ -35,6 +35,8 @@
   "correct": "correct",
   "grounded": "yes",
   "citations_valid": "7/7 strict",
+  "unsupported": "none",
+  "omission": "minor",
   "reviewer": "author",
   "date": "2026-11-11",
   "note": "Graded by Claude in the mentor review chat on 2026-11-03, at the author's request. Spot-checked and agreed by the author (Umar Javed) on 2026-11-11 against the code at 672971d: the reversed(self.secret_keys) loop (signer.py 236-240), the \"oldest to newest\" comment (138-142) and return self.secret_keys[-1] (175-180). Every claim checked against the four supplied blocks. The answer explains the mechanism fully but omits the practical rotation step (add the new key last, remove old ones later), so it is slightly incomplete. Attempts 1 and 2 differ only in minor ways, not materially (same claims; the closing paragraph is dropped and citation 5 is broader)."
