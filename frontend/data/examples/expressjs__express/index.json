@@ -1,0 +1,33 @@
+{
+ "repo": "expressjs/express",
+ "commit_sha": "1c6f1b0fe4000977b9a7b4f34097e4d527dd9824",
+ "exported_at": "2026-11-12T21:39:08+00:00",
+ "flagship": "q1",
+ "flagship_note": null,
+ "questions": [
+  {
+   "id": "q1",
+   "question": "How do `req` and `res` get Express's extra methods on top of Node's built-in ones?"
+  },
+  {
+   "id": "q2",
+   "question": "How do the \"trust proxy\" setting and the request's protocol, hostname and IP relate to each other?"
+  },
+  {
+   "id": "q3",
+   "question": "How does `res.send` decide the Content-Type, the ETag, and whether to send a body?"
+  },
+  {
+   "id": "r1",
+   "question": "How does `res.redirect` build the Location header and pick the status code?"
+  },
+  {
+   "id": "q5",
+   "question": "How are settings like `etag`, `query parser` and `trust proxy` compiled when you call `app.set`?"
+  },
+  {
+   "id": "q6",
+   "question": "Which built-in middleware does the express module expose, and where does it come from?"
+  }
+ ]
+}

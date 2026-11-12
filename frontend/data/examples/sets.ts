@@ -2,6 +2,7 @@
 /* eslint-disable */
 // One loader per exported repo, each its own chunk (PLAN.md slice 5, step 8, D1).
 export const LOADERS: Record<string, () => Promise<{ default: unknown }>> = {
+  "expressjs/express": () => import("./expressjs__express/set"),
   "pallets/itsdangerous": () => import("./pallets__itsdangerous/set"),
   "psf/requests": () => import("./psf__requests/set"),
 };

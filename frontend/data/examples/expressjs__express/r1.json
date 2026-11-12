@@ -1,0 +1,190 @@
+{
+ "question": "How does `res.redirect` build the Location header and pick the status code?",
+ "repo": "expressjs/express",
+ "repo_url": "https://github.com/expressjs/express",
+ "commit_sha": "1c6f1b0fe4000977b9a7b4f34097e4d527dd9824",
+ "generated_at": "2026-11-12T21:36:05+00:00",
+ "model": "qwen/qwen3.8-27b",
+ "prompt_version": 3,
+ "generation": {
+  "temperature": 0,
+  "max_completion_tokens": 600,
+  "model_options": {
+   "reasoning_effort": "none"
+  }
+ },
+ "packer": {
+  "retrieve_k": 15,
+  "budget": 2000,
+  "per_file_cap": null,
+  "merge_max_gap_lines": 5
+ },
+ "usage": {
+  "queue_time": 0.004206939,
+  "prompt_tokens": 2811,
+  "prompt_time": 0.229274665,
+  "completion_tokens": 358,
+  "completion_time": 0.761985755,
+  "total_tokens": 3169,
+  "total_time": 0.99126042
+ },
+ "retries_429": 0,
+ "attempt": 1,
+ "attempt_note": null,
+ "grade": {
+  "correct": "correct",
+  "grounded": "yes",
+  "citations_valid": "7/7 strict",
+  "unsupported": "none",
+  "omission": "minor",
+  "claims": [
+   {
+    "claim": "the status defaults to 302",
+    "verdict": "supported",
+    "blocks": [
+     "response.js:818"
+    ],
+    "risky": true
+   },
+   {
+    "claim": "with two arguments, the first is the status and the second the URL",
+    "verdict": "supported",
+    "blocks": [
+     "response.js:821-824"
+    ],
+    "risky": true
+   },
+   {
+    "claim": "a non-string URL or non-number status triggers a deprecation warning",
+    "verdict": "supported",
+    "blocks": [
+     "response.js:830-836"
+    ]
+   },
+   {
+    "claim": "the Location header is set by res.location with encodeUrl(url) and read back with get(Location)",
+    "verdict": "supported",
+    "blocks": [
+     "response.js:839",
+     "response.js:797-799"
+    ],
+    "risky": true
+   },
+   {
+    "claim": "res.format picks the body: text, HTML with the escaped URL, else empty",
+    "verdict": "supported",
+    "blocks": [
+     "response.js:842-856"
+    ]
+   },
+   {
+    "claim": "status(status), Content-Length from Buffer.byteLength(body), end with the body or bare for HEAD",
+    "verdict": "supported",
+    "blocks": [
+     "response.js:859-866"
+    ]
+   }
+  ],
+  "reviewer": "author",
+  "date": "2026-11-12",
+  "note": "Drafted by Claude (Q51), claim by claim against the cited blocks and the files at 1c6f1b0; claims marked risky are the ones for the author's spot-check. Every claim checked against response.js 797-799 and 815-867. Minor omission: a missing URL also triggers a deprecation warning (826-828). Spot-checked and agreed by the author on 2026-11-12 (UTC) against the files at 1c6f1b0: response.js 815-839 (the default 302, status-then-url argument order, this.location(address).get('Location')) and 797-799 (encodeUrl); the deprecation-warning omission is minor."
+ },
+ "response": {
+  "grounded": true,
+  "answer": "`res.redirect` determines the status code and URL from its arguments, then delegates Location header construction to `res.location`.\n\n**Status code selection**\n- The default status is `302` [1](cite:1).\n- If two arguments are passed, the first is treated as the status and the second as the URL: `status = arguments[0]; address = arguments[1]` [2](cite:2).\n- Non-string URLs and non-number statuses trigger deprecation warnings [3](cite:3).\n\n**Building the Location header**\n- The URL is passed through `this.location(address)`, which sets the `Location` header using `encodeUrl(url)`, and the encoded value is read back via `.get('Location')` [4](cite:4) [5](cite:5).\n\n**Response body and final send**\n- `this.format` chooses a body based on content negotiation: plain text gets `\"<status message>. Redirecting to <address>\"`, HTML gets a minimal document with the escaped URL, and the default is an empty string [6](cite:6).\n- The status is applied with `this.status(status)`, `Content-Length` is set from `Buffer.byteLength(body)`, and the response is ended with the body (or immediately for `HEAD` requests) [7](cite:7).\n\nIn short: the status comes from the optional first argument (default 302), and the Location header is built by `res.location`, which URL-encodes the target and sets the header.",
+  "citations": [
+   {
+    "n": 1,
+    "path": "lib/response.js",
+    "start": 818,
+    "end": 818,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L818",
+    "block": 0
+   },
+   {
+    "n": 2,
+    "path": "lib/response.js",
+    "start": 821,
+    "end": 824,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L821-L824",
+    "block": 0
+   },
+   {
+    "n": 3,
+    "path": "lib/response.js",
+    "start": 830,
+    "end": 836,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L830-L836",
+    "block": 0
+   },
+   {
+    "n": 4,
+    "path": "lib/response.js",
+    "start": 839,
+    "end": 839,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L839",
+    "block": 0
+   },
+   {
+    "n": 5,
+    "path": "lib/response.js",
+    "start": 797,
+    "end": 799,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L797-L799",
+    "block": 0
+   },
+   {
+    "n": 6,
+    "path": "lib/response.js",
+    "start": 842,
+    "end": 856,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L842-L856",
+    "block": 0
+   },
+   {
+    "n": 7,
+    "path": "lib/response.js",
+    "start": 859,
+    "end": 866,
+    "valid": true,
+    "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L859-L866",
+    "block": 0
+   }
+  ],
+  "blocks": [
+   {
+    "path": "lib/response.js",
+    "start": 783,
+    "end": 867,
+    "content": "/**\n * Set the location header to `url`.\n *\n * Examples:\n *\n *    res.location('/foo/bar');\n *    res.location('http://example.com');\n *    res.location('../login');\n *\n * @param {String} url\n * @return {ServerResponse} for chaining\n * @public\n */\n\nres.location = function location(url) {\n  return this.set('Location', encodeUrl(url));\n};\n\n/**\n * Redirect to the given `url` with optional response `status`\n * defaulting to 302.\n *\n * Examples:\n *\n *    res.redirect('/foo/bar');\n *    res.redirect('http://example.com');\n *    res.redirect(301, 'http://example.com');\n *    res.redirect('../login'); // /blog/post/1 -> /blog/login\n *\n * @public\n */\n\nres.redirect = function redirect(url) {\n  var address = url;\n  var body;\n  var status = 302;\n\n  // allow status / url\n  if (arguments.length === 2) {\n    status = arguments[0]\n    address = arguments[1]\n  }\n\n  if (!address) {\n    deprecate('Provide a url argument');\n  }\n\n  if (typeof address !== 'string') {\n    deprecate('Url must be a string');\n  }\n\n  if (typeof status !== 'number') {\n    deprecate('Status must be a number');\n  }\n\n  // Set location header\n  address = this.location(address).get('Location');\n\n  // Support text/{plain,html} by default\n  this.format({\n    text: function(){\n      body = statuses.message[status] + '. Redirecting to ' + address\n    },\n\n    html: function(){\n      var u = escapeHtml(address);\n      body = '<!DOCTYPE html><head><title>' + statuses.message[status] + '</title></head>'\n       + '<body><p>' + statuses.message[status] + '. Redirecting to ' + u + '</p></body>'\n    },\n\n    default: function(){\n      body = '';\n    }\n  });\n\n  // Respond\n  this.status(status);\n  this.set('Content-Length', Buffer.byteLength(body));\n\n  if (this.req.method === 'HEAD') {\n    this.end();\n  } else {\n    this.end(body);\n  }\n};"
+   }
+  ],
+  "possibly_relevant": [],
+  "model": "qwen/qwen3.8-27b",
+  "prompt_version": 3
+ },
+ "question_id": "r1",
+ "runs": [
+  {
+   "id": "r1",
+   "at": "2026-11-12T21:36:05+00:00",
+   "outcome": "answered",
+   "tokens": 3169,
+   "estimated": false,
+   "error": null
+  }
+ ],
+ "lines_check": {
+  "ok": true,
+  "commit_sha": "1c6f1b0fe4000977b9a7b4f34097e4d527dd9824",
+  "checked_at": "2026-11-12T21:36:09+00:00",
+  "blocks": 1,
+  "problems": []
+ }
+}

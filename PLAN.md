@@ -1342,6 +1342,18 @@ config gains a pinned SHA per repo, and the drift guard compares slug and SHA (Q
       - **Pattern for M3:** the q3 (`req.fresh`) and q4 (`lookup`/`resolve`) omissions are
         budget misses: retrieved but not packed within 2,000 tokens, as Q49 predicted for
         `lookup`/`resolve`. q4's "throws" is a generation misread.
+      - **r1 (`res.redirect`), the replacement:** generated once, grounded, 7 valid citations,
+        3,169 tokens; `verify` 6/6 ok. Passes (correct, no unsupported claim; minor omission: a
+        missing URL also triggers a deprecation warning, `response.js` 826-828). Author
+        spot-checked `response.js` 815-839 and 797-799; flipped to `reviewer: "author"`.
+      - **express result:** 6 shipped (q1 flagship, q2, q3, r1, q5, q6), 1 failure (q4), 1
+        replacement; 21,754 tokens (18,585 + 3,169).
+    - **Slice 5 generation total (2026-11-12):** 15 shipped answers: itsdangerous 6, requests 3
+      (stopped by the stop rule), express 6. 6 failures in all (itsdangerous q5; requests q4,
+      q5, q6, r1; express q4), all tuning or generation errors, with no code defect. 59,454
+      tokens generated (16,555 + 21,145 + 21,754), inside the 100K per-run guard. The live
+      budget was lowered to 60K for the day. The first-load re-measure after the last export
+      is recorded below, once run.
 
 ### [ ] Slice 6 (M2e): deploy
 **Gate from slice 4 (Q44):** before going public, compare the client IP the API sees with my

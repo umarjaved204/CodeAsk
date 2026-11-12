@@ -1,0 +1,179 @@
+{
+ "question_id": "r1",
+ "question": "How does `res.redirect` build the Location header and pick the status code?",
+ "generated_at": "2026-11-12T21:36:05+00:00",
+ "grounded": true,
+ "possibly_relevant": [],
+ "answer": "`res.redirect` determines the status code and URL from its arguments, then delegates Location header construction to `res.location`.\n\n**Status code selection**\n- The default status is `302` [1](cite:1).\n- If two arguments are passed, the first is treated as the status and the second as the URL: `status = arguments[0]; address = arguments[1]` [2](cite:2).\n- Non-string URLs and non-number statuses trigger deprecation warnings [3](cite:3).\n\n**Building the Location header**\n- The URL is passed through `this.location(address)`, which sets the `Location` header using `encodeUrl(url)`, and the encoded value is read back via `.get('Location')` [4](cite:4) [5](cite:5).\n\n**Response body and final send**\n- `this.format` chooses a body based on content negotiation: plain text gets `\"<status message>. Redirecting to <address>\"`, HTML gets a minimal document with the escaped URL, and the default is an empty string [6](cite:6).\n- The status is applied with `this.status(status)`, `Content-Length` is set from `Buffer.byteLength(body)`, and the response is ended with the body (or immediately for `HEAD` requests) [7](cite:7).\n\nIn short: the status comes from the optional first argument (default 302), and the Location header is built by `res.location`, which URL-encodes the target and sets the header.",
+ "raw_answer": "`res.redirect` determines the status code and URL from its arguments, then delegates Location header construction to `res.location`.\n\n**Status code selection**\n- The default status is `302` [lib/response.js:818].\n- If two arguments are passed, the first is treated as the status and the second as the URL: `status = arguments[0]; address = arguments[1]` [lib/response.js:821-824].\n- Non-string URLs and non-number statuses trigger deprecation warnings [lib/response.js:830-836].\n\n**Building the Location header**\n- The URL is passed through `this.location(address)`, which sets the `Location` header using `encodeUrl(url)`, and the encoded value is read back via `.get('Location')` [lib/response.js:839, 797-799].\n\n**Response body and final send**\n- `this.format` chooses a body based on content negotiation: plain text gets `\"<status message>. Redirecting to <address>\"`, HTML gets a minimal document with the escaped URL, and the default is an empty string [lib/response.js:842-856].\n- The status is applied with `this.status(status)`, `Content-Length` is set from `Buffer.byteLength(body)`, and the response is ended with the body (or immediately for `HEAD` requests) [lib/response.js:859-866].\n\nIn short: the status comes from the optional first argument (default 302), and the Location header is built by `res.location`, which URL-encodes the target and sets the header.",
+ "citations": [
+  {
+   "n": 1,
+   "path": "lib/response.js",
+   "start": 818,
+   "end": 818,
+   "valid": true,
+   "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L818"
+  },
+  {
+   "n": 2,
+   "path": "lib/response.js",
+   "start": 821,
+   "end": 824,
+   "valid": true,
+   "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L821-L824"
+  },
+  {
+   "n": 3,
+   "path": "lib/response.js",
+   "start": 830,
+   "end": 836,
+   "valid": true,
+   "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L830-L836"
+  },
+  {
+   "n": 4,
+   "path": "lib/response.js",
+   "start": 839,
+   "end": 839,
+   "valid": true,
+   "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L839"
+  },
+  {
+   "n": 5,
+   "path": "lib/response.js",
+   "start": 797,
+   "end": 799,
+   "valid": true,
+   "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L797-L799"
+  },
+  {
+   "n": 6,
+   "path": "lib/response.js",
+   "start": 842,
+   "end": 856,
+   "valid": true,
+   "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L842-L856"
+  },
+  {
+   "n": 7,
+   "path": "lib/response.js",
+   "start": 859,
+   "end": 866,
+   "valid": true,
+   "url": "https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/lib/response.js#L859-L866"
+  }
+ ],
+ "stats": {
+  "markers": 6,
+  "attempted": 6,
+  "valid": 7,
+  "unverified": 0
+ },
+ "blocks": [
+  "lib/response.js:1-50",
+  "lib/response.js:310-332",
+  "lib/response.js:783-867",
+  "examples/mvc/controllers/main/index.js:3-5",
+  "examples/cookies/index.js:39-47",
+  "lib/request.js:1-7",
+  "lib/application.js:9-47"
+ ],
+ "context": [
+  {
+   "path": "lib/response.js",
+   "start": 1,
+   "end": 50,
+   "content": "/*!\n * express\n * Copyright(c) 2009-2013 TJ Holowaychuk\n * Copyright(c) 2014-2015 Douglas Christopher Wilson\n * MIT Licensed\n */\n\n'use strict';\n\n/**\n * Module dependencies.\n * @private\n */\n\nvar contentDisposition = require('content-disposition');\nvar createError = require('http-errors')\nvar deprecate = require('depd')('express');\nvar encodeUrl = require('encodeurl');\nvar escapeHtml = require('escape-html');\nvar http = require('node:http');\nvar onFinished = require('on-finished');\nvar mime = require('mime-types')\nvar path = require('node:path');\nvar pathIsAbsolute = require('node:path').isAbsolute;\nvar statuses = require('statuses')\nvar sign = require('cookie-signature').sign;\nvar normalizeType = require('./utils').normalizeType;\nvar normalizeTypes = require('./utils').normalizeTypes;\nvar setCharset = require('./utils').setCharset;\nvar cookie = require('cookie');\nvar send = require('send');\nvar extname = path.extname;\nvar resolve = path.resolve;\nvar basename = path.basename;\nvar vary = require('vary');\nconst { Buffer } = require('node:buffer');\n\n/**\n * Response prototype.\n * @public\n */\n\nvar res = Object.create(http.ServerResponse.prototype)\n\n/**\n * Module exports.\n * @public\n */\n\nmodule.exports = res"
+  },
+  {
+   "path": "lib/response.js",
+   "start": 310,
+   "end": 332,
+   "content": "/**\n * Send given HTTP status code.\n *\n * Sets the response status to `statusCode` and the body of the\n * response to the standard description from node's http.STATUS_CODES\n * or the statusCode number if no description.\n *\n * Examples:\n *\n *     res.sendStatus(200);\n *\n * @param {number} statusCode\n * @public\n */\n\nres.sendStatus = function sendStatus(statusCode) {\n  var body = statuses.message[statusCode] || String(statusCode)\n\n  this.status(statusCode);\n  this.type('txt');\n\n  return this.send(body);\n};"
+  },
+  {
+   "path": "lib/response.js",
+   "start": 783,
+   "end": 867,
+   "content": "/**\n * Set the location header to `url`.\n *\n * Examples:\n *\n *    res.location('/foo/bar');\n *    res.location('http://example.com');\n *    res.location('../login');\n *\n * @param {String} url\n * @return {ServerResponse} for chaining\n * @public\n */\n\nres.location = function location(url) {\n  return this.set('Location', encodeUrl(url));\n};\n\n/**\n * Redirect to the given `url` with optional response `status`\n * defaulting to 302.\n *\n * Examples:\n *\n *    res.redirect('/foo/bar');\n *    res.redirect('http://example.com');\n *    res.redirect(301, 'http://example.com');\n *    res.redirect('../login'); // /blog/post/1 -> /blog/login\n *\n * @public\n */\n\nres.redirect = function redirect(url) {\n  var address = url;\n  var body;\n  var status = 302;\n\n  // allow status / url\n  if (arguments.length === 2) {\n    status = arguments[0]\n    address = arguments[1]\n  }\n\n  if (!address) {\n    deprecate('Provide a url argument');\n  }\n\n  if (typeof address !== 'string') {\n    deprecate('Url must be a string');\n  }\n\n  if (typeof status !== 'number') {\n    deprecate('Status must be a number');\n  }\n\n  // Set location header\n  address = this.location(address).get('Location');\n\n  // Support text/{plain,html} by default\n  this.format({\n    text: function(){\n      body = statuses.message[status] + '. Redirecting to ' + address\n    },\n\n    html: function(){\n      var u = escapeHtml(address);\n      body = '<!DOCTYPE html><head><title>' + statuses.message[status] + '</title></head>'\n       + '<body><p>' + statuses.message[status] + '. Redirecting to ' + u + '</p></body>'\n    },\n\n    default: function(){\n      body = '';\n    }\n  });\n\n  // Respond\n  this.status(status);\n  this.set('Content-Length', Buffer.byteLength(body));\n\n  if (this.req.method === 'HEAD') {\n    this.end();\n  } else {\n    this.end(body);\n  }\n};"
+  },
+  {
+   "path": "examples/mvc/controllers/main/index.js",
+   "start": 3,
+   "end": 5,
+   "content": "exports.index = function(req, res){\n  res.redirect('/users');\n};"
+  },
+  {
+   "path": "examples/cookies/index.js",
+   "start": 39,
+   "end": 47,
+   "content": "app.post('/', function(req, res){\n  var minute = 60000;\n\n  if (req.body && req.body.remember) {\n    res.cookie('remember', 1, { maxAge: minute })\n  }\n\n  res.redirect(req.get('Referrer') || '/');\n});"
+  },
+  {
+   "path": "lib/request.js",
+   "start": 1,
+   "end": 7,
+   "content": "/*!\n * express\n * Copyright(c) 2009-2013 TJ Holowaychuk\n * Copyright(c) 2013 Roman Shtylman\n * Copyright(c) 2014-2015 Douglas Christopher Wilson\n * MIT Licensed\n */"
+  },
+  {
+   "path": "lib/application.js",
+   "start": 9,
+   "end": 47,
+   "content": "'use strict';\n\n/**\n * Module dependencies.\n * @private\n */\n\nvar finalhandler = require('finalhandler');\nvar debug = require('debug')('express:application');\nvar View = require('./view');\nvar http = require('node:http');\nvar methods = require('./utils').methods;\nvar compileETag = require('./utils').compileETag;\nvar compileQueryParser = require('./utils').compileQueryParser;\nvar compileTrust = require('./utils').compileTrust;\nvar resolve = require('node:path').resolve;\nvar once = require('once')\nvar Router = require('router');\n\n/**\n * Module variables.\n * @private\n */\n\nvar slice = Array.prototype.slice;\nvar flatten = Array.prototype.flat;\n\n/**\n * Application prototype.\n */\n\nvar app = exports = module.exports = {};\n\n/**\n * Variable for trust proxy inheritance back-compat\n * @private\n */\n\nvar trustProxyDefaultSymbol = '@@symbol:trust_proxy_default';"
+  }
+ ],
+ "outlines": [],
+ "dropped": [
+  [
+   "lib/response.js:113-222",
+   "budget"
+  ],
+  [
+   "lib/response.js:488-505",
+   "budget"
+  ],
+  [
+   "lib/response.js:649-668",
+   "budget"
+  ],
+  [
+   "lib/response.js:334-417",
+   "budget"
+  ],
+  [
+   "lib/response.js:724-781",
+   "budget"
+  ],
+  [
+   "lib/application.js:1-7",
+   "budget"
+  ]
+ ],
+ "context_estimate": 1970,
+ "model": "qwen/qwen3.8-27b",
+ "prompt_version": 3,
+ "usage": {
+  "queue_time": 0.004206939,
+  "prompt_tokens": 2811,
+  "prompt_time": 0.229274665,
+  "completion_tokens": 358,
+  "completion_time": 0.761985755,
+  "total_tokens": 3169,
+  "total_time": 0.99126042
+ },
+ "headers": {
+  "x-ratelimit-limit-requests": "1000",
+  "x-ratelimit-remaining-requests": "997",
+  "x-ratelimit-reset-requests": "4m19.2s",
+  "x-ratelimit-limit-tokens": "8000",
+  "x-ratelimit-remaining-tokens": "4589",
+  "x-ratelimit-reset-tokens": "25.582s"
+ },
+ "reasoning_chars": 0,
+ "timings_s": {
+  "retrieve": 1.94,
+  "llm": 1.57
+ },
+ "retries": 0
+}
