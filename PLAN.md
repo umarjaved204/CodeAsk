@@ -1218,6 +1218,17 @@ config gains a pinned SHA per repo, and the drift guard compares slug and SHA (Q
        current.
      - **I check 23-picked-after-live at 390 myself.**
 10. **Licence line (Q55)** in the README's "How it works", from each LICENSE at the pinned SHA.
+    **Done 2026-11-13.** The README had no "How it works" section (the header link opens the
+    README), so one was added with only a "Code shown on the site" table. Each licence was read
+    from the file in the pinned clone:
+    - itsdangerous `LICENSE.txt`: BSD 3-Clause (three conditions, the third no endorsement;
+      "Copyright 2011 Pallets").
+    - requests `LICENSE`: Apache License, Version 2.0.
+    - express `LICENSE`: MIT.
+
+    Each licence links to its file at the pinned commit. The rest of the section, and the stale
+    "Status" text (it still says there is no chat or web UI), are left for a later README pass:
+    not slice 5's scope, flagged here so it isn't lost.
 11. **Generation run** on the dev DB, at least 24 h before launch (Q53), then the Q42 budget
     raise; PLAN.md records counts, tokens and findings.
 

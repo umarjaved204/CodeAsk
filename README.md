@@ -20,6 +20,20 @@ decisions and measurements are in [PLAN.md](PLAN.md).
 - **Next, M2:** a basic RAG chat (FastAPI + Next.js) with file and line citations.
   Tested with qwen3.8-27b (Groq Preview) as of Nov 2026.
 
+## How it works
+
+### Code shown on the site
+
+The code excerpts and answers on the site quote the featured repos at a pinned commit. That
+code belongs to its authors and is shown under each project's open-source licence, named here
+from its licence file at that commit:
+
+| Repo | Commit | Licence |
+|---|---|---|
+| [pallets/itsdangerous](https://github.com/pallets/itsdangerous) | `672971d` | BSD 3-Clause ([LICENSE.txt](https://github.com/pallets/itsdangerous/blob/672971d66a2ef9f85151e53283113f33d642dabd/LICENSE.txt)) |
+| [psf/requests](https://github.com/psf/requests) | `3c7baaa` | Apache License 2.0 ([LICENSE](https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/LICENSE)) |
+| [expressjs/express](https://github.com/expressjs/express) | `1c6f1b0` | MIT ([LICENSE](https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/LICENSE)) |
+
 ## Setup
 
 Requires Python 3.12+ and free accounts for Neon and Voyage AI (no card needed).
