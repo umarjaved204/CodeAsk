@@ -60,7 +60,7 @@ Portfolio project. Milestones, decisions and measured results live in [PLAN.md](
 | Layer | Choice | Notes |
 |---|---|---|
 | Frontend | Next.js on Vercel Hobby | |
-| Backend | FastAPI on a free host (Render is the first candidate; final choice after the M2-0 spike) | Free instances sleep when idle, so expect cold starts |
+| Backend | FastAPI on Render's free web service (`codeask-api`, Ohio) | Free instances sleep when idle, so expect cold starts. A card with no funds is on file (PLAN.md Q75): build spend limit $0, auto-deploy off |
 | Database | Neon Postgres + pgvector | Pick the host's region next to Neon (Ohio) |
 | Embeddings | Voyage voyage-code-3 (no card, 3 RPM) | Gemini Embedding is an M3 comparison candidate |
 | Live LLM | Groq, model id in config | The free catalogue changes; never hardcode the model |
