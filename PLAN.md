@@ -1546,6 +1546,16 @@ until M6). `skills-lock.json` stays as the README's install pointer.
   values are logged with their source (`env` or `default`) next to the model line. Tests:
   accepted (unset, empty, both bounds), refused (0, negative, seed above floor, 31, text,
   12.5), applied and logged by the app, out of bounds stops startup.
+- **3a.6 Render's commands, locally (passed):** a fresh `.venv-api` with only
+  `pip install -r requirements-api.txt`: none of tree-sitter, tokenizers, voyageai, groq,
+  google-genai or codeask installed (the package is found through `--app-dir backend` alone).
+  Start command as on Render except `--host 127.0.0.1 --port 8001` (no LAN exposure on Windows;
+  Render's `0.0.0.0` and `$PORT` are its own): `uvicorn codeask.api.app:create_app --factory
+  --app-dir backend --workers 1 --no-access-log`. Startup: model available, cold-start
+  constants 15 / 25 (default). `/health` and `HEAD /` 200; `/docs`, `/openapi.json` 404;
+  `/status` ok; `/repos` the three featured repos at their pinned SHAs (4.6 s: dev Neon waking).
+  Only the app's own request lines were logged (id, method, path, status, time, outcome; no IP,
+  no question): `--no-access-log` holds. **3a done** (`check.ps1` and `pytest -m db` green).
 
 **Constant bounds (derived from the code, 2026-11-13):** `0 < PROJECTED_SERVICE_SEED_S <=
 MIN_TIME_TO_START_S <= ASK_DEADLINE_S - QUEUE_BUSY_WAIT_S` (= 90 - 60 = 30). The seed's own
