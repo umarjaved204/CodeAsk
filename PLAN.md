@@ -731,7 +731,7 @@ Behaviour added with the inventory:
 | R2-2 (Med) | 844x390 (landscape phone): the composer took half the height; the first screen showed no answer text | **Fixed:** a `short:` variant (max-height 500px): the composer isn't sticky there and drops its footer note. e2e at 844x390, with a 390x844 control (still sticky) |
 | R2-3 (Low) | Visible Windows scrollbars at 1440: the reading column's bar sits against the panel border; nothing clipped | **Keep** |
 
-**Round 3 (2026-11-11, 106 shots, clean manifest at `6529b72`):** no new findings. Notes: no sideways page, no clipping, no text under 12 px; reading measure unchanged (66-68 desktop/768, 58-59 at 1024, 47-49 phones, 38 at 320). R2-1 confirmed: chips stay with their words and following punctuation at 1440 (`newest" [2].` on one line), 1024, 390 and 320. R2-2 confirmed: at 844x390 the first screen shows the answer, with the composer after it. The three planned rounds are done. **Approved by me after my own look at the round 3 sheets (2026-11-11): step 4 is done.**
+**Round 3 (2026-11-11, 106 shots, clean manifest at `c2d3361`, `6529b72` before the history rewrite):** no new findings. Notes: no sideways page, no clipping, no text under 12 px; reading measure unchanged (66-68 desktop/768, 58-59 at 1024, 47-49 phones, 38 at 320). R2-1 confirmed: chips stay with their words and following punctuation at 1440 (`newest" [2].` on one line), 1024, 390 and 320. R2-2 confirmed: at 844x390 the first screen shows the answer, with the composer after it. The three planned rounds are done. **Approved by me after my own look at the round 3 sheets (2026-11-11): step 4 is done.**
 
 **Step 5, pass 1: `web-design-guidelines`** (2026-11-11; rules fetched fresh from vercel-labs/web-interface-guidelines; mentor-reviewed; my decisions):
 - **Fixed:**
@@ -1190,7 +1190,7 @@ config gains a pinned SHA per repo, and the drift guard compares slug and SHA (Q
      states 01 and 22 at 1440 and 390, where the list shows.
    - **Waits for step 11:** rapid picks, A -> B -> C, a failed chunk, and a repo switch that
      opens a flagship from a dynamic set.
-   - **Screenshot round s5 (2026-11-12):** 133 shots at commit `6648c1c` (dirty: the step 9
+   - **Screenshot round s5 (2026-11-12):** 133 shots at commit `d93949e` (`6648c1c` before the history rewrite; dirty: the step 9
      work). `check.ps1` and `npm run screens` passed. No new kind of automatic note: the new
      states show only the accepted "text under the composer's fade".
      - **F1, fixed:** after a pick, the heading scrolled to the top edge and pushed the
@@ -1482,6 +1482,24 @@ until M6). `skills-lock.json` stays as the README's install pointer.
   --invert-paths` only, on a fresh clone from GitHub. The commit that only added the skills
   (`c10223c`) may be pruned as empty: 86 commits before (85 + this `.gitignore` commit), so
   85 or 86 after are both expected.
+
+**Step 1.5-1.6 results (2026-11-13):**
+- **Backups (amends 1.2):** no USB drive, so the offline copy is a zip of the mirror in my
+  local Documents folder (same disk as the mirror) and the off-machine copy is the same zip in
+  OneDrive; each was unzipped elsewhere and checked (86 commits, `fsck` clean). Plus the mirror
+  itself and the old working folder.
+- **Side folder (amends 1.5, my decision):** the fresh clone, the rewrite, the checks and the
+  push ran in `Projects\CodeAsk-new` with the session open; only the folder swap and the
+  rebuild of `.venv` and `node_modules` (a venv stores absolute paths) ran with it closed.
+- **Rewrite:** fresh clone from GitHub, 86 commits; `git filter-repo --path .claude/skills
+  --invert-paths` (2.47.0): 85 commits, `c10223c` (skills only) pruned as expected; `origin`
+  removed by filter-repo. HEAD `2777f70` is now `e2b6097`.
+- **1.6 checks:** gitleaks 8.30.1 over 85 commits: no leaks; author and committer emails: only
+  the no-reply address; `git log --all -- .claude/skills` and `git ls-files .claude`: empty.
+  Redacted strings: none to check (empty list). **Hash references:** every rewritten hash was
+  searched for in the whole tree (not only the two named, and `eval/` included): only PLAN.md
+  has any. `6529b72` is now `c2d3361`, `6648c1c` is now `d93949e` (both updated in place, old
+  hash kept beside); the plan text naming old hashes (here, step 1.6, Q74) stays as written.
 
 **Constant bounds (derived from the code, 2026-11-13):** `0 < PROJECTED_SERVICE_SEED_S <=
 MIN_TIME_TO_START_S <= ASK_DEADLINE_S - QUEUE_BUSY_WAIT_S` (= 90 - 60 = 30). The seed's own
