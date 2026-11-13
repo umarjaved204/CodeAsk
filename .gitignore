@@ -33,6 +33,10 @@ repos/
 # Chunk snapshots (regenerate with spike/chunk_snapshot.py; hundreds of KB each)
 spike/*.json
 
+# Third-party Claude Code skills: installed locally, not redistributed (Q74; skills-lock.json
+# is the install pointer)
+.claude/skills/
+
 # OS / editor
 .DS_Store
 Thumbs.db

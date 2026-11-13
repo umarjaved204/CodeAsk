@@ -1446,6 +1446,43 @@ until M6). `skills-lock.json` stays as the README's install pointer.
 - Voyage: the free account **allows a second API key**, so prod gets its own key (Q59a); the
   shared-key fallback isn't needed.
 
+**Step 1.1-1.4 results (2026-11-13, before the rewrite; mentor-reviewed):**
+- **Order change:** the mirror, the scans and the redaction list ran with the session still
+  open (none needs the folder closed); the session closes only for the rename, the fresh clone
+  and filter-repo (1.5 on). Tools: gitleaks 8.30.1, git-filter-repo 2.47.0 (user install).
+- **1.1 ignored files, carried over:** `.env`, `frontend/.env.local`, `frontend/design-review/`,
+  `repos/`, `spike/*_chunks_before.json`, `.claude/skills/` (now ignored, committed before the
+  rewrite). **Recreated:** `.venv`, `.venv-api` (when 3a.6 needs it), `frontend/node_modules`.
+  **Left behind:** caches, build output, `spike/m2/web/` (frozen spike, incl. its `.env.local`).
+- **1.2 mirror:** outside the project folder, 85 commits (= the working repo), `fsck` without
+  errors (dangling objects only: a local clone copies unreachable leftovers; a push never sends
+  them); only `main`, no tags. Offline and second copies: mine, confirmed before 1.5. The
+  mirror is refreshed after the `.gitignore` commit so it holds every commit that is rewritten.
+- **1.3 secrets:** gitleaks over 85 commits: no leaks. `git grep` of every version of every
+  file with the hook's key patterns (Neon, Voyage, Groq, Gemini, Postgres URL with password):
+  none; with `ghp_`, `github_pat_`, `sk-`, `xox[bp]-`: none. Author and committer emails: only
+  the GitHub no-reply address. **So: no key rotations from history, no `--replace-text`, and
+  the mailmap is dropped (it would change nothing).** Q72's spike rotations still apply.
+- **1.4 redaction scan, all history** (scan 1: every file; scan 2: PLAN.md, `eval/`, every
+  `.md`): emails; phone numbers (international, PK mobile, US); local username and absolute
+  paths (`umar`, `C:\Users`, `/Users/`, `/home/`, `AppData`); Neon hostnames, endpoint and
+  project IDs; Render `srv-/tea-/usr-/dpl-`; Vercel `prj_/team_`; Groq `org_`; "org/project/
+  account/team id"; Voyage org or account; key formats (above); card wording and last-4;
+  dollar amounts; invoice/billing. **Hits, all kept:** my name as grader (item 1); public
+  `umarjaved204/TableTalk` (item 2); `codeask-spike.onrender.com` (item 3, deleted in Q72);
+  public prices and budget rules ($0, $5, $0.15/GB, $0.25/month). The `+0500` timezone on every
+  commit is kept (item 4). False positives: itsdangerous code (`@t.overload`), an Express
+  `/users/:id` example, prose about Voyage's key policy. **Redaction list: empty.**
+- **Spike hostnames at HEAD:** neither `codeask-spike.onrender.com` nor `codeask-pi.vercel.app`
+  appears outside PLAN.md prose (no code, config, test or env default calls or trusts either);
+  of the ignored env files only the frozen spike's `.env.local`. `codeask-pi` is kept (Q64
+  amendment), so only the Render spike hostname becomes claimable after Q72. **3b and 5.4:**
+  CSP `connect-src` and `ALLOWED_ORIGINS` name `codeask-api` only, never the spike.
+- **1.5 amended accordingly:** filter-repo runs one pass of `--path .claude/skills
+  --invert-paths` only, on a fresh clone from GitHub. The commit that only added the skills
+  (`c10223c`) may be pruned as empty: 86 commits before (85 + this `.gitignore` commit), so
+  85 or 86 after are both expected.
+
 **Constant bounds (derived from the code, 2026-11-13):** `0 < PROJECTED_SERVICE_SEED_S <=
 MIN_TIME_TO_START_S <= ASK_DEADLINE_S - QUEUE_BUSY_WAIT_S` (= 90 - 60 = 30). The seed's own
 clamp (`PROJECTED_SERVICE_MAX_S` = 60) is never the binding one. Why: both constants stand for
