@@ -23,11 +23,11 @@ def conn():
     from dotenv import load_dotenv
 
     load_dotenv()
-    if not os.environ.get("DATABASE_URL"):
-        pytest.skip("DATABASE_URL not set")
+    if not os.environ.get("DATABASE_OWNER_URL"):  # creates schemas and ingests: the owner
+        pytest.skip("DATABASE_OWNER_URL not set")
     from codeask.store import connect
 
-    connection = connect()
+    connection = connect("DATABASE_OWNER_URL")
     yield connection
     connection.close()
 

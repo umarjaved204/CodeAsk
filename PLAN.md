@@ -1526,6 +1526,20 @@ until M6). `skills-lock.json` stays as the README's install pointer.
 - Final gitleaks on a fresh clone of the GitHub repo: 89 commits, no leaks. Then the repo was
   made public (my click, irreversible). `noindex` and the unshared URL stay until step 8.
 
+**Step 3a results (2026-11-13):**
+- **3a.1-3a.2:** `/health` beside `/` (GET and HEAD, no DB or queue, tested with every store
+  call failing); `/docs`, `/redoc`, `/openapi.json` off; a route-inventory test pins exactly
+  `/`, `/health`, `/status`, `/repos`, `/ask`.
+- **3a.3:** Q76 (grants, the allowlist guard, `grants --check`; R14). `db`: 29 grants tests.
+- **3a.4 `--prod` (Q7):** `.env.prod` is read only with `--prod` (admin before the command,
+  ingest as a flag) and never falls back to `.env`; nothing from it enters the process
+  environment. Every prod write (admin `setup`, `grants`, `pause`, `resume`, `budget`,
+  `per-ip`; ingest) names the host (never the URL) and asks once: type `prod`. Reads (`status`,
+  `grants --check`) don't ask. A refused value is refused before the prompt; ingest asks before
+  cloning, and `--yes` skips only its cost prompt. **URL by role:** ingest and gc now use
+  `DATABASE_OWNER_URL` (they write content), as does the `db` test fixture; `ask`, `search`,
+  `pregen` and `eval/` only read and stay on `DATABASE_URL`. `gc` has no `--prod`.
+
 **Constant bounds (derived from the code, 2026-11-13):** `0 < PROJECTED_SERVICE_SEED_S <=
 MIN_TIME_TO_START_S <= ASK_DEADLINE_S - QUEUE_BUSY_WAIT_S` (= 90 - 60 = 30). The seed's own
 clamp (`PROJECTED_SERVICE_MAX_S` = 60) is never the binding one. Why: both constants stand for

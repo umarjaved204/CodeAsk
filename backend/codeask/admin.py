@@ -18,6 +18,10 @@ Run: python -m codeask.admin setup                 create the tables: once per d
 `grants --check` included, with DATABASE_URL (the API's own role, pooled; Q7, Q65). Nothing
 here prints either URL: a database error shows only its type, since psycopg's messages name
 the host and the user.
+
+--prod (before the command: `python -m codeask.admin --prod pause`) takes the URLs from
+.env.prod only. Every write names the prod host and asks for one confirmation (type prod);
+`pause` too, once. Reads (`status`, `grants --check`) don't ask.
 """
 
 from __future__ import annotations
@@ -103,8 +107,15 @@ def owner_command(args) -> bool:
     return args.command == "setup" or (args.command == "grants" and not args.check)
 
 
+def writes(args) -> bool:
+    """Everything but `status` and `grants --check` changes the database."""
+    return args.command != "status" and not (args.command == "grants" and args.check)
+
+
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    p.add_argument("--prod", action="store_true",
+                   help="use .env.prod (only); every write asks for one confirmation")
     sub = p.add_subparsers(dest="command", required=True)
     sub.add_parser("setup", help="create the tables (owner URL)")
     g = sub.add_parser("grants", help="grant the API role exactly its privileges (owner URL)")
@@ -122,14 +133,25 @@ def parser() -> argparse.ArgumentParser:
     return p
 
 
-def main(argv: list[str] | None = None) -> None:
+def main(argv: list[str] | None = None, ask=input) -> None:
     args = parser().parse_args(argv)
     import psycopg
 
-    from codeask.store import Store, connect
+    from codeask.store import Store, confirm_prod, connect, database_url
 
+    env = "DATABASE_OWNER_URL" if owner_command(args) else "DATABASE_URL"
     try:
-        conn = connect("DATABASE_OWNER_URL" if owner_command(args) else "DATABASE_URL")
+        if args.command in ("pause", "resume", "budget", "per-ip"):
+            change_for(args)  # a refused value is refused before any prompt
+        if args.prod:
+            url = database_url(env, prod=True)
+            if writes(args):
+                action = "admin " + " ".join(sys.argv[1:] if argv is None else argv)
+                if not confirm_prod(url, action, ask):
+                    sys.exit("cancelled: nothing was changed")
+            else:
+                print(f"reading the PROD database ({env} from .env.prod)")
+        conn = connect(env, prod=args.prod)
         try:
             print(run(Store(conn), args, datetime.now(timezone.utc)))
         finally:

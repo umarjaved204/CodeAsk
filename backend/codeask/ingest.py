@@ -173,6 +173,19 @@ def clone(owner: str, name: str, ref: str | None, dest: Path) -> str:
 
 
 # ---------- CLI ----------
+def confirm_prod_ingest(slug: str, ref: str | None, ask=input) -> None:
+    """Ingest writes content tables, so it runs as the owner (Q65). For prod: one confirmation,
+    before anything is cloned or embedded; --yes doesn't skip it (Q7). Exits unless confirmed."""
+    from codeask.store import confirm_prod, database_url
+
+    try:
+        url = database_url("DATABASE_OWNER_URL", prod=True)
+    except RuntimeError as error:
+        sys.exit(str(error))
+    if not confirm_prod(url, f"ingest {slug} @ {ref or 'HEAD'} (replaces its chunks)", ask):
+        sys.exit("cancelled: nothing was cloned, embedded or changed")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("url")
@@ -180,7 +193,10 @@ def main():
                                       "commit for a featured repo, else HEAD")
     parser.add_argument("--tests", action="store_true", help="include test files")
     parser.add_argument("--docs", action="store_true", help="include docs beyond the README")
-    parser.add_argument("--yes", action="store_true", help="skip the confirmation prompt")
+    parser.add_argument("--yes", action="store_true", help="skip the cost confirmation prompt "
+                                                           "(never the --prod one)")
+    parser.add_argument("--prod", action="store_true",
+                        help="ingest into the prod database (.env.prod only; asks once, first)")
     parser.add_argument("--batch-tokens", type=int, default=config.BATCH_TOKENS,
                         help=f"max tokens per Voyage request (default {config.BATCH_TOKENS})")
     args = parser.parse_args()
@@ -199,6 +215,9 @@ def main():
     from codeask.store import Store, connect
     from codeask.tokens import voyage_counter
 
+    if args.prod:
+        confirm_prod_ingest(slug, ref)
+
     dest = REPOS_DIR / f"{owner}__{name}".lower()
     print(f"cloning {slug} ({ref or 'HEAD'}) into {dest} ...")
     try:
@@ -209,7 +228,7 @@ def main():
         sys.exit(f"git timed out after {GIT_TIMEOUT_S} s")
     print(f"commit {sha}")
 
-    store = Store(connect())
+    store = Store(connect("DATABASE_OWNER_URL", prod=args.prod))
     store.setup()
     embedder = VoyageEmbedder()
 

@@ -24,7 +24,7 @@ def main():
 
     from codeask.store import Store, connect
 
-    store = Store(connect())
+    store = Store(connect("DATABASE_OWNER_URL"))  # deletes content: the owner (Q65); no --prod
     if args.delete_repo:
         found, deleted = store.delete_repo(args.delete_repo.lower())
         print(f"deleted {args.delete_repo} and {deleted} embeddings only it used" if found

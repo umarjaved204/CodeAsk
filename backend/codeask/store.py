@@ -20,6 +20,7 @@ import os
 import socket
 from contextlib import contextmanager
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from urllib.parse import urlparse
 
 import psycopg
@@ -29,15 +30,45 @@ from psycopg.types.json import Jsonb
 from codeask import config
 
 
-def connect(env: str = "DATABASE_URL") -> psycopg.Connection:
-    """DATABASE_URL: the API's role, pooled. DATABASE_OWNER_URL: the owner, direct, for the
-    tasks that create or grant (admin setup and grants; PLAN.md Q65)."""
+PROD_ENV_FILE = Path(__file__).resolve().parents[2] / ".env.prod"  # gitignored, like .env
+
+
+def read_env_file(path: Path) -> dict:
+    from dotenv import dotenv_values
+
+    if not path.is_file():
+        raise RuntimeError(f"{path.name} not found (same names as .env.example)")
+    return dotenv_values(path)
+
+
+def database_url(env: str = "DATABASE_URL", prod: bool = False, read=None) -> str:
+    """DATABASE_URL: the API's role, pooled. DATABASE_OWNER_URL: the owner, direct, for what
+    creates, grants or writes content (admin setup and grants, ingest, gc; PLAN.md Q65).
+    prod=True (an explicit --prod, Q7) reads .env.prod ONLY: a value missing there is an error,
+    never dev's value from .env, and nothing from .env.prod enters the process environment."""
+    if prod:
+        url = (read or read_env_file)(PROD_ENV_FILE).get(env)
+        if not url:
+            raise RuntimeError(f"{env} is not set in .env.prod")
+        return url
     from dotenv import load_dotenv
 
     load_dotenv()
     url = os.environ.get(env)
     if not url:
         raise RuntimeError(f"{env} is not set (see .env.example)")
+    return url
+
+
+def confirm_prod(url: str, action: str, ask=input) -> bool:
+    """One confirmation before a write to prod, naming the host (never the URL: it holds the
+    password). Typing a word, not y, so a reflex Enter can't say yes."""
+    host = urlparse(url).hostname
+    return ask(f"PROD database {host}\n{action}\nType prod to go ahead: ").strip() == "prod"
+
+
+def connect(env: str = "DATABASE_URL", prod: bool = False) -> psycopg.Connection:
+    url = database_url(env, prod)
     # Pin IPv4: from my home network libpq stalled ~30 s per IPv6 address (M0: 92 s connects).
     # hostaddr skips DNS for the socket but the hostname is still used for TLS/SNI.
     host = urlparse(url).hostname

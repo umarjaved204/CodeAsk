@@ -85,7 +85,7 @@ def test_only_setup_creates_tables():
 def test_a_database_error_prints_its_type_never_the_host_or_user(monkeypatch, capsys):
     # psycopg's own message names the host and user (connect() is replaced, so no
     # DATABASE_URL is read; the pre-commit hook rightly blocks fake credential URLs).
-    def refuse(env):
+    def refuse(env, prod=False):
         raise psycopg.OperationalError("connection to server at db.secret.neon.tech user=admin")
 
     monkeypatch.setattr(codeask.store, "connect", refuse)
@@ -101,7 +101,7 @@ def test_a_refused_change_exits_with_the_reason(monkeypatch):
         def close(self):
             pass
 
-    monkeypatch.setattr(codeask.store, "connect", lambda env: Conn())
+    monkeypatch.setattr(codeask.store, "connect", lambda env, prod=False: Conn())
     monkeypatch.setattr(codeask.store, "Store", lambda conn: FakeStore())
     with pytest.raises(SystemExit) as exit_:
         admin.main(["budget", "999999"])
@@ -119,7 +119,7 @@ def test_a_refused_change_exits_with_the_reason(monkeypatch):
 def test_only_setup_and_granting_use_the_owner_url(monkeypatch, argv, env):
     used = []
 
-    def record(name):
+    def record(name, prod=False):
         used.append(name)
         raise psycopg.OperationalError("stop here")
 
@@ -127,6 +127,81 @@ def test_only_setup_and_granting_use_the_owner_url(monkeypatch, argv, env):
     with pytest.raises(SystemExit):
         admin.main(argv)
     assert used == [env]
+
+
+# ---------- --prod (Q7, 3a.4): .env.prod only, one confirmation per write ----------
+PROD = {"DATABASE_URL": "postgresql://prod-api.example", "DATABASE_OWNER_URL":
+        "postgresql://prod-owner.example"}
+
+
+@pytest.fixture
+def prod_env(monkeypatch):
+    """A fake .env.prod and a connect() that records what it was asked for."""
+    calls = []
+    monkeypatch.setattr(codeask.store, "read_env_file", lambda path: dict(PROD))
+
+    def record(env, prod=False):
+        calls.append((env, prod))
+        raise psycopg.OperationalError("stop here")
+
+    monkeypatch.setattr(codeask.store, "connect", record)
+    return calls
+
+
+@pytest.mark.parametrize("argv", [["--prod", "pause"], ["--prod", "budget", "60000"],
+                                  ["--prod", "setup"], ["--prod", "grants", "codeask_api"]])
+def test_every_prod_write_asks_once_naming_the_host(prod_env, argv):
+    prompts = []
+
+    def answer(prompt):
+        prompts.append(prompt)
+        return "prod"
+
+    with pytest.raises(SystemExit):  # the recorded connect stops it after the prompt
+        admin.main(argv, ask=answer)
+    assert len(prompts) == 1
+    assert ("prod-owner.example" if argv[1] in ("setup", "grants") else "prod-api.example") \
+        in prompts[0]
+    assert "postgresql://" not in prompts[0]  # the host only, never the URL
+    assert prod_env == [("DATABASE_OWNER_URL" if argv[1] in ("setup", "grants")
+                         else "DATABASE_URL", True)]
+
+
+@pytest.mark.parametrize("reply", ["", "y", "yes", "Prod", "prodx"])
+def test_anything_but_prod_cancels_before_connecting(prod_env, reply):
+    with pytest.raises(SystemExit) as exit_:
+        admin.main(["--prod", "pause"], ask=lambda prompt: reply)
+    assert str(exit_.value.code) == "cancelled: nothing was changed"
+    assert prod_env == []
+
+
+@pytest.mark.parametrize("argv", [["--prod", "status"],
+                                  ["--prod", "grants", "codeask_api", "--check"]])
+def test_prod_reads_ask_nothing(prod_env, argv):
+    def no_prompt(prompt):
+        raise AssertionError("a read asked for confirmation")
+
+    with pytest.raises(SystemExit):
+        admin.main(argv, ask=no_prompt)
+    assert prod_env == [("DATABASE_URL", True)]
+
+
+def test_a_refused_prod_value_is_refused_before_the_prompt(prod_env):
+    with pytest.raises(SystemExit) as exit_:
+        admin.main(["--prod", "budget", "999999"], ask=lambda p: pytest.fail("prompted"))
+    assert str(exit_.value.code).startswith("refused:")
+
+
+def test_prod_never_falls_back_to_dev_values(monkeypatch):
+    monkeypatch.setenv("DATABASE_OWNER_URL", "postgresql://dev-owner.example")  # as from .env
+    with pytest.raises(RuntimeError, match="DATABASE_OWNER_URL is not set in .env.prod"):
+        codeask.store.database_url("DATABASE_OWNER_URL", prod=True,
+                                   read=lambda path: {"DATABASE_URL": "postgresql://x"})
+
+
+def test_a_missing_env_prod_file_is_named(tmp_path):
+    with pytest.raises(RuntimeError, match=r"\.env\.prod not found"):
+        codeask.store.read_env_file(tmp_path / ".env.prod")
 
 
 def test_a_missing_url_names_the_variable_only(monkeypatch):

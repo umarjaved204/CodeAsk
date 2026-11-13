@@ -1,6 +1,7 @@
 import pytest
 
-from codeask.ingest import content_hash, parse_github_url, validate_ref
+import codeask.store
+from codeask.ingest import confirm_prod_ingest, content_hash, parse_github_url, validate_ref
 from codeask.search import first_rank
 
 
@@ -63,3 +64,32 @@ def test_first_rank():
     assert first_rank(rows, ["b.py"]) == 2
     assert first_rank(rows, ["c.py", "a.py"]) == 1
     assert first_rank(rows, ["z.py"]) is None
+
+
+# ---------- --prod (Q7, 3a.4): one confirmation naming the host, before anything happens ----
+@pytest.mark.parametrize("reply, cancelled", [("prod", False), ("y", True), ("", True)])
+def test_prod_ingest_asks_once_naming_the_owner_host(monkeypatch, reply, cancelled):
+    monkeypatch.setattr(codeask.store, "read_env_file",
+                        lambda path: {"DATABASE_OWNER_URL": "postgresql://prod-owner.example"})
+    prompts = []
+
+    def answer(prompt):
+        prompts.append(prompt)
+        return reply
+
+    if cancelled:
+        with pytest.raises(SystemExit) as exit_:
+            confirm_prod_ingest("psf/requests", "a" * 40, ask=answer)
+        assert exit_.value.code == "cancelled: nothing was cloned, embedded or changed"
+    else:
+        confirm_prod_ingest("psf/requests", "a" * 40, ask=answer)  # returns: go ahead
+    assert len(prompts) == 1
+    assert "prod-owner.example" in prompts[0]
+    assert "ingest psf/requests @ " + "a" * 40 in prompts[0]
+
+
+def test_prod_ingest_without_an_owner_url_in_env_prod_stops(monkeypatch):
+    monkeypatch.setattr(codeask.store, "read_env_file", lambda path: {})
+    with pytest.raises(SystemExit) as exit_:
+        confirm_prod_ingest("psf/requests", None, ask=lambda p: pytest.fail("prompted"))
+    assert exit_.value.code == "DATABASE_OWNER_URL is not set in .env.prod"
