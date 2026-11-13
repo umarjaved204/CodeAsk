@@ -1501,6 +1501,21 @@ until M6). `skills-lock.json` stays as the README's install pointer.
   has any. `6529b72` is now `c2d3361`, `6648c1c` is now `d93949e` (both updated in place, old
   hash kept beside); the plan text naming old hashes (here, step 1.6, Q74) stays as written.
 
+**Step 1.7 results (2026-11-13): step 1 done except 1.8.**
+- Pushed to a new private repo (`codeask-rewrite`); a clean clone from GitHub: 86 commits,
+  only the no-reply email, no `.claude/skills`; gitleaks before the push: no leaks.
+- Folder swap with the session closed: the old folder is `CodeAsk-old`, the rewritten one is
+  at the original path. `.venv` and `node_modules` rebuilt there (`npm ci`; 8 moderate npm
+  audit findings and the ESLint 9 deprecation notice, left for the review passes and M6);
+  `check.ps1` green (pytest 478 passed, logic 90, e2e 140).
+- Then, with my confirmation: the old `codeask` repo deleted (irreversible), `codeask-rewrite`
+  renamed to `CodeAsk` (still private), `origin` set to it and in sync. GitHub email settings
+  on: "Keep my email addresses private", "Block command line pushes that expose my email".
+- Consequence: the Render and Vercel spikes lost their repo link (expected: Render's spike is
+  deleted in Q72; the Vercel project is reconnected in 5.4).
+- **Open (1.8):** `CodeAsk-old`, the mirror, its Documents and OneDrive zips, and the runbook
+  file outside the repo are kept; their deletion is recorded here when it happens.
+
 **Constant bounds (derived from the code, 2026-11-13):** `0 < PROJECTED_SERVICE_SEED_S <=
 MIN_TIME_TO_START_S <= ASK_DEADLINE_S - QUEUE_BUSY_WAIT_S` (= 90 - 60 = 30). The seed's own
 clamp (`PROJECTED_SERVICE_MAX_S` = 60) is never the binding one. Why: both constants stand for
