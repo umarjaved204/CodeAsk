@@ -28,6 +28,24 @@ if ($bad.Count -gt 0 -or $allowed.Count -gt 1) {
     Write-Host "check: dangerouslySetInnerHTML only in the theme script" -ForegroundColor Green
 }
 
+# The spike hostnames (PLAN.md Q77) may appear only in docs (*.md): code and config get the public
+# URLs from the environment. Tracked and untracked files, ignored ones skipped. The names are
+# split so this file doesn't match itself.
+Push-Location $root
+try {
+    $banned = @(git grep --untracked -n -I -F -e ("codeask-spike" + ".onrender.com") `
+                -e ("codeask-pi" + ".vercel.app") -- . ":(exclude)*.md")
+} finally {
+    Pop-Location
+}
+if ($banned.Count -gt 0) {
+    Write-Host "check: spike hostname outside the docs:" -ForegroundColor Red
+    $banned | ForEach-Object { Write-Host "  $_" }
+    if ($code -eq 0) { $code = 1 }
+} else {
+    Write-Host "check: no spike hostname outside the docs" -ForegroundColor Green
+}
+
 # Frontend lint (Next's rules + react/no-danger) and tests, from the exact pinned versions.
 Push-Location "$root\frontend"
 try {

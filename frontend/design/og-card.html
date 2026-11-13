@@ -1,0 +1,72 @@
+<!doctype html>
+<!-- The link-preview card (PLAN.md Q77), 1200x630, light theme of direction A (app/tokens.css).
+     Rendered to app/opengraph-image.png by design/render-og.mjs. The code is illustrative, not
+     from a featured repo, so the card quotes no one. Fonts come from Google Fonts at render time
+     only (the site itself self-hosts them). -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CodeAsk link-preview card</title>
+<link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fragment+Mono&family=Instrument+Sans:wght@400..600&family=Newsreader:wght@400..600&display=block">
+<style>
+  :root {
+    --page: #F5F6F3; --panel: #EBEDE8; --text: #1C2838; --text-muted: #586273; --rule: #D3D8D0;
+    --citation: #2A4A8A; --evidence: #F9E07A; --on-evidence: #1C2838; --evidence-bar: #1C2838;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1200px; height: 630px; }
+  body {
+    background: var(--page); color: var(--text); font-family: "Instrument Sans", sans-serif;
+    display: grid; grid-template-columns: 1fr 1fr; overflow: hidden;
+  }
+  .words { padding: 64px 48px 64px 72px; display: flex; flex-direction: column; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand svg { width: 34px; height: 34px; color: var(--citation); }
+  .brand span { font-family: "Newsreader", serif; font-weight: 600; font-size: 36px; letter-spacing: -0.01em; }
+  h1 {
+    margin-top: auto; font-family: "Newsreader", serif; font-weight: 500; font-size: 60px;
+    line-height: 1.08; letter-spacing: -0.015em; text-wrap: balance;
+  }
+  .lede { margin-top: 24px; font-family: "Newsreader", serif; font-size: 30px; line-height: 1.3; }
+  .chip {
+    display: inline-block; padding: 0 9px; margin-left: 4px; border-radius: 6px;
+    background: var(--evidence); color: var(--on-evidence); font-family: "Instrument Sans", sans-serif;
+    font-size: 20px; font-weight: 600; line-height: 30px; vertical-align: 0.35em;
+  }
+  .evidence {
+    background: var(--panel); border-left: 1px solid var(--rule); padding: 0 0 0 0;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .path { padding: 0 40px 18px; font-size: 20px; color: var(--text-muted); }
+  .code { font-family: "Fragment Mono", monospace; font-size: 21px; line-height: 1.75; }
+  .line { display: flex; padding-right: 32px; border-left: 5px solid transparent; white-space: pre; }
+  .line.cited { background: var(--evidence); color: var(--on-evidence); border-left-color: var(--evidence-bar); }
+  .n { width: 66px; padding-right: 18px; text-align: right; color: var(--text-muted); flex: none; }
+  .cited .n { color: var(--on-evidence); }
+</style>
+</head>
+<body>
+  <section class="words">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M8 3H4v18h4M16 3h4v18h-4" fill="none" stroke="currentColor" stroke-width="2.2"/>
+      </svg>
+      <span>CodeAsk</span>
+    </div>
+    <h1>Ask a GitHub codebase.</h1>
+    <p class="lede">Answers cite the lines they use, and you can check them.<span class="chip">1</span></p>
+  </section>
+  <section class="evidence" aria-label="Cited code">
+    <p class="path">tokens.py · lines 13–14</p>
+    <div class="code">
+      <div class="line"><span class="n">11</span>def check(token, key):</div>
+      <div class="line"><span class="n">12</span>    """Raise if the token was not signed with key."""</div>
+      <div class="line cited"><span class="n">13</span>    expected = sign(token.payload, key)</div>
+      <div class="line cited"><span class="n">14</span>    if not compare_digest(token.sig, expected):</div>
+      <div class="line"><span class="n">15</span>        raise BadSignature(token)</div>
+      <div class="line"><span class="n">16</span>    return token.payload</div>
+    </div>
+  </section>
+</body>
+</html>

@@ -211,3 +211,83 @@ export function connectionNote(connection: Connection, ask: Ask, now: number): s
 export function canRetry(failure: Failure): boolean {
   return failure.kind === "unreachable" || !LIMITS.includes(failure.code);
 }
+
+// ---------- Privacy (PLAN.md Q60, Q68, Q78) ----------
+// One source for the header link's page (/privacy), the composer note and the README block
+// (tests/logic/privacy.spec.ts keeps the README equal to `summary`). Every claim about
+// CodeAsk's own server comes from the Q68 audit in PLAN.md (file:line per claim); the hosts'
+// logs are confirmed by the step 6 canary. The placeholder marker (Q78) marks the text that waits
+// for the Groq and Voyage terms (3b.6, R11); the step 4 pin gate refuses to pin while it appears.
+
+/** When the text below was last checked against the audit and the providers' terms (UTC,
+ *  YYYY-MM-DD). Update it whenever the text changes. */
+export const PRIVACY_LAST_CHECKED = "2026-11-13";
+
+const ISSUES = "https://github.com/umarjaved204/CodeAsk/issues";
+
+export const PRIVACY = {
+  /** The composer note's sentence (followed by the Privacy link). */
+  short: "Questions go to Groq and Voyage; CodeAsk stores none.",
+  /** The top of /privacy, and the README's privacy block. */
+  summary:
+    "Questions you type are sent to Groq (to write the answer) and Voyage (to find the code). " +
+    "CodeAsk’s own server stores no question text and no IP addresses, only usage counters. " +
+    "Its hosts, Render and Vercel, keep standard request logs, which include IP addresses, for " +
+    "their own retention periods. Suggested questions are answered from files shipped with the " +
+    "page and are not sent to Groq or Voyage.",
+  sections: [
+    {
+      heading: "What is sent where",
+      paragraphs: [
+        "When you ask a question, CodeAsk’s server sends it to Voyage AI, which turns it into a " +
+        "search vector. The server finds the closest code in the chosen repo and sends your " +
+        "question with that code to Groq, which writes the answer.",
+        "Suggested questions are answered from files shipped with the page. Picking one sends " +
+        "nothing to Groq or Voyage.",
+      ],
+    },
+    {
+      heading: "What CodeAsk’s server keeps",
+      paragraphs: [
+        "No question text and no IP addresses. Each request is logged with a request id, the " +
+        "method, the path, the status, the time taken and the outcome.",
+        "Usage counters in its database: tokens used per hour, and the number of questions per " +
+        "day by outcome (for example answered or busy).",
+        "For the per-visitor limit, an anonymised hash of your IP address, held only in memory " +
+        "and lost when the server restarts.",
+      ],
+    },
+    {
+      heading: "What its hosts keep",
+      paragraphs: [
+        "Render (which runs the server) and Vercel (which serves this page) keep standard " +
+        "request logs, which include IP addresses, for their own retention periods.",
+      ],
+    },
+    {
+      heading: "What your browser keeps",
+      paragraphs: [
+        "Only your light or dark theme choice, in local storage. CodeAsk sets no cookies and " +
+        "loads no analytics or third-party scripts.",
+      ],
+    },
+    {
+      heading: "What Groq and Voyage keep",
+      paragraphs: ["PENDING-3B6: what their terms say about retention and training on inputs."],
+    },
+  ],
+  /** Opened in a new tab. Each URL is checked when the terms are read (3b.6). */
+  links: [
+    { label: "Groq privacy policy", href: "https://groq.com/privacy-policy" },
+    { label: "Voyage AI privacy policy", href: "https://www.voyageai.com/privacy" },
+    { label: "Render privacy policy", href: "https://render.com/privacy" },
+    { label: "Vercel privacy policy", href: "https://vercel.com/legal/privacy-policy" },
+  ],
+  contact: { text: "Questions or concerns: open an issue on GitHub.", href: ISSUES },
+} as const;
+
+/** "Last checked 13 Nov 2026." from PRIVACY_LAST_CHECKED, in UTC like provenance(). */
+export function privacyLastChecked(): string {
+  const date = new Date(`${PRIVACY_LAST_CHECKED}T00:00:00Z`);
+  return `Last checked ${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}.`;
+}

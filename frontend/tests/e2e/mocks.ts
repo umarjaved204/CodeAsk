@@ -21,6 +21,10 @@ import type { QueueWire, Status } from "../../lib/types";
 export const PORT = 3100;
 export const APP_ORIGIN = `http://localhost:${PORT}`;
 export const API = "http://api.test";
+// The test build's deploy settings (lib/site-config.ts, Q77): CSP enforced, SITE_INDEXABLE left
+// unset so the default (noindex) is what the header test sees.
+export const BUILD_ENV = { NEXT_PUBLIC_API_URL: API, NEXT_PUBLIC_SITE_URL: APP_ORIGIN,
+                           CSP_MODE: "enforce" };
 
 // The default repo's flagship: the stored answer the page opens on (slice 5, Q54).
 export const EXAMPLE = DEFAULT_SET.answers[DEFAULT_SET.index.flagship];
@@ -201,11 +205,18 @@ export const test = base.extend<{ api: MockApi }>({
       offsite.push(url);
       return route.abort();
     });
+    // The build enforces the CSP (BUILD_ENV): Chromium logs every refusal (and every
+    // report-only finding) as a console message naming the policy.
+    const cspViolations: string[] = [];
+    page.on("console", (message) => {
+      if (message.text().includes("Content Security Policy")) cspViolations.push(message.text());
+    });
     const api = new MockApi();
     await api.install(page);
     await use(api);
     expect(api.unexpected, "API calls with no mock").toEqual([]);
     expect(offsite, "requests to other hosts").toEqual([]);
+    expect(cspViolations, "Content Security Policy violations").toEqual([]);
   }, { auto: true }],
 });
 

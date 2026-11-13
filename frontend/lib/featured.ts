@@ -9,3 +9,15 @@ import type { Repo } from "./types";
 export const FEATURED: Repo[] = featured.map(({ slug, url }) => ({ slug, url }));
 
 export const DEFAULT_REPO = "pallets/itsdangerous";
+
+/** The featured repo a `?repo=` value names, matched case-insensitively, or null (Q77). The
+ *  static list is the only authority: a repo that only GET /repos lists is never opened. */
+export function repoFromSearch(search: string): string | null {
+  const wanted = new URLSearchParams(search).get("repo")?.toLowerCase();
+  return FEATURED.find((r) => r.slug.toLowerCase() === wanted)?.slug ?? null;
+}
+
+/** The address of a repo on screen: plain `/` for the default, else `/?repo=owner/name`. */
+export function repoAddress(slug: string): string {
+  return slug === DEFAULT_REPO ? "/" : `/?repo=${slug}`;
+}

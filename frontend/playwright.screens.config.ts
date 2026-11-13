@@ -4,7 +4,7 @@
 // sheets are built after every shot.
 import { defineConfig, devices } from "@playwright/test";
 
-import { API, APP_ORIGIN, PORT } from "./tests/e2e/mocks";
+import { APP_ORIGIN, BUILD_ENV, PORT } from "./tests/e2e/mocks";
 
 export default defineConfig({
   testDir: "./design",
@@ -27,6 +27,6 @@ export default defineConfig({
     url: APP_ORIGIN,
     reuseExistingServer: false,
     timeout: 180_000,
-    env: { NEXT_PUBLIC_API_URL: API, NEXT_DIST_DIR: ".next-e2e" },
+    env: { ...BUILD_ENV, NEXT_DIST_DIR: ".next-e2e" },
   },
 });

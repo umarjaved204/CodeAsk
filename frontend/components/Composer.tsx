@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 
+import { PRIVACY } from "../lib/messages";
 import type { Repo } from "../lib/types";
+import { NewTabLink } from "./Header";
 
 const MAX_CHARS = 400;
 const WARN_CHARS = 380;
@@ -89,9 +91,12 @@ export function Composer({ repo, repos, onRepoChange, onAsk, canAsk, asking, sta
           {asking ? "Asking…" : "Ask"}
         </button>
       </div>
+      {/* The privacy sentence replaces "Rate-limited demo; each question is answered on its
+          own." (Q78), so the note never gains a line (site.spec.ts measures it). */}
       <p className="mt-2 text-micro text-text-muted short:hidden">
-        Answers use only the code of the featured repos and cite the lines they rely on.
-        Rate-limited demo; each question is answered on its own.
+        Answers use only the code of the featured repos and cite the lines they rely on.{" "}
+        {PRIVACY.short}{" "}
+        <NewTabLink href="/privacy" className="underline">Privacy</NewTabLink>
       </p>
     </form>
   );

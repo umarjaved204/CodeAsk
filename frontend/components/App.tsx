@@ -5,7 +5,7 @@ import {
 } from "react";
 
 import { SERVICE_OK, getRepos, getStatus, pollQueue, postAsk, readService } from "../lib/api";
-import { DEFAULT_REPO, FEATURED } from "../lib/featured";
+import { DEFAULT_REPO, FEATURED, repoAddress, repoFromSearch } from "../lib/featured";
 import { safeGithubUrl } from "../lib/markdown";
 import {
   BUSY_MESSAGE, BUSY_OVER_MESSAGE, IN_PROGRESS_MESSAGE, ON_ITS_OWN, SETTLING_MESSAGE,
@@ -379,6 +379,32 @@ export function App() {
       },
     );
   }
+
+  // ?repo= (Q77). The page is static and opens on the default repo; the address is read once
+  // after mount, and a featured repo it names is opened through the normal switch (its chunk
+  // loads while the default stays on screen). From then on the address reflects the repo on
+  // screen, never a pending one: replaceState only (no history entries, no back/forward), so an
+  // unknown slug, a different spelling or a failed first load all end on the true address.
+  const addressRead = useRef(false);
+  useEffect(() => {
+    if (!addressRead.current) {
+      addressRead.current = true;
+      const wanted = repoFromSearch(window.location.search) ?? DEFAULT_REPO;
+      if (wanted !== repo) {
+        // Syncing with the address, an external system the static page can't read at render.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        changeRepo(wanted);
+        return; // the address is settled once that switch applies or fails
+      }
+    }
+    if (pendingRepo !== null) return;
+    const address = repoAddress(repo);
+    if (window.location.pathname + window.location.search !== address) {
+      window.history.replaceState(null, "", address);
+    }
+    // changeRepo is a fresh function each render; this runs when the repo on screen settles.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repo, pendingRepo]);
 
   function showStored(id: string) {
     setChosen(id);

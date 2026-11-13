@@ -7,8 +7,9 @@
 // Incomplete review (2026-11-11, mentor-approved; Q38). All were color-contrast, where axe
 // couldn't measure the background. Every element sits on a pair check-contrast.mjs verifies:
 //   reason                       where                               pair underneath
-//   pseudoContent (4-5/state)    composer: repo, counter, box,       text, text-muted, error,
-//                                status (the form's ::before fade)   unverified on page
+//   pseudoContent (5-6/state)    composer: repo, counter, box,       text, text-muted, error,
+//                                status, the Privacy link (slice 6,  unverified on page
+//                                Q78) (the form's ::before fade)
 //   elmPartiallyObscured (1)     the open chip: its text box was     FIXED (not a pair question):
 //                                taller than its own highlight       the highlight now covers it
 //   elmPartiallyObscured (40-44) answer text, panel code lines       text on page (inline code has
@@ -130,6 +131,10 @@ const STATES: State[] = [
     await page.goto("/");
     await page.getByRole("button", { name: /^Citation 2:/ }).click();
     await expect(page.getByRole("dialog", { name: "Cited code" })).toContainText("Cited lines 138–142");
+  } },
+  { name: "privacy page", setup: async (page) => {
+    await page.goto("/privacy");
+    await expect(page.getByRole("heading", { level: 1, name: "Privacy" })).toBeVisible();
   } },
 ];
 

@@ -34,6 +34,16 @@ from its licence file at that commit:
 | [psf/requests](https://github.com/psf/requests) | `3c7baaa` | Apache License 2.0 ([LICENSE](https://github.com/psf/requests/blob/3c7baaa05ab4aa49cc819ce3a819d260de19c157/LICENSE)) |
 | [expressjs/express](https://github.com/expressjs/express) | `1c6f1b0` | MIT ([LICENSE](https://github.com/expressjs/express/blob/1c6f1b0fe4000977b9a7b4f34097e4d527dd9824/LICENSE)) |
 
+## Privacy
+
+<!-- privacy:start (kept equal to PRIVACY.summary in frontend/lib/messages.ts by a test) -->
+Questions you type are sent to Groq (to write the answer) and Voyage (to find the code).
+CodeAsk’s own server stores no question text and no IP addresses, only usage counters. Its
+hosts, Render and Vercel, keep standard request logs, which include IP addresses, for their own
+retention periods. Suggested questions are answered from files shipped with the page and are not
+sent to Groq or Voyage.
+<!-- privacy:end -->
+
 ## Setup
 
 Requires Python 3.12+ and free accounts for Neon and Voyage AI (no card needed).

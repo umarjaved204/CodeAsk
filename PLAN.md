@@ -1557,6 +1557,44 @@ until M6). `skills-lock.json` stays as the README's install pointer.
   Only the app's own request lines were logged (id, method, path, status, time, outcome; no IP,
   no question): `--no-access-log` holds. **3a done** (`check.ps1` and `pytest -m db` green).
 
+**Step 3b.1-3b.3 results (2026-11-13, Q77):** written as designed (mentor-reviewed). `check.ps1`
+green: pytest 517 passed, 2 skipped; logic 103 (+13: 10 site-config, 3 `?repo=` helpers); e2e
+150 (+10 in `site.spec.ts`: built headers, link previews, `?repo=` load, two spellings, three
+default cases, a switch without new history, a failed first-load chunk). **The whole e2e suite
+ran under the enforced CSP with no violation logged, so `img-src 'self'` stands** (no `data:` or
+`blob:` needed). The spike-hostname grep passes (only PLAN.md names them). The link-preview PNG
+was rendered, reviewed (one fix: the code panel's lines were double-spaced by the `<pre>` line
+breaks, so the cited pair showed a gap) and re-rendered. A plain local `npm run build` now needs
+both URLs set (production builds refuse to start without them).
+
+**Step 3b.5 results (2026-11-13, Q78):** written as designed. `check.ps1` green: pytest 517
+passed, 2 skipped; logic 106 (+3 privacy); e2e 160 (+8 `privacy.spec.ts`, +2 axe on
+`/privacy`). The header fits at 320 with the tightened spacing (measured, not estimated); the
+composer note is no taller than before at 320, 390 and 1440. `/privacy` has no axe violations and
+no undecided results in either theme. Axe's undecided `pseudoContent` count per state rose from
+4-5 to 5-6: the composer's new Privacy link sits under the same `::before` fade, on the same
+verified pair (text-muted on page); the a11y.spec.ts review note is updated. **3b.6 (wording from
+the Groq and Voyage clauses) is still blocked on my reading of their terms.**
+
+**Q68 logging audit, code half (2026-11-13, for 3b.5; Q78).** Each privacy claim with its
+evidence at the current code. **Re-verified after the last code commit, before the pin (step
+4)**: line numbers rechecked and the greps re-run. The hosting half (Render's and Vercel's
+request logs, the canary) is step 6.5.
+
+| Layer | What is recorded | Retention | Evidence |
+|---|---|---|---|
+| App log, every request | request id, method, path, status, ms, outcome; no body, no IP, no query string | Render's log retention | `backend/codeask/api/app.py:276-278` (the only per-request line); id from `secrets.token_hex(4)` at :268 |
+| App log, failures | exception **type name** only | same | `app.py:273` (middleware), `:173`, `:368`, `:372`, `:394`, `:405`; `gate.py:102`. Startup lines `:256-257` (model, constants) |
+| Validation errors | field names only, never the rejected input (pydantic's `input` is the question) | not stored | `app.py:299-304` |
+| Uvicorn access log | off | n/a | start command `--no-access-log` (3a.6, verified locally; Render config checked at step 6.3) |
+| Database (`usage_*`) | tokens per hour; questions per day by outcome; settings row. **No text column for questions, no IP column** | until dropped | schema `backend/codeask/store.py:159-178`; writes `:254`, `:261`; `count()` writes outcome codes only, `app.py:397-405` |
+| Per-visitor limit and queue | salted HMAC-SHA256 of `CF-Connecting-IP` (first 32 hex), in process memory only | lost on restart or sleep | `visitors.py:27-39` (hash), `:58-63` (in-memory dicts); `askqueue.py:154-160`; keyed at `app.py:328-330`, `:410`; `IP_SALT` required, never logged, `app.py:114-121` |
+| Sent to Voyage | the question (embedding) | Voyage's terms (3b.6) | `app.py:358` |
+| Sent to Groq | the question with the retrieved code | Groq's terms (3b.6) | `app.py:359` → `ask.py:33` (`build_messages(question, blocks, …)`) |
+| Suggested questions | nothing sent: answered from files shipped with the page | n/a | `frontend/lib/stored.ts` (static set + dynamic chunks); e2e "a pick shows the stored answer at once: no request" and "pre-generated answers with the backend down" (`suggestions.spec.ts`) |
+| Browser storage | `localStorage["theme"]` only; no cookies, no sessionStorage, no IndexedDB | until cleared | grep `localStorage\|sessionStorage\|document\.cookie\|indexedDB` over `frontend/` (excl. build output, node_modules): `app/layout.tsx:37` (read), `components/Header.tsx:24` (write), one test (`keyboard.spec.ts:165`); nothing else |
+| Third-party scripts, analytics | none; fonts self-hosted | n/a | `frontend/app/fonts.ts` (next/font, served from our origin); every e2e test fails on a request to another host (`tests/e2e/mocks.ts`, the `offsite` guard) |
+
 **Constant bounds (derived from the code, 2026-11-13):** `0 < PROJECTED_SERVICE_SEED_S <=
 MIN_TIME_TO_START_S <= ASK_DEADLINE_S - QUEUE_BUSY_WAIT_S` (= 90 - 60 = 30). The seed's own
 clamp (`PROJECTED_SERVICE_MAX_S` = 60) is never the binding one. Why: both constants stand for
@@ -1614,8 +1652,8 @@ live answer over 20 s), that is a signal to review, not a reason to widen the bo
    **3b Frontend** (ends with `check.ps1`): (1) `NEXT_PUBLIC_SITE_URL` → `metadataBase`, link
    previews with a 1200×630 image; (2) `X-Robots-Tag: noindex` and CSP option 3 switched by
    `SITE_INDEXABLE` and `CSP_MODE`, a test per mode; (3) `?repo=` (unknown slug → default; e2e
-   for load, switch, back/forward, and a non-default first load including the chunk-failure
-   path); (4) Vercel builds only `release`, Deployment Protection on; (5) footer link and
+   for load, switch, ~~back/forward,~~ and a non-default first load including the chunk-failure
+   path; **amended by Q77: `replaceState` only, no back/forward**); (4) ~~Vercel builds only `release`, Deployment Protection on~~ **moved to 5.4** (needs the repo connected); (5) footer link and
    `/privacy` structure from one `messages.ts` constant, exact-text tests, axe both themes, a
    test that the README privacy block equals the constant; (6) final wording from the recorded
    clauses (Q60), the only item the terms reading blocks; (7) the two review passes,
@@ -1624,7 +1662,10 @@ live answer over 20 s), that is a signal to review, not a reason to widen the bo
    pointer saying whether I wrote grill-me and grilling, the `release` convention
    `git push origin <sha>:release`; no live URL yet); `docs/smoke-checklist.md` committed
    before any run.
-4. **Pin:** `check.ps1`, `pytest -m db`, gitleaks green; move `release`; record the SHA.
+4. **Pin:** `check.ps1`, `pytest -m db`, gitleaks green; **(Q78) `git grep -n PENDING-3B6 -- .
+   ":(exclude)PLAN.md"` prints nothing (the privacy placeholder can't reach the pin), and the
+   Q68 code-half audit is re-verified after the last code commit**; move `release`; record the
+   SHA.
 4b. **Dev rehearsal (Q76, before step 5):** in the dev project, create a rehearsal API role
    by SQL (`\password` in psql over the owner's direct URL); `admin setup` and `admin grants`
    (owner URL); `admin grants ROLE --check`, `pause`, `budget` as that role (its pooled URL as
@@ -1636,6 +1677,17 @@ live answer over 20 s), that is a signal to review, not a reason to widen the bo
    prod); (3) ingest at the pins, Q66 checks; (4) give Render and Vercel access to the new
    repo in their GitHub app settings; `codeask-api` and the Vercel project on `release` per
    Q69; then `ALLOWED_ORIGINS` and `NEXT_PUBLIC_API_URL`, deploy both; env values recorded.
+   **(Q77) Set `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_SITE_URL` when the Vercel project is
+   reconfigured, before its first build: production builds fail without them.** Leave
+   `SITE_INDEXABLE` and `CSP_MODE` unset (defaults) until steps 6.8 and 8.
+   **3b.4 moved here (2026-11-13, my decision):** the project's Git settings show the old link
+   `umarjaved204/codeask` with "Error: Project Link not found" (Vercel links by repo ID; the
+   new repo's ID differs), and branch settings need a connected repo. Order: (a) env: remove the
+   spike's `NEXT_PUBLIC_API_URL`, set both URLs; (b) **Disconnect** the dead link (not
+   Reconnect); (c) connect `umarjaved204/CodeAsk` fresh; (d) at once: production branch
+   `release`, Ignored Build Step so only `release` builds, Deployment Protection on; (e) record
+   whether connecting started a build (after the pin `main` has only docs commits, so an
+   accidental `main` build ships the same code).
 6. **Checks (unlisted, `noindex` on):** (1) prod negative grants test, rolled back, before
    unpausing; (2) live route inventory (no `/docs`, `/redoc`, `/openapi.json`, no ingestion);
    (3) Q69 config checks; (4) `resume`, the Q44 gate first (Q67); (5) `per-ip 15`, canary and
@@ -1926,6 +1978,8 @@ is not re-tuned on these questions.
 | Q67 | **Slice 6: the Q44 IP gate. Runs first among the checks**, in order within a few minutes (a restart or sleep resets the counts; repeat if the service sleeps in between). `per-ip 1`; from A (home Wi-Fi), one question accepted, the next refused with **`per_ip_limit` specifically**; from B (phone mobile data; **open: confirm A and B differ**), one accepted; last, from A, a forged `CF-Connecting-IP` with a **never-used** address (e.g. 203.0.113.77, not B's: a trusting API would refuse it under B's used bucket and pass falsely) must still give `per_ip_limit` (accepted = fail, costing one question). Outcomes: B refused = one shared IP seen; forged accepted = spoofable header; header missing = everyone in "unknown", caught because B is refused. **On any failure:** pause, change the client-IP source (a code change), re-pin, redeploy, re-run the gate. Nothing is shared before it passes. Results record network descriptions, not IPs | Behavioural, no debug route, no stored IPs, at most a few questions | A debug route echoing the IP |
 | Q71 | **Slice 6: containment.** Kill switch on the public URL: `pause`; within 30 s the site shows the paused message and `curl -i` on `/ask` gives 503, code `paused`, no `Retry-After` (gate.py:47); `/status` says paused; `resume`, `/status` ok. `Cache-Control: no-store` checked with `curl -i` on `/status` and the refusals. **Incident order:** pause, diagnose, roll back, resume (pause doesn't contain a bad stored answer: those are static, so Vercel rollback). Rollback: Render = previous deploy (record after the first deploy whether it rebuilds); Vercel = instant rollback (confirm on Hobby); Neon = no restore, re-run setup, grants and ingest after recording the `usage_settings` values in the checklist; a bad pre-generated answer = remove its file and index entry on the release branch and redeploy, or roll back Vercel if urgent | Prod content is reproducible; the free Neon plan has no instant restore | Relying on Neon's 6 h history |
 | Q72 | **Slice 6: spike teardown**, in Q58 step 5 (after the prod checks and the gate pass, before the share), each item recorded in PLAN.md with date and confirmation. 1. Render `codeask-spike` deleted (not listed; URL no longer answers). 2. Vercel `codeask-pi` deleted (project gone; URL not found). 3. Anything the spike created in the dev DB (check for spike schemas or tables first) dropped (confirmed by a query). 4. Everything set on the spikes rotated: Voyage key, any Groq or Gemini key, the dev DB password (read the spike's Environment tab before deleting it); confirmed when the old value is rejected (connection fails, 401); local `.env` updated and one local test passes. 5. `spike/m2/`: one-line README, gitleaks, CLAUDE.md frozen-files line (confirmed with `git ls-files` and the line); local `node_modules` and `__pycache__` deleted | Spike keys must not outlive the spike; the frozen record stays as evidence (Q19) | Keeping the spikes as staging |
+| Q77 | **Slice 6 step 3b.1-3b.3: link previews, headers, `?repo=`** (2026-11-13, mentor-reviewed, my decisions). **Config:** `frontend/lib/site-config.ts`, called by `next.config.ts` (so it runs at build start) and by the root layout. Flags `SITE_INDEXABLE` (`true`/`false`) and `CSP_MODE` (`report-only`/`enforce`): unset or empty = the safe default (noindex, report-only); **any other spelling fails the build**. `NEXT_PUBLIC_SITE_URL` and `NEXT_PUBLIC_API_URL` are **required in production builds**, bare origins (no path or trailing slash), https or http for localhost/127.0.0.1/`api.test`; `next dev` falls back to localhost. The effective values (and each flag's source, env or default) are printed in the build log. All four are build-time (Vercel bakes next.config headers), so a change means a redeploy. **3b.1:** `metadataBase` from the site URL; title, description, `openGraph` (`url: "/"`), `twitter: summary_large_image`; a **committed** `app/opengraph-image.png` (1200×630) + `.alt.txt`, rendered from `design/og-card.html` by `design/render-og.mjs` (Google Fonts at render time only; illustrative code, not a featured repo's). **3b.2:** CSP option 3: `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' <API origin>; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`; `'unsafe-eval'` under `next dev` only; no `upgrade-insecure-requests` (ignored in report-only; enforced, it would rewrite the e2e's `http://api.test`); no reporting endpoint (the console during the smoke run). `img-src` starts at `'self'`: `data:`/`blob:` only if the enforced e2e run shows a violation. Plus **`X-Frame-Options: DENY`** (frame-ancestors is ignored in report-only) and **`X-Content-Type-Options: nosniff`**; `X-Robots-Tag: noindex` unless indexable. **Tests:** logic tests per mode; the e2e build runs with `CSP_MODE=enforce`, so all browser tests run under the enforced policy, and the mocks fixture fails any test that logs a CSP message; one e2e test reads the built server's headers. **Spike hostnames:** no by-name refusal in the config; instead `check.ps1` fails if `codeask-spike.onrender.com` or `codeask-pi.vercel.app` appears in any tracked or untracked file except `*.md` (`codeask-pi` is the planned public URL under the Q64 amendment, so it may reach code only through the environment; the README's live URL at step 9 is a doc). **3b.3:** the address is read once after mount (the page stays static, so the prerendered default flagship still works with the backend down); a featured repo it names opens through the normal pending switch. Slugs match **case-insensitively**; the static featured list is the only authority. The address reflects the repo on screen, **`replaceState` only** (no `pushState`, no popstate, no back/forward: an M6 idea): a successful switch, an unknown slug (→ `/`), a different spelling (normalized) and a failed first load (→ the on-screen repo) all end on the true address. e2e: load, `psf%2Frequests` and `PSF/Requests`, unknown and non-featured slugs, a switch without new history entries, and a failed first-load chunk found by one named marker constant (the requests flagship's text). **The wrong-repo flash** on a non-default first load is judged by me on the real phone with a throttled connection in the smoke run; static per-repo routes only if it looks bad | Fail loud on typos, safe when unset; one config module so the page's API calls and `connect-src` can't disagree; history semantics kept to the one rule the share link needs | `ImageResponse` at build; `useSearchParams` + Suspense (loses the prerendered answer); a dynamic page; `pushState` + back/forward now; refusing the spike host by name in the config |
+| Q78 | **Slice 6 step 3b.5: privacy text, link and page** (2026-11-13, mentor-reviewed, my decisions; **amends Q60's "footer"**). **One constant**, `PRIVACY` in `frontend/lib/messages.ts`: `short` (the composer sentence), `summary` (top of `/privacy` and the README block), `sections`, `links`, `contact`; plus `PRIVACY_LAST_CHECKED` (a real `YYYY-MM-DD` date, updated whenever the text changes). **Where:** a "Privacy" link in the **header** next to "How it works" (a footer row under the full-height layout would be off-screen or push the composer up), on every page but `/privacy` itself; both header links and the composer's link **open in a new tab** (`rel="noopener noreferrer"`, visually hidden "(opens in a new tab)") so a draft or a live answer isn't lost; under 640 px the nav gaps tighten (12 px) and the toggle's padding takes the edge (`-mr-2`) so the header fits at 320. The composer note's "Rate-limited demo; each question is answered on its own." is **replaced** by `short` + the link (never an extra line; Q8's sentence still shows under live answers as `ON_ITS_OWN`). `/privacy`: static, the summary, sections (what is sent where; what CodeAsk's server keeps; what its hosts keep; what your browser keeps; what Groq and Voyage keep), the providers' privacy policies, an issues link (no email), "Last checked". **Wording rules:** suggested questions are answered from files shipped with the page and not sent to Groq or Voyage; hosts "keep standard request logs, which include IP addresses, for their own retention periods"; the per-visitor counter is "an anonymised hash of your IP address, held only in memory and lost when the server restarts"; every server claim has file:line evidence in the Q68 code-half audit, re-verified before the pin; "only the theme choice" is backed by a storage grep in that table. **Placeholder:** `PENDING-3B6` marks the Groq/Voyage text until 3b.6; the **step 4 pin gate** greps for it (not `check.ps1`, which must stay green meanwhile). The four policy URLs are checked when the terms are read (3b.6). **Tests:** e2e: the header fits at 320, 390 and 1440 (all items in view, one row, no overlap, no sideways scroll); the composer note is no taller than with the old sentence at the same widths; the three links open in a new tab and the draft stays; `/privacy` shows exactly the constant's text, links, title and date, and has no link to itself; axe on `/privacy` in both themes (a state in `a11y.spec.ts`). Logic: the README block equals `summary` (whitespace aside), the date is real and not in the future, curly apostrophes and https links | Three places can't drift from one constant; a new tab keeps the visitor's work; claims only where the code proves them | A footer row; the full summary in the composer; an email contact; the placeholder check in `check.ps1` |
 
 ### Not in M2 (scope guard)
 - Hosted ingestion of user-supplied URLs (see Q1b).

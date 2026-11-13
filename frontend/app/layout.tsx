@@ -1,9 +1,24 @@
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+import { readSiteConfig } from "../lib/site-config";
 import { fragmentMono, instrumentSans, newsreader } from "./fonts";
 import "./globals.css";
 
-export const metadata = { title: "CodeAsk" };
+// Link previews (Q77): metadataBase from NEXT_PUBLIC_SITE_URL, so the M6 domain is config only.
+// The image is app/opengraph-image.png (1200x630, rendered by design/render-og.mjs), which Next
+// turns into og:image tags; Twitter/X falls back to it for summary_large_image.
+const { siteUrl } = readSiteConfig(process.env, process.env.NODE_ENV === "production");
+const DESCRIPTION = "Ask questions about a GitHub codebase. Answers cite the files and lines they use.";
+
+export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
+  title: "CodeAsk",
+  description: DESCRIPTION,
+  openGraph: { title: "CodeAsk", description: DESCRIPTION, url: "/", siteName: "CodeAsk",
+               type: "website" },
+  twitter: { card: "summary_large_image" },
+};
 
 // The browser bar matches the page (step 5, W4): the `page` token of each theme. It follows the
 // system setting, not the theme toggle; accepted as cosmetic (mentor review).

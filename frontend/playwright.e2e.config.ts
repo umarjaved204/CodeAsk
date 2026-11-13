@@ -6,9 +6,11 @@
 // what ships, without hydration noise. It builds into its own folder (.next-e2e) with the API
 // base set to http://api.test, a reserved name that never resolves, so a missing mock can't reach
 // a real backend. Chromium only; Safari's <dialog> is covered by the real-phone check in slice 6.
+// The build enforces the CSP (BUILD_ENV, Q77), so every browser test runs under the policy the
+// first share will serve, and the mocks fixture fails any test that logs a violation.
 import { defineConfig, devices } from "@playwright/test";
 
-import { API, APP_ORIGIN, PORT } from "./tests/e2e/mocks";
+import { APP_ORIGIN, BUILD_ENV, PORT } from "./tests/e2e/mocks";
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -23,6 +25,6 @@ export default defineConfig({
     url: APP_ORIGIN,
     reuseExistingServer: false,
     timeout: 180_000,
-    env: { NEXT_PUBLIC_API_URL: API, NEXT_DIST_DIR: ".next-e2e" },
+    env: { ...BUILD_ENV, NEXT_DIST_DIR: ".next-e2e" },
   },
 });
