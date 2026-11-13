@@ -85,7 +85,7 @@ def test_only_setup_creates_tables():
 def test_a_database_error_prints_its_type_never_the_host_or_user(monkeypatch, capsys):
     # psycopg's own message names the host and user (connect() is replaced, so no
     # DATABASE_URL is read; the pre-commit hook rightly blocks fake credential URLs).
-    def refuse():
+    def refuse(env):
         raise psycopg.OperationalError("connection to server at db.secret.neon.tech user=admin")
 
     monkeypatch.setattr(codeask.store, "connect", refuse)
@@ -101,8 +101,37 @@ def test_a_refused_change_exits_with_the_reason(monkeypatch):
         def close(self):
             pass
 
-    monkeypatch.setattr(codeask.store, "connect", Conn)
+    monkeypatch.setattr(codeask.store, "connect", lambda env: Conn())
     monkeypatch.setattr(codeask.store, "Store", lambda conn: FakeStore())
     with pytest.raises(SystemExit) as exit_:
         admin.main(["budget", "999999"])
     assert str(exit_.value.code).startswith("refused:")
+
+
+@pytest.mark.parametrize("argv, env", [
+    (["setup"], "DATABASE_OWNER_URL"),
+    (["grants", "codeask_api"], "DATABASE_OWNER_URL"),
+    (["grants", "codeask_api", "--check"], "DATABASE_URL"),  # read only: no owner credentials
+    (["status"], "DATABASE_URL"),
+    (["pause"], "DATABASE_URL"),
+    (["budget", "60000"], "DATABASE_URL"),
+])
+def test_only_setup_and_granting_use_the_owner_url(monkeypatch, argv, env):
+    used = []
+
+    def record(name):
+        used.append(name)
+        raise psycopg.OperationalError("stop here")
+
+    monkeypatch.setattr(codeask.store, "connect", record)
+    with pytest.raises(SystemExit):
+        admin.main(argv)
+    assert used == [env]
+
+
+def test_a_missing_url_names_the_variable_only(monkeypatch):
+    monkeypatch.delenv("DATABASE_OWNER_URL", raising=False)
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **k: False)  # ignore the real .env
+    with pytest.raises(SystemExit) as exit_:
+        admin.main(["setup"])
+    assert str(exit_.value.code) == "DATABASE_OWNER_URL is not set (see .env.example)"

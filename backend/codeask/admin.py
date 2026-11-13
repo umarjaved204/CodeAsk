@@ -2,16 +2,21 @@
 amendment). The API reads the same row on every question, so a change applies at once, with no
 redeploy (which would also wipe the per-visitor counts).
 
-Run: python -m codeask.admin setup                 create the usage_* tables: once per database,
-                                                   with a role that may create tables
+Run: python -m codeask.admin setup                 create the tables: once per database, and
+                                                   after any schema change (owner URL)
+     python -m codeask.admin grants codeask_api    give the API role exactly its privileges,
+                                                   after checking the role (owner URL; Q76)
+     python -m codeask.admin grants codeask_api --check
+                                                   the same check, read only: changes nothing
      python -m codeask.admin status                budget, tokens in the last 24 h, limits
      python -m codeask.admin pause                 the kill switch: refuse new questions
      python -m codeask.admin resume
      python -m codeask.admin budget 150000         over 170,000 needs --force
      python -m codeask.admin per-ip 50             questions per visitor per 24 h
 
-Only `setup` creates anything; the other commands work with the API's own role (Q7). Nothing
-here prints DATABASE_URL: a database error shows only its type, since psycopg's messages name
+`setup` and `grants` connect with DATABASE_OWNER_URL (the owner, direct); every other command,
+`grants --check` included, with DATABASE_URL (the API's own role, pooled; Q7, Q65). Nothing
+here prints either URL: a database error shows only its type, since psycopg's messages name
 the host and the user.
 """
 
@@ -65,6 +70,8 @@ def run(store, args, now: datetime) -> str:
     if args.command == "setup":
         store.setup()
         return "usage tables ready (existing settings kept)"
+    if args.command == "grants":
+        return grants_command(store, args.role, args.check)
     if args.command == "status":
         return describe(store.usage(now), now)
     change = change_for(args)  # validated before anything is read or written
@@ -75,10 +82,35 @@ def run(store, args, now: datetime) -> str:
     return f"{field}: {before} -> {after}"
 
 
+def grants_command(store, role: str, check_only: bool) -> str:
+    from codeask import grants
+
+    if not check_only:
+        try:
+            grants.apply(store.conn, store.schema, role)
+        except PermissionError as exc:
+            raise AdminError(str(exc)) from None
+    problems = (grants.role_problems(store.conn, role)
+                + grants.privilege_problems(store.conn, store.schema, role))
+    if problems:
+        raise AdminError(f"{role} in schema {store.schema}: " + "; ".join(problems))
+    return (f"{role} {'checked' if check_only else 'granted'}: LOGIN only, no memberships, "
+            f"exactly the expected privileges in schema {store.schema}")
+
+
+def owner_command(args) -> bool:
+    """The commands that need the owner's URL; `grants --check` only reads."""
+    return args.command == "setup" or (args.command == "grants" and not args.check)
+
+
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = p.add_subparsers(dest="command", required=True)
-    sub.add_parser("setup", help="create the usage_* tables (needs a role that may create)")
+    sub.add_parser("setup", help="create the tables (owner URL)")
+    g = sub.add_parser("grants", help="grant the API role exactly its privileges (owner URL)")
+    g.add_argument("role")
+    g.add_argument("--check", action="store_true",
+                   help="only check the role and its privileges; changes nothing")
     sub.add_parser("status", help="show the budget, use and limits")
     sub.add_parser("pause", help="refuse new questions (the kill switch)")
     sub.add_parser("resume", help="accept questions again")
@@ -97,13 +129,15 @@ def main(argv: list[str] | None = None) -> None:
     from codeask.store import Store, connect
 
     try:
-        conn = connect()
+        conn = connect("DATABASE_OWNER_URL" if owner_command(args) else "DATABASE_URL")
         try:
             print(run(Store(conn), args, datetime.now(timezone.utc)))
         finally:
             conn.close()
     except AdminError as exc:
         sys.exit(f"refused: {exc}")
+    except RuntimeError as exc:  # a URL that isn't set: the message names only the variable
+        sys.exit(str(exc))
     except psycopg.Error as exc:
         sys.exit(f"database error: {type(exc).__name__} (details withheld: they name the host)")
 

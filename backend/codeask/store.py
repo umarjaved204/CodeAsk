@@ -29,11 +29,15 @@ from psycopg.types.json import Jsonb
 from codeask import config
 
 
-def connect() -> psycopg.Connection:
+def connect(env: str = "DATABASE_URL") -> psycopg.Connection:
+    """DATABASE_URL: the API's role, pooled. DATABASE_OWNER_URL: the owner, direct, for the
+    tasks that create or grant (admin setup and grants; PLAN.md Q65)."""
     from dotenv import load_dotenv
 
     load_dotenv()
-    url = os.environ["DATABASE_URL"]
+    url = os.environ.get(env)
+    if not url:
+        raise RuntimeError(f"{env} is not set (see .env.example)")
     # Pin IPv4: from my home network libpq stalled ~30 s per IPv6 address (M0: 92 s connects).
     # hostaddr skips DNS for the socket but the hostname is still used for TLS/SNI.
     host = urlparse(url).hostname
