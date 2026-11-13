@@ -1420,6 +1420,32 @@ mode and the two cold-start constants are environment-controlled with fail-safe 
 recorded, dated, in the checklist. Render is configured in the dashboard (no `render.yaml`
 until M6). `skills-lock.json` stays as the README's install pointer.
 
+**Step 0 results (2026-11-13):**
+- Render spike `codeask-spike`, Environment (names only): `ALLOWED_ORIGINS`, `DATABASE_URL`,
+  `PYTHON_VERSION`, `VOYAGE_API_KEY`. Q72 rotates the Voyage key and the dev Neon password; no
+  Groq or Gemini key was set there.
+- Vercel spike: the **project is named `codeask`** (URL `codeask-pi.vercel.app`, so
+  `codeask.vercel.app` is presumably held outside my account). Its only variable is
+  `NEXT_PUBLIC_API_URL` (Production and Preview, set Nov 2): a public URL, nothing to rotate.
+  ~~Q64: the final project takes a name other than `codeask`.~~ **Amended (2026-11-13, my
+  decision): keep `https://codeask-pi.vercel.app` as the public URL by reusing the spike's
+  Vercel project** (amends Q64, and Q19's "new services" for Vercel only; Render stays a new
+  `codeask-api`). Consequences: Q72 item 2 becomes "reconfigure, not delete": delete the
+  spike's old deployments so no spike build stays reachable, and remove `NEXT_PUBLIC_API_URL`'s
+  spike value. Step 5.4 reconfigures this project: root `frontend/`, the new repo connected
+  (the old one is deleted in step 1.7), production branch `release`, builds only `release`,
+  the new env vars, Deployment Protection on.
+- Render dashboard: a card is on file and **can be removed** (Q57: removing it is the plan);
+  the workspace's "Monthly Included Usage" shows 750 free instance hours, **5 GB bandwidth**
+  (HTTP, WebSocket, service-initiated), 500 pipeline minutes, 2 custom domains, 25 services,
+  "charged for usage beyond your included limits"; November so far: 1.73 h, 0 MB, 0 min, 1
+  service. The service name can be edited and appears in the URL (**open: whether a rename
+  changes an existing service's `onrender.com` hostname**). Manual Deploy exists (**open:
+  whether a specific commit can be chosen**). Rollback exists (whether it rebuilds: recorded
+  after the first prod deploy, Q71).
+- Voyage: the free account **allows a second API key**, so prod gets its own key (Q59a); the
+  shared-key fallback isn't needed.
+
 **Constant bounds (derived from the code, 2026-11-13):** `0 < PROJECTED_SERVICE_SEED_S <=
 MIN_TIME_TO_START_S <= ASK_DEADLINE_S - QUEUE_BUSY_WAIT_S` (= 90 - 60 = 30). The seed's own
 clamp (`PROJECTED_SERVICE_MAX_S` = 60) is never the binding one. Why: both constants stand for
