@@ -1410,6 +1410,105 @@ root and start command, since `requirements-api.txt` (repo root) doesn't install
 (Render probes `HEAD /` and `GET /`, which were 404 in the spike). **Task during rounds 1-2:** I read the Groq and Voyage data and
 terms pages; their clauses (retention, training use, production or public use of the free
 tiers) are recorded here with URL and access date (R11).
+**Build plan (approved 2026-11-13, mentor-reviewed twice; v2 plus the approval changes).**
+Rules: all slice 6 code lands before the pin; the pin comes after the history rewrite; after
+the pin only **docs commits** (files that don't affect the build: PLAN.md, README, `docs/`, the
+`spike/m2/` README, the CLAUDE.md line; `frontend/data/examples/*.json` counts as code); any
+re-pin is recorded and repeats `check.ps1`, gitleaks and the affected checks. `noindex`, CSP
+mode and the two cold-start constants are environment-controlled with fail-safe defaults
+(`noindex` on, CSP report-only, constants at their code values); deployed env values are
+recorded, dated, in the checklist. Render is configured in the dashboard (no `render.yaml`
+until M6). `skills-lock.json` stays as the README's install pointer.
+
+**Constant bounds (derived from the code, 2026-11-13):** `0 < PROJECTED_SERVICE_SEED_S <=
+MIN_TIME_TO_START_S <= ASK_DEADLINE_S - QUEUE_BUSY_WAIT_S` (= 90 - 60 = 30). The seed's own
+clamp (`PROJECTED_SERVICE_MAX_S` = 60) is never the binding one. Why: both constants stand for
+the longest time a started answer takes; a newcomer admitted at the 60 s busy threshold must
+still have the floor left of its 90 s deadline (today 25 + 60 = 85). Startup refuses values
+outside these bounds and logs the effective values. If the Q61 rule ever exceeds a bound (a
+live answer over 20 s), that is a signal to review, not a reason to widen the bound.
+
+0. **Lookups (me, no code):** Render dashboard (card on file and removable, workspace plan and
+   5 GB, whether the name fixes the hostname, deploying a specific commit, whether redeploying a
+   previous deploy rebuilds); Voyage second key; Vercel project name; the spikes' Environment
+   tabs (Q72); Groq and Voyage terms with URL and date (R11), needed only before 3b.6.
+1. **History rewrite (repo private).**
+   1. Close the Claude Code session, dev servers and editors on the folder. In the old folder,
+      `git status --ignored`: list the ignored files (`.env`, `frontend/design-review`, any local
+      embedding cache or eval data) and I decide what to carry over.
+   2. Backups: `git clone --mirror` outside the project, kept **offline**; a second copy
+      elsewhere; check a plain clone from the mirror works with every commit. The old working
+      folder is renamed (e.g. `CodeAsk-old`) and kept as a further backup.
+   3. gitleaks full history on the mirror; each finding: rotate the key **and** add a
+      `--replace-text` line.
+   4. Redaction list: Claude proposes lines (account details, dollar amounts in PLAN.md and
+      `eval/` across history); I approve each.
+   5. Fresh clone **at the original path** (`...\Projects\CodeAsk`, so Claude Code's project
+      memory carries over); `git filter-repo` in one pass: mailmap to the no-reply email,
+      `--path .claude/skills --invert-paths`, `--replace-text` (it drops `origin`). Copy
+      `.claude/skills/`, `.env` and the chosen ignored files; **recreate** `.venv` and
+      `frontend/node_modules` (a venv stores absolute paths); `core.hooksPath .githooks`;
+      `.claude/skills/` into `.gitignore`. Session scratch paths (the pinned clones) are per
+      session, so a later pregen verify re-clones.
+   6. Verify: gitleaks clean; `git log --format=%ae` only the no-reply address;
+      `git log --all -- .claude/skills` empty; redacted strings absent from every version; the
+      PLAN.md hashes 6529b72 and 6648c1c remapped through the commit map, `eval/` checked;
+      `check.ps1` green.
+   7. Push to a **new private repo** (temporary name); verify on GitHub (commit count, email,
+      no skills folder). **Only then, with my confirmation,** delete the old repo
+      (irreversible), and rename the new one to `CodeAsk`. GitHub email settings: "Keep my
+      email addresses private", "Block command line pushes that expose my email".
+   8. Record when the old folder and the mirrors are deleted.
+2. **Before and at going public:** commit LICENSE (MIT) and `THIRD_PARTY_NOTICES.md`
+   (licence, holder, URL, pinned SHA, licence text from the clones at the pins); final
+   gitleaks on the remote; repo public (my click, irreversible).
+3. **3a Backend** (ends with `check.ps1` + `pytest -m db`): (1) `/` and `/health`, GET and HEAD,
+   no DB or queue, tested while the store raises; (2) `docs_url`, `redoc_url`, `openapi_url` set
+   to `None` unconditionally, and a route-inventory test: only `/`, `/health`, `/status`,
+   `/repos`, `/ask`; (3) grants SQL (schema as a parameter) + admin `grants`, `setup` on the
+   owner's direct URL, daily admin as the API role pooled, Q70 tests; (4) `.env.prod` loader:
+   `--prod` on admin and ingest, URL by role, **every `--prod` write shows the host and asks
+   one confirmation** (`pause` stays a single confirm), `.env.example` names, pure unit tests;
+   (5) the two constants from the environment, validated against the derived bounds, effective
+   values logged, tested (accepted, refused, defaults); (6) Render root = repo root, build
+   `pip install -r requirements-api.txt`, start `uvicorn codeask.api.app:create_app --factory
+   --app-dir backend --host 0.0.0.0 --port $PORT --workers 1 --no-access-log`, verified locally
+   with that exact command in a clean venv holding only `requirements-api.txt`.
+   **3b Frontend** (ends with `check.ps1`): (1) `NEXT_PUBLIC_SITE_URL` → `metadataBase`, link
+   previews with a 1200×630 image; (2) `X-Robots-Tag: noindex` and CSP option 3 switched by
+   `SITE_INDEXABLE` and `CSP_MODE`, a test per mode; (3) `?repo=` (unknown slug → default; e2e
+   for load, switch, back/forward, and a non-default first load including the chunk-failure
+   path); (4) Vercel builds only `release`, Deployment Protection on; (5) footer link and
+   `/privacy` structure from one `messages.ts` constant, exact-text tests, axe both themes, a
+   test that the README privacy block equals the constant; (6) final wording from the recorded
+   clauses (Q60), the only item the terms reading blocks; (7) the two review passes,
+   time-boxed, I decide the fixes.
+   **3c Docs** (ends with `check.ps1`): README (privacy block, licence and attribution, skills
+   pointer saying whether I wrote grill-me and grilling, the `release` convention
+   `git push origin <sha>:release`; no live URL yet); `docs/smoke-checklist.md` committed
+   before any run.
+4. **Pin:** `check.ps1`, `pytest -m db`, gitleaks green; move `release`; record the SHA.
+5. **Prod infrastructure (stays paused):** (1) Neon project in Ohio, API role by hand,
+   dashboard 1 GB / 100 CU-hours; (2) `--prod` as **owner over the direct URL**: `setup`,
+   `grants`; then **as the API role**: `pause`, `budget 60000` (a positive grant check on
+   prod); (3) ingest at the pins, Q66 checks; (4) give Render and Vercel access to the new
+   repo in their GitHub app settings; `codeask-api` and the Vercel project on `release` per
+   Q69; then `ALLOWED_ORIGINS` and `NEXT_PUBLIC_API_URL`, deploy both; env values recorded.
+6. **Checks (unlisted, `noindex` on):** (1) prod negative grants test, rolled back, before
+   unpausing; (2) live route inventory (no `/docs`, `/redoc`, `/openapi.json`, no ingestion);
+   (3) Q69 config checks; (4) `resume`, the Q44 gate first (Q67); (5) `per-ip 15`, canary and
+   logging audit (Q68); (6) kill switch and `no-store` (Q71); (7) 3 cold starts (Q61);
+   (8) smoke checklist with the console open, then `CSP_MODE=enforce`, redeploy, short smoke;
+   (9) constants by the Q61 rule (env, Render redeploy), **then `/status` and one question**
+   to confirm startup and the logged values; (10) `per-ip 5`, `admin status` after > 30 s;
+   all within 15 answered questions (Q62).
+7. **Q58 step 5:** prod `budget 170000`; spike teardown (Q72); wait ≥ 24 h after the last check.
+8. **First share (irreversible):** `SITE_INDEXABLE` on, redeploy, `curl -I` shows no
+   `X-Robots-Tag`; **re-inspect link previews with LinkedIn's Post Inspector after this
+   deploy**; final state "not paused, budget 170000, per-ip 5".
+9. **Docs and day 7:** README live URL (docs commit); day 7 billing checks; constants by the
+   day-7 rule; done-when ticked.
+
 **Gate from slice 4 (Q44):** before going public, compare the client IP the API sees with my
 real address from two networks, and send one request with a forged `CF-Connecting-IP` to
 confirm Render's edge overwrites it. A custom domain or a proxy of my own could otherwise make
