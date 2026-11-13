@@ -123,6 +123,36 @@ def ip_salt_from_env() -> bytes:
     return salt.encode()
 
 
+# Slice 6 (3a.5): the two cold-start constants can be set from the environment, so the
+# measured values (Q61 margin rule) need only an env change and a redeploy. Unset or empty
+# means the code's value, read here at import, before anything can change it.
+COLD_START = ("PROJECTED_SERVICE_SEED_S", "MIN_TIME_TO_START_S")
+COLD_START_DEFAULTS = {name: getattr(config, name) for name in COLD_START}
+
+
+def cold_start_from_env(environ) -> dict[str, int]:
+    """Whole seconds, within 0 < seed <= floor <= ASK_DEADLINE_S - QUEUE_BUSY_WAIT_S (PLAN.md
+    slice 6, constant bounds): a newcomer admitted at the busy threshold must still have the
+    floor left of its deadline. Anything else stops startup, naming the rule."""
+    values = {}
+    for name in COLD_START:
+        raw = environ.get(name, "").strip()
+        if not raw:
+            values[name] = COLD_START_DEFAULTS[name]
+            continue
+        try:
+            values[name] = int(raw)
+        except ValueError:
+            raise RuntimeError(f"{name} must be a whole number of seconds, got {raw!r}") from None
+    seed, floor = values["PROJECTED_SERVICE_SEED_S"], values["MIN_TIME_TO_START_S"]
+    ceiling = config.ASK_DEADLINE_S - config.QUEUE_BUSY_WAIT_S
+    if not 0 < seed <= floor <= ceiling:
+        raise RuntimeError(
+            f"need 0 < PROJECTED_SERVICE_SEED_S ({seed}) <= MIN_TIME_TO_START_S ({floor}) <= "
+            f"ASK_DEADLINE_S - QUEUE_BUSY_WAIT_S ({ceiling})")
+    return values
+
+
 class ModelStatus:
     """Is the configured Groq model available (Q24)? Checked at startup and again after a TTL.
     None = unknown (the check itself failed): /ask stays open, since Groq may be fine."""
@@ -197,6 +227,9 @@ def create_app(open_store=None, embedder=None, llm=None, models: ModelStatus | N
         raise RuntimeError("CodeAsk needs exactly one worker (in-process limiter): "
                            "set WEB_CONCURRENCY=1")
     salt = ip_salt if ip_salt is not None else ip_salt_from_env()
+    cold_start = cold_start_from_env(os.environ)  # after .env is loaded; refuses bad values
+    for name, value in cold_start.items():
+        setattr(config, name, value)  # askqueue reads these at call time
     if open_store is None:
         from codeask.store import store_session as open_store
     if embedder is None:
@@ -221,6 +254,9 @@ def create_app(open_store=None, embedder=None, llm=None, models: ModelStatus | N
     @asynccontextmanager
     async def lifespan(app):
         log.info("model %s available: %s", llm.model, models.refresh())
+        log.info("cold-start constants: %s", ", ".join(
+            f"{name}={value} ({'env' if os.environ.get(name, '').strip() else 'default'})"
+            for name, value in cold_start.items()))
         yield
 
     # No /docs, /redoc or /openapi.json: the public API publishes no schema (slice 6, 3a.2).

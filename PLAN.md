@@ -1539,6 +1539,13 @@ until M6). `skills-lock.json` stays as the README's install pointer.
   cloning, and `--yes` skips only its cost prompt. **URL by role:** ingest and gc now use
   `DATABASE_OWNER_URL` (they write content), as does the `db` test fixture; `ask`, `search`,
   `pregen` and `eval/` only read and stay on `DATABASE_URL`. `gc` has no `--prod`.
+- **3a.5 cold-start constants:** `PROJECTED_SERVICE_SEED_S` and `MIN_TIME_TO_START_S` are read
+  from the environment once in `create_app` (whole seconds; unset or empty = the code's values,
+  captured at import). Startup refuses anything outside `0 < seed <= floor <= ASK_DEADLINE_S -
+  QUEUE_BUSY_WAIT_S` (30), or a non-integer, with a message naming the rule; the effective
+  values are logged with their source (`env` or `default`) next to the model line. Tests:
+  accepted (unset, empty, both bounds), refused (0, negative, seed above floor, 31, text,
+  12.5), applied and logged by the app, out of bounds stops startup.
 
 **Constant bounds (derived from the code, 2026-11-13):** `0 < PROJECTED_SERVICE_SEED_S <=
 MIN_TIME_TO_START_S <= ASK_DEADLINE_S - QUEUE_BUSY_WAIT_S` (= 90 - 60 = 30). The seed's own

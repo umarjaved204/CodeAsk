@@ -16,7 +16,8 @@ import requests
 from fastapi.testclient import TestClient
 
 from codeask import config
-from codeask.api.app import ModelStatus, create_app
+from codeask.api.app import (COLD_START_DEFAULTS, ModelStatus, cold_start_from_env,
+                             create_app)
 from codeask.askqueue import AskQueue, Pacer
 from codeask.deadline import DeadlineExceeded
 from codeask.embedder import RateLimited as VoyageRateLimited
@@ -330,6 +331,52 @@ def test_a_missing_or_short_ip_salt_refuses_to_start_without_printing_it(monkeyp
     with pytest.raises(RuntimeError, match="IP_SALT") as err:
         create_app(fake_session, FakeEmbedder(), FakeLLM())
     assert not value or value not in str(err.value)
+
+
+# ---------- the cold-start constants from the environment (slice 6, 3a.5) ----------
+SEED, FLOOR = "PROJECTED_SERVICE_SEED_S", "MIN_TIME_TO_START_S"
+
+
+@pytest.mark.parametrize("environ, expected", [
+    ({}, COLD_START_DEFAULTS),  # unset: the code's values
+    ({SEED: " ", FLOOR: ""}, COLD_START_DEFAULTS),  # empty counts as unset
+    ({SEED: "20", FLOOR: "30"}, {SEED: 20, FLOOR: 30}),
+    ({SEED: "30", FLOOR: "30"}, {SEED: 30, FLOOR: 30}),  # both bounds are inclusive
+    ({SEED: "1"}, {SEED: 1, FLOOR: COLD_START_DEFAULTS[FLOOR]}),
+])
+def test_cold_start_constants_accepted(environ, expected):
+    assert cold_start_from_env(environ) == expected
+
+
+@pytest.mark.parametrize("environ, message", [
+    ({SEED: "0"}, "need 0 <"),
+    ({SEED: "-5"}, "need 0 <"),
+    ({SEED: "20", FLOOR: "10"}, "need 0 <"),  # the seed above the floor
+    ({FLOOR: "31"}, r"\(30\)"),  # above 90 - 60
+    ({SEED: "fast"}, "whole number"),
+    ({FLOOR: "12.5"}, "whole number"),
+])
+def test_cold_start_constants_refused(environ, message):
+    with pytest.raises(RuntimeError, match=message):
+        cold_start_from_env(environ)
+
+
+def test_the_app_uses_and_logs_the_constants_from_the_environment(monkeypatch, caplog):
+    for name in (SEED, FLOOR):  # create_app sets them on config: restored after this test
+        monkeypatch.setattr(config, name, getattr(config, name))
+    monkeypatch.setenv(SEED, "20")
+    monkeypatch.setenv(FLOOR, "30")
+    caplog.set_level(logging.INFO)
+    with client(monkeypatch):
+        pass
+    assert (config.PROJECTED_SERVICE_SEED_S, config.MIN_TIME_TO_START_S) == (20, 30)
+    assert (f"cold-start constants: {SEED}=20 (env), {FLOOR}=30 (env)") in caplog.messages
+
+
+def test_a_constant_out_of_bounds_stops_startup(monkeypatch):
+    monkeypatch.setenv(FLOOR, "31")
+    with pytest.raises(RuntimeError, match="MIN_TIME_TO_START_S"):
+        client(monkeypatch)
 
 
 def test_one_log_line_per_request_with_id_and_outcome_but_no_question_or_ip(monkeypatch,
