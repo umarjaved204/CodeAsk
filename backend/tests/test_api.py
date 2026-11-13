@@ -211,6 +211,30 @@ def test_head_and_get_root_answer(monkeypatch):
         assert c.get("/").json() == {"service": "codeask"}
 
 
+class BrokenStore:
+    """Every store call fails, as when the database is down."""
+
+    def __getattr__(self, name):
+        raise psycopg.OperationalError("database is down")
+
+
+@pytest.mark.parametrize("path", ["/", "/health"])
+def test_root_and_health_answer_while_the_database_is_down(monkeypatch, path):
+    with client(monkeypatch, store=BrokenStore()) as c:
+        assert c.head(path).status_code == 200
+        r = c.get(path)
+    assert r.status_code == 200 and r.json() == {"service": "codeask"}
+
+
+def test_the_route_inventory_is_exactly_the_public_api(monkeypatch):
+    # Anything new here must be public on purpose: ingestion, cloning and gc never are.
+    with client(monkeypatch) as c:
+        paths = {route.path for route in c.app.routes}
+        assert paths == {"/", "/health", "/status", "/repos", "/ask"}
+        for path in ("/docs", "/redoc", "/openapi.json", "/docs/oauth2-redirect"):
+            assert c.get(path).status_code == 404, path
+
+
 def test_repos_lists_only_featured_repos_that_are_ingested(monkeypatch):
     with client(monkeypatch) as c:  # featured: itsdangerous (ingested), requests (not)
         repos = c.get("/repos").json()

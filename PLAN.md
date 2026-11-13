@@ -1516,6 +1516,16 @@ until M6). `skills-lock.json` stays as the README's install pointer.
 - **Open (1.8):** `CodeAsk-old`, the mirror, its Documents and OneDrive zips, and the runbook
   file outside the repo are kept; their deletion is recorded here when it happens.
 
+**Step 2 results (2026-11-13): the repo is public.**
+- `LICENSE` (MIT) and `THIRD_PARTY_NOTICES.md` committed. The featured repos' licence files
+  are byte-for-byte copies from the clones at their pins in `third_party/licenses/` (hashes
+  compared on copy), linked from the notices, rather than retyped into it (amends Q74's "with
+  their licence texts": same texts, no transcription risk). Requests' Apache-2.0 NOTICE text is
+  also reproduced in the notices file (section 4d).
+- Render card: kept with no funds, as Q57's exception (Q75); CLAUDE.md's stack row updated.
+- Final gitleaks on a fresh clone of the GitHub repo: 89 commits, no leaks. Then the repo was
+  made public (my click, irreversible). `noindex` and the unshared URL stay until step 8.
+
 **Constant bounds (derived from the code, 2026-11-13):** `0 < PROJECTED_SERVICE_SEED_S <=
 MIN_TIME_TO_START_S <= ASK_DEADLINE_S - QUEUE_BUSY_WAIT_S` (= 90 - 60 = 30). The seed's own
 clamp (`PROJECTED_SERVICE_MAX_S` = 60) is never the binding one. Why: both constants stand for

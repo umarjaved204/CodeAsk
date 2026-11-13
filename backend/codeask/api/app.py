@@ -223,7 +223,9 @@ def create_app(open_store=None, embedder=None, llm=None, models: ModelStatus | N
         log.info("model %s available: %s", llm.model, models.refresh())
         yield
 
-    app = FastAPI(title="CodeAsk", lifespan=lifespan)
+    # No /docs, /redoc or /openapi.json: the public API publishes no schema (slice 6, 3a.2).
+    app = FastAPI(title="CodeAsk", lifespan=lifespan, docs_url=None, redoc_url=None,
+                  openapi_url=None)
 
     @app.middleware("http")
     async def errors_and_log(request: Request, call_next):
@@ -269,7 +271,10 @@ def create_app(open_store=None, embedder=None, llm=None, models: ModelStatus | N
         repo = store.repo(slug) if slug in featured else None
         return repo if repo and repo["settings"]["space"] == embedder.space else None
 
-    @app.api_route("/", methods=["GET", "HEAD"])  # Render probes HEAD / and GET /
+    # Render probes HEAD / and GET /; /health is the health check path. Neither touches the
+    # DB or the queue, so they answer while those are down.
+    @app.api_route("/", methods=["GET", "HEAD"])
+    @app.api_route("/health", methods=["GET", "HEAD"])
     def root():
         return {"service": "codeask"}
 
