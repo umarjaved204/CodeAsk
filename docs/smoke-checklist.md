@@ -272,3 +272,8 @@ Each item: **Action**, **Expected**, **Pass if** (yes or no, nothing in between)
   - busy: `ask.spec.ts` "busy: a countdown from Retry-After, then a manual retry, never an
     automatic one" and the two "busy with / WITHOUT Access-Control-Expose-Headers" cases;
     `a11y.spec.ts` "axe: busy, light" and "…, dark"; the queued variant in `queue.spec.ts`.
+- **2026-11-14:** S19 could not run before the pin (the phone couldn't reach the laptop; see
+  `docs/smoke-results/2026-11-14.md`). By the fallback decided before the run, **S19 runs on
+  prod after step 5**, on the deployed page from any network; its action, expected result and
+  pass criterion are unchanged. If it fails there, the textarea attribute fix is a code change
+  after the pin: a new pin, with the pin checks repeated and recorded.

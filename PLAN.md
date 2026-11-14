@@ -1598,6 +1598,16 @@ pin: the frontend contract file regenerated (only `cache-control` added to the f
 refusals). `check.ps1` green: pytest 531 passed, 2 skipped (+14: one per error reply); logic 106;
 e2e 164 (+1: the composer's attributes as shipped).
 
+**S19 before the pin (2026-11-14): could not run; fallback to prod after step 5** (my decision,
+the fallback set with the mentor beforehand). Checked first: Wi-Fi Private, no VPN, phone on the
+same Wi-Fi; inbound Node.js rules snapshotted (5). Frontend dev server only, bound to the
+laptop's home-network address, no backend; the phone timed out. Not investigated further (no
+wider binding, no firewall change); likely cause: the existing Private Node.js rule doesn't
+cover port 3000. Clean-up: nothing listening on 3000; 5 rules before and after, 0 new.
+Recorded in `docs/smoke-results/2026-11-14.md` and the checklist's Changes. If S19 fails on
+prod, the attribute fix means a re-pin. **Separate, my decision later:** the snapshot shows four
+pre-existing inbound rules allowing Node.js on **Public** networks (unrelated to CodeAsk).
+
 **R11 clauses (read 2026-11-13 by Claude through web fetches, at my request; quotes verbatim).**
 Account settings behind the login are mine to check.
 - **Groq: retention.** [Your data](https://console.groq.com/docs/your-data) (no date): "By
@@ -1637,21 +1647,23 @@ Account settings behind the login are mine to check.
   states a retention period for request logs or IP addresses, so `/privacy` says "for their own
   retention periods".
 
-**Q68 logging audit, code half (2026-11-13, for 3b.5; Q78).** Each privacy claim with its
+**Q68 logging audit, code half (2026-11-13, for 3b.5; Q78). Re-verified 2026-11-14 at `b17d336`
+(the last code commit before the pin):** every claim holds; only `app.py`'s line numbers moved
+(+3, from `error_json`'s docstring and header), updated below; the storage grep is unchanged. Each privacy claim with its
 evidence at the current code. **Re-verified after the last code commit, before the pin (step
 4)**: line numbers rechecked and the greps re-run. The hosting half (Render's and Vercel's
 request logs, the canary) is step 6.5.
 
 | Layer | What is recorded | Retention | Evidence |
 |---|---|---|---|
-| App log, every request | request id, method, path, status, ms, outcome; no body, no IP, no query string | Render's log retention | `backend/codeask/api/app.py:276-278` (the only per-request line); id from `secrets.token_hex(4)` at :268 |
-| App log, failures | exception **type name** only | same | `app.py:273` (middleware), `:173`, `:368`, `:372`, `:394`, `:405`; `gate.py:102`. Startup lines `:256-257` (model, constants) |
-| Validation errors | field names only, never the rejected input (pydantic's `input` is the question) | not stored | `app.py:299-304` |
+| App log, every request | request id, method, path, status, ms, outcome; no body, no IP, no query string | Render's log retention | `backend/codeask/api/app.py:279-281` (the only per-request line); id from `secrets.token_hex(4)` at :271 |
+| App log, failures | exception **type name** only | same | `app.py:276` (middleware), `:176`, `:371`, `:375`, `:397`, `:408`; `gate.py:102`. Startup lines `:259-260` (model, constants) |
+| Validation errors | field names only, never the rejected input (pydantic's `input` is the question) | not stored | `app.py:303-307` |
 | Uvicorn access log | off | n/a | start command `--no-access-log` (3a.6, verified locally; Render config checked at step 6.3) |
-| Database (`usage_*`) | tokens per hour; questions per day by outcome; settings row. **No text column for questions, no IP column** | until dropped | schema `backend/codeask/store.py:159-178`; writes `:254`, `:261`; `count()` writes outcome codes only, `app.py:397-405` |
-| Per-visitor limit and queue | salted HMAC-SHA256 of `CF-Connecting-IP` (first 32 hex), in process memory only | lost on restart or sleep | `visitors.py:27-39` (hash), `:58-63` (in-memory dicts); `askqueue.py:154-160`; keyed at `app.py:328-330`, `:410`; `IP_SALT` required, never logged, `app.py:114-121` |
-| Sent to Voyage | the question (embedding) | Voyage's terms (3b.6) | `app.py:358` |
-| Sent to Groq | the question with the retrieved code | Groq's terms (3b.6) | `app.py:359` → `ask.py:33` (`build_messages(question, blocks, …)`) |
+| Database (`usage_*`) | tokens per hour; questions per day by outcome; settings row. **No text column for questions, no IP column** | until dropped | schema `backend/codeask/store.py:159-178`; writes `:254`, `:261`; `count()` writes outcome codes only, `app.py:400-408` |
+| Per-visitor limit and queue | salted HMAC-SHA256 of `CF-Connecting-IP` (first 32 hex), in process memory only | lost on restart or sleep | `visitors.py:27-39` (hash), `:58-63` (in-memory dicts); `askqueue.py:154-160`; keyed at `app.py:331-333`, `:413`; `IP_SALT` required, never logged, `app.py:116-124` |
+| Sent to Voyage | the question (embedding) | Voyage's terms (3b.6) | `app.py:361` |
+| Sent to Groq | the question with the retrieved code | Groq's terms (3b.6) | `app.py:362` → `ask.py:33` (`build_messages(question, blocks, …)`) |
 | Suggested questions | nothing sent: answered from files shipped with the page | n/a | `frontend/lib/stored.ts` (static set + dynamic chunks); e2e "a pick shows the stored answer at once: no request" and "pre-generated answers with the backend down" (`suggestions.spec.ts`) |
 | Browser storage | `localStorage["theme"]` only; no cookies, no sessionStorage, no IndexedDB | until cleared | grep `localStorage\|sessionStorage\|document\.cookie\|indexedDB` over `frontend/` (excl. build output, node_modules): `app/layout.tsx:37` (read), `components/Header.tsx:24` (write), one test (`keyboard.spec.ts:165`); nothing else |
 | Third-party scripts, analytics | none; fonts self-hosted | n/a | `frontend/app/fonts.ts` (next/font, served from our origin); every e2e test fails on a request to another host (`tests/e2e/mocks.ts`, the `offsite` guard) |
