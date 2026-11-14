@@ -68,7 +68,7 @@ test("ask -> answer -> citation 2 shows only lines 138-142 inside 129-213, with 
   expect(lines.map((l) => l.n)).toEqual(Array.from({ length: 85 }, (_, i) => 129 + i));
   expect(lines.filter((l) => l.cited).map((l) => l.n)).toEqual([138, 139, 140, 141, 142]);
 
-  const github = panel(page).getByRole("link", { name: "View on GitHub" });
+  const github = panel(page).getByRole("link", { name: "View on GitHub (opens in a new tab)", exact: true });
   await expect(github).toHaveAttribute("href",
     `https://github.com/pallets/itsdangerous/blob/${EXAMPLE.commit_sha}/src/itsdangerous/signer.py#L138-L142`);
   await expect(github).toHaveAttribute("target", "_blank");
@@ -116,7 +116,8 @@ test("ungrounded: no answer text, the 3 closest files as safe GitHub links, an e
   await ask(page);
   await expect(page.getByRole("heading", { name: "No cited answer for this question" })).toBeVisible();
   for (const file of UNGROUNDED.possibly_relevant) {
-    const link = page.getByRole("link", { name: `${file.path}:${file.start}-${file.end}` });
+    const link = page.getByRole("link",
+      { name: `${file.path}:${file.start}-${file.end} (opens in a new tab)`, exact: true });
     await expect(link).toHaveAttribute("href", file.url);
     await expect(link).toHaveAttribute("target", "_blank");
     await expect(link).toHaveAttribute("rel", "noopener noreferrer");
@@ -223,10 +224,10 @@ test("busy: a countdown from Retry-After, then a manual retry, never an automati
   await serverUp(api);
   await ask(page);
   await expect(page.getByText(/^The demo is at capacity\./)).toBeVisible();
-  await expect(page.getByRole("button", { name: "Try again in 5 s" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Try again in 5\u00a0s" })).toBeDisabled();
 
   await page.clock.setFixedTime(T0 + 4_000);
-  await expect(page.getByRole("button", { name: "Try again in 1 s" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Try again in 1\u00a0s" })).toBeDisabled();
   await page.clock.setFixedTime(T0 + 5_000);
   await expect(page.getByText("You can try again now.")).toBeVisible();
   const retry = page.getByRole("button", { name: "Try again", exact: true });
@@ -239,7 +240,7 @@ test("busy: a countdown from Retry-After, then a manual retry, never an automati
 
 // Both directions, so this fails if the page stops reading the header OR if Chromium's hiding of
 // unexposed headers (Q38) stops being modelled by the mocks.
-for (const [expose, countdown] of [[true, "Try again in 5 s"], [false, "Try again in 60 s"]] as const) {
+for (const [expose, countdown] of [[true, "Try again in 5\u00a0s"], [false, "Try again in 60\u00a0s"]] as const) {
   test(`busy ${expose ? "with" : "WITHOUT"} Access-Control-Expose-Headers: "${countdown}"`, async ({ page, api }) => {
     await page.clock.setFixedTime(T0);
     // The body of app.py error_json(), as apiError() builds it, with the expose list on or off.

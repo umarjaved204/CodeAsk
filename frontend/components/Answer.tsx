@@ -104,8 +104,10 @@ const TRAILING_PUNCTUATION = /^[.,;:!?)\]}"'’”…]+/;
 
 /** Where the last word (plus trailing whitespace) of a text starts. A linear scan from the end:
  *  the regex it replaces could backtrack super-linearly on long model text. */
+const SPACE = /\s/; // hoisted (Q81); no g flag, so test() keeps no state between calls
+
 function lastWord(text: string): { start: number; hasWord: boolean } {
-  const isSpace = (c: string) => /\s/.test(c);
+  const isSpace = (c: string) => SPACE.test(c);
   let i = text.length;
   while (i > 0 && isSpace(text[i - 1])) i--;
   const wordEnd = i;

@@ -96,9 +96,9 @@ test.describe("wording", () => {
   });
 
   test("the visible line has the seconds, as an upper bound; without an estimate, just the place", () => {
-    expect(queuedMessage({ position: 2, waitS: 40 })).toBe("Next in line, up to about 40 seconds.");
-    expect(queuedMessage({ position: 3, waitS: 41 })).toBe("3rd in line, up to about 50 seconds.");
-    expect(queuedMessage({ position: 12, waitS: 5 })).toBe("12th in line, up to about 10 seconds.");
+    expect(queuedMessage({ position: 2, waitS: 40 })).toBe("Next in line, up to about 40\u00a0seconds.");
+    expect(queuedMessage({ position: 3, waitS: 41 })).toBe("3rd in line, up to about 50\u00a0seconds.");
+    expect(queuedMessage({ position: 12, waitS: 5 })).toBe("12th in line, up to about 10\u00a0seconds.");
     expect(queuedMessage({ position: 2, waitS: null })).toBe("Next in line.");
   });
 

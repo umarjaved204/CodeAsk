@@ -2,7 +2,7 @@
 // at 320 CSS px (WCAG 1.4.10: no horizontal page scroll, the ask box still usable).
 import type { Page } from "@playwright/test";
 
-import { LONG_LINE_END, LONG_LINES, expect, test } from "./mocks";
+import { LONG_LINE_END, LONG_LINES, UNGROUNDED, expect, test } from "./mocks";
 
 const panel = (page: Page) => page.getByRole("complementary", { name: "Cited code" });
 const sheet = (page: Page) => page.getByRole("dialog", { name: "Cited code" });
@@ -147,5 +147,42 @@ test.describe("reflow at 320x568", () => {
     await box.fill("How are signatures verified?");
     await page.getByRole("button", { name: "Ask", exact: true }).tap();
     await expect.poll(() => api.count("POST /ask")).toBe(1);
+  });
+
+  // Pass 1 of the 3b.7 review (Q80): text with no break opportunity must wrap, not widen the page.
+  async function expectNoSidewaysScroll(page: Page, element: ReturnType<Page["locator"]>) {
+    const widths = await page.evaluate(() => ({
+      page: document.documentElement.scrollWidth, viewport: document.documentElement.clientWidth,
+    }));
+    expect(widths.page).toBeLessThanOrEqual(widths.viewport);
+    const box = (await element.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(widths.viewport);
+  }
+
+  test("a long unbroken question wraps inside the column", async ({ page, api }) => {
+    const question = "https://github.com/pallets/itsdangerous/blob/main/src/itsdangerous/" +
+      "a_very_long_module_name_with_no_spaces_at_all_for_the_overflow_check.py";
+    await page.goto("/");
+    await expect.poll(() => api.count("GET /repos")).toBeGreaterThan(0);
+    await page.getByRole("textbox", { name: "Question" }).fill(question);
+    await page.getByRole("button", { name: "Ask", exact: true }).tap();
+    const heading = page.getByRole("heading", { level: 1 });
+    await expect(heading).toHaveText(question);
+    await expectNoSidewaysScroll(page, heading);
+  });
+
+  test("a long path among an ungrounded answer's closest files wraps inside the column", async ({ page, api }) => {
+    const path = "lib/a/deeply/nested/directory/structure/with_a_very_long_file_name_for_overflow.js";
+    api.on("POST /ask", () => ({ json: { ...UNGROUNDED, possibly_relevant: [
+      { path, start: 1, end: 20, url: `https://github.com/expressjs/express/blob/main/${path}#L1-L20` },
+    ] } }));
+    await page.goto("/");
+    await expect.poll(() => api.count("GET /repos")).toBeGreaterThan(0);
+    await page.getByRole("textbox", { name: "Question" }).fill("Where is routing set up?");
+    await page.getByRole("button", { name: "Ask", exact: true }).tap();
+    const link = page.getByRole("link", { name: `${path}:1-20 (opens in a new tab)`, exact: true });
+    await expect(link).toBeVisible();
+    await expectNoSidewaysScroll(page, link);
   });
 });

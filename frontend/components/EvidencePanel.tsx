@@ -4,6 +4,7 @@ import { memo, useEffect, useLayoutEffect, useRef, type MouseEvent, type ReactNo
 
 import { safeGithubUrl } from "../lib/markdown";
 import type { AskResponse, Block, Citation } from "../lib/types";
+import { NewTabLink } from "./Header";
 
 // No line cap here: a cited line must never be hidden (mentor review of step 2, 2026-11-11).
 // The size bound is the backend's (ask.py evidence(), EVIDENCE_MAX_CHARS): a block over it is
@@ -13,9 +14,7 @@ function GithubLink({ url, children }: { url: string | null; children: ReactNode
   const safe = safeGithubUrl(url);
   if (!safe) return null;
   return (
-    <a href={safe} target="_blank" rel="noopener noreferrer" className="text-meta text-citation underline">
-      {children}
-    </a>
+    <NewTabLink href={safe} className="text-meta text-citation underline">{children}</NewTabLink>
   );
 }
 

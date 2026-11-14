@@ -13,7 +13,11 @@ export default function Privacy() {
       <Header page="privacy" />
       <main className="px-5 pt-2 pb-16 lg:px-14">
         <div className="max-w-measure">
-          <Link href="/" className="text-meta text-citation underline">Back to CodeAsk</Link>
+          {/* No prefetch (Q81): prefetching / would bring its API preconnect hint onto this page,
+              which makes no API calls. */}
+          <Link href="/" prefetch={false} className="text-meta text-citation underline">
+            Back to CodeAsk
+          </Link>
           <h1 className="mt-4 font-serif text-title-sm font-medium lg:text-title">Privacy</h1>
           <p className="mt-4 font-serif text-body">{PRIVACY.summary}</p>
           {PRIVACY.sections.map((section) => (

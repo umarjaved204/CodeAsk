@@ -71,7 +71,7 @@ const STATES: State[] = [
     api.on("GET /status", () => statusWith({ position: 2, wait_s: 40 }));
     api.on("POST /ask", held().handler);
     await askAfterUp(page, api);
-    await expect(page.getByText("Next in line, up to about 40 seconds.")).toBeVisible();
+    await expect(page.getByText("Next in line, up to about 40\u00a0seconds.")).toBeVisible();
   } },
   { name: "answered, citation 2 highlighted", setup: async (page, api) => {
     await askAfterUp(page, api);

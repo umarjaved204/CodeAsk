@@ -4,7 +4,7 @@
 // SITE_INDEXABLE unset).
 import type { Page } from "@playwright/test";
 
-import { APP_ORIGIN, BUILD_ENV, EXAMPLE, expect, test, type MockApi } from "./mocks";
+import { API, APP_ORIGIN, BUILD_ENV, EXAMPLE, expect, test, type MockApi } from "./mocks";
 import requestsIndex from "../../data/examples/psf__requests/index.json";
 import { cspPolicy, readSiteConfig } from "../../lib/site-config";
 import { setLoadFailedMessage } from "../../lib/messages";
@@ -38,6 +38,17 @@ test("the built server sends the enforced CSP, noindex, nosniff and DENY", async
   expect(headers["x-robots-tag"]).toBe("noindex");
   expect(headers["x-frame-options"]).toBe("DENY");
   expect(headers["x-content-type-options"]).toBe("nosniff");
+});
+
+test("/ preconnects to the API origin (anonymous, like its CORS fetches); /privacy doesn't", async ({ page }) => {
+  await page.goto("/");
+  const hint = page.locator(`link[rel="preconnect"][href="${API}"]`);
+  await expect(hint).toHaveCount(1);
+  // React writes crossorigin="" for "anonymous"; HTML treats the empty value as anonymous, so
+  // check the parsed state (the IDL property), not the attribute's text.
+  expect(await hint.evaluate((link: HTMLLinkElement) => link.crossOrigin)).toBe("anonymous");
+  await page.goto("/privacy");
+  await expect(page.locator(`link[rel="preconnect"][href="${API}"]`)).toHaveCount(0);
 });
 
 // ---------- 3b.1 link previews ----------

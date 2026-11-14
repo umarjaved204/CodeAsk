@@ -94,7 +94,7 @@ test("previous question in progress: the busy countdown, with its own sentence",
   await up(page, api);
   await ask(page);
   await expect(exact(page, IN_PROGRESS_MESSAGE)).toBeVisible();
-  await expect(page.getByRole("button", { name: "Try again in 40 s" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Try again in 40\u00a0s" })).toBeDisabled();
   await expect(alarm(page)).toHaveText("");
 });
 

@@ -4,6 +4,10 @@ import type { Failure } from "./api";
 import type { Ask, Connection } from "./state";
 import type { Example, Grade, Queue, Service } from "./types";
 
+/** Between a number and its unit ("30 seconds", "5 s"), so a line never ends on the number
+ *  (pass 1 of the 3b.7 review, Q80). */
+export const NBSP = " ";
+
 export const WAKING_SLOW_MS = 35_000;
 export const LOADING_SLOW_MS = 12_000;
 
@@ -29,7 +33,7 @@ export function connectionMessage(connection: Connection, now: number): string |
   switch (connection.kind) {
     case "waking":
       return now - connection.since < WAKING_SLOW_MS
-        ? "Waking up the server. This takes about 30 seconds after a quiet spell."
+        ? "Waking up the server. This takes about 30 seconds after a quiet spell."
         : "Still starting. This is taking longer than usual.";
     case "down":
       return CANT_REACH_MESSAGE;
@@ -70,7 +74,7 @@ function place(position: number): string {
  *  wait is an upper bound (the queue assumes the slowest recent answer), hence "up to". */
 export function queuedMessage(queue: Queue): string {
   const where = place(queue.position);
-  return queue.waitS === null ? `${where}.` : `${where}, up to about ${roundedWait(queue.waitS)} seconds.`;
+  return queue.waitS === null ? `${where}.` : `${where}, up to about ${roundedWait(queue.waitS)}${NBSP}seconds.`;
 }
 
 /** The hidden live region's text: only the place, so it changes (and is announced) only when
@@ -86,9 +90,9 @@ export function queuedAnnouncement(queue: Queue): string {
  *  and an early retry costs nothing). */
 export function aboutTime(seconds: number): string {
   const minutes = Math.max(5, Math.ceil(seconds / 300) * 5);
-  if (minutes < 60) return `about ${minutes} minutes`;
+  if (minutes < 60) return `about ${minutes}${NBSP}minutes`;
   const hours = Math.max(1, Math.round(seconds / 3600));
-  return hours === 1 ? "about 1 hour" : `about ${hours} hours`;
+  return `about ${hours}${NBSP}${hours === 1 ? "hour" : "hours"}`;
 }
 
 // Said only when the suggested questions are on screen (Q54; slice 4 step 8 said it of the one

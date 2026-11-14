@@ -81,16 +81,16 @@ test("retry is offered only where it can help", () => {
 // ---------- slice 4: the Q45 messages (exact text) and "about N" (step 8) ----------
 test("about N: up to the next 5 minutes under an hour, then the nearest hour, at least 1", () => {
   const cases: [number, string][] = [
-    [0, "about 5 minutes"], [1, "about 5 minutes"], [300, "about 5 minutes"],
-    [301, "about 10 minutes"], [3_299, "about 55 minutes"], [3_301, "about 1 hour"],
-    [3_599, "about 1 hour"], [3_600, "about 1 hour"], [3_660, "about 1 hour"],
-    [5_399, "about 1 hour"], [5_400, "about 2 hours"], [7_200, "about 2 hours"],
-    [86_400, "about 24 hours"],
+    [0, "about 5\u00a0minutes"], [1, "about 5\u00a0minutes"], [300, "about 5\u00a0minutes"],
+    [301, "about 10\u00a0minutes"], [3_299, "about 55\u00a0minutes"], [3_301, "about 1\u00a0hour"],
+    [3_599, "about 1\u00a0hour"], [3_600, "about 1\u00a0hour"], [3_660, "about 1\u00a0hour"],
+    [5_399, "about 1\u00a0hour"], [5_400, "about 2\u00a0hours"], [7_200, "about 2\u00a0hours"],
+    [86_400, "about 24\u00a0hours"],
   ];
   for (const [seconds, text] of cases) expect(aboutTime(seconds), String(seconds)).toBe(text);
 });
 
-const DAILY = "Live questions are used up for now. Try again in about 2 hours. This demo runs on a " +
+const DAILY = "Live questions are used up for now. Try again in about 2\u00a0hours. This demo runs on a " +
   "free API tier, so live questions are capped each day.";
 const EXAMPLE_TAIL = " The suggested questions still work.";
 
@@ -100,9 +100,9 @@ test("each message says the suggested questions still work only when they are on
   expect(dailyLimitMessage(7_200, false)).toBe(DAILY);
   expect(dailyLimitMessage(7_200, true)).toBe(DAILY + EXAMPLE_TAIL);
   expect(perVisitorMessage(1_800, false)).toBe(
-    "You’ve reached the daily limit of live questions for one visitor. Try again in about 30 minutes.");
+    "You’ve reached the daily limit of live questions for one visitor. Try again in about 30\u00a0minutes.");
   expect(perVisitorMessage(1_800, true)).toBe(
-    "You’ve reached the daily limit of live questions for one visitor. Try again in about 30 minutes." +
+    "You’ve reached the daily limit of live questions for one visitor. Try again in about 30\u00a0minutes." +
     EXAMPLE_TAIL);
   // Without a usable Retry-After, no time is promised.
   expect(dailyLimitMessage(null, false)).toBe("Live questions are used up for now. This demo runs " +
@@ -116,7 +116,7 @@ test("a refusal says the suggested questions still work only when the list is on
   expect(errorMessage(api("daily_limit", "r", 7_200), "a/b", true)).toBe(DAILY);
   expect(errorMessage(api("daily_limit", "r", 7_200), "a/b", true, true)).toBe(DAILY + EXAMPLE_TAIL);
   expect(errorMessage(api("per_ip_limit", "r", 10_800), "a/b", true)).toBe(
-    "You’ve reached the daily limit of live questions for one visitor. Try again in about 3 hours.");
+    "You’ve reached the daily limit of live questions for one visitor. Try again in about 3\u00a0hours.");
   expect(errorMessage(api("model_unavailable"), "a/b", true)).toBe(
     "Live answers are unavailable right now.");
   expect(errorMessage(api("model_unavailable"), "a/b", true, true)).toBe(

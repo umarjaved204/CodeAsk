@@ -1,14 +1,15 @@
 "use client";
 
 import {
-  useCallback, useEffect, useReducer, useRef, useState, useSyncExternalStore, type ReactNode,
+  useCallback, useEffect, useEffectEvent, useReducer, useRef, useState, useSyncExternalStore,
+  type ReactNode,
 } from "react";
 
 import { SERVICE_OK, getRepos, getStatus, pollQueue, postAsk, readService } from "../lib/api";
 import { DEFAULT_REPO, FEATURED, repoAddress, repoFromSearch } from "../lib/featured";
 import { safeGithubUrl } from "../lib/markdown";
 import {
-  BUSY_MESSAGE, BUSY_OVER_MESSAGE, IN_PROGRESS_MESSAGE, ON_ITS_OWN, SETTLING_MESSAGE,
+  BUSY_MESSAGE, BUSY_OVER_MESSAGE, IN_PROGRESS_MESSAGE, NBSP, ON_ITS_OWN, SETTLING_MESSAGE,
   SET_LOADING_MESSAGE, WAITING_MESSAGE, canRetry, connectionNote, errorMessage, isAlarm, isQueued,
   loadingMessage, provenance, queuedAnnouncement, queuedMessage, serviceNote, setLoadFailedMessage,
 } from "../lib/messages";
@@ -21,7 +22,7 @@ import type { AskResponse, Repo, Service, StoredSet } from "../lib/types";
 import { Answer } from "./Answer";
 import { Composer } from "./Composer";
 import { CodeSheet, EvidencePanel } from "./EvidencePanel";
-import { Header } from "./Header";
+import { Header, NewTabLink } from "./Header";
 import { SuggestedQuestions } from "./SuggestedQuestions";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "";
@@ -66,16 +67,16 @@ function Ungrounded({ repo, response }: { repo: string; response: AskResponse })
           const label = `${file.path}:${file.start}-${file.end}`;
           return (
             <li key={file.path} className="py-0.5">
+              {/* break-all, like the evidence panel's path: a long path wraps at 320 (Q80). */}
               {url ? (
-                <a href={url} target="_blank" rel="noopener noreferrer"
-                   className="inline-flex items-center gap-1 text-citation underline">
+                <NewTabLink href={url} className="break-all text-citation underline">
                   {label}
-                  <svg viewBox="0 0 12 12" aria-hidden="true" className="size-3">
+                  <svg viewBox="0 0 12 12" aria-hidden="true" className="ml-1 inline size-3 align-baseline">
                     <path d="M4.5 2.5h-2v7h7v-2M6.5 2.5h3v3M9.5 2.5 5.5 6.5" fill="none"
                           stroke="currentColor" strokeWidth="1.2" />
                   </svg>
-                </a>
-              ) : label}
+                </NewTabLink>
+              ) : <span className="break-all">{label}</span>}
             </li>
           );
         })}
@@ -135,7 +136,7 @@ function AskStatus({ ask, now, online, listShown, onRetry }: {
       message = seconds > 0 ? waiting : BUSY_OVER_MESSAGE;
       action = (
         <RetryButton disabled={seconds > 0} onClick={onRetry}>
-          {seconds > 0 ? `Try again in ${seconds} s` : "Try again"}
+          {seconds > 0 ? `Try again in ${seconds}${NBSP}s` : "Try again"}
         </RetryButton>
       );
       break;
@@ -385,25 +386,25 @@ export function App() {
   // loads while the default stays on screen). From then on the address reflects the repo on
   // screen, never a pending one: replaceState only (no history entries, no back/forward), so an
   // unknown slug, a different spelling or a failed first load all end on the true address.
+  // An effect event (Q81): it reads the latest repo and changeRepo without making the effect
+  // depend on them. True when it started a switch.
+  const openRepoFromAddress = useEffectEvent(() => {
+    const wanted = repoFromSearch(window.location.search) ?? DEFAULT_REPO;
+    if (wanted === repo) return false;
+    changeRepo(wanted);
+    return true;
+  });
   const addressRead = useRef(false);
   useEffect(() => {
     if (!addressRead.current) {
       addressRead.current = true;
-      const wanted = repoFromSearch(window.location.search) ?? DEFAULT_REPO;
-      if (wanted !== repo) {
-        // Syncing with the address, an external system the static page can't read at render.
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        changeRepo(wanted);
-        return; // the address is settled once that switch applies or fails
-      }
+      if (openRepoFromAddress()) return; // the address settles once that switch applies or fails
     }
     if (pendingRepo !== null) return;
     const address = repoAddress(repo);
     if (window.location.pathname + window.location.search !== address) {
       window.history.replaceState(null, "", address);
     }
-    // changeRepo is a fresh function each render; this runs when the repo on screen settles.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [repo, pendingRepo]);
 
   function showStored(id: string) {
@@ -502,7 +503,7 @@ export function App() {
             <div ref={top} className="scroll-mt-4">
               {example && <p className="mb-3 text-meta text-text-muted">{provenance(example)}</p>}
               <h1 id="question" ref={heading} tabIndex={-1}
-                  className="font-serif text-title-sm font-medium text-balance lg:text-title">
+                  className="font-serif text-title-sm font-medium text-balance break-words lg:text-title">
                 {question ?? `Ask a question about the code in ${repo}.`}
               </h1>
             </div>

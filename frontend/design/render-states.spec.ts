@@ -107,7 +107,7 @@ const STATES: Record<string, Setup> = {
   "04c-cant-reach": waking(95_000, CANT_REACH_MESSAGE),
   "05-queued": async (page, api) => {
     api.on("GET /status", () => statusWith({ position: 2, wait_s: 40 }));
-    await loading(1_000, "Next in line, up to about 40 seconds.")(page, api, 0);
+    await loading(1_000, "Next in line, up to about 40\u00a0seconds.")(page, api, 0);
   },
   "06-busy": replying(apiError(503, "busy", "The service is busy.", { "Retry-After": "30" }),
                       /^The demo is at capacity\./),
