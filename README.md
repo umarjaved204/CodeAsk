@@ -37,8 +37,10 @@ from its licence file at that commit:
 ## Privacy
 
 <!-- privacy:start (kept equal to PRIVACY.summary in frontend/lib/messages.ts by a test) -->
-Questions you type are sent to Groq (to write the answer) and Voyage (to find the code).
-CodeAsk’s own server stores no question text and no IP addresses, only usage counters. Its
+Questions you type are sent to Groq (to write the answer) and Voyage (to find the code). Both
+may keep them for a time, and Voyage may use them to train its models, so please don’t enter
+personal information. CodeAsk’s own server stores no question text and no IP addresses, only
+usage counters. Its
 hosts, Render and Vercel, keep standard request logs, which include IP addresses, for their own
 retention periods. Suggested questions are answered from files shipped with the page and are not
 sent to Groq or Voyage.

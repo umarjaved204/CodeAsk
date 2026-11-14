@@ -216,21 +216,24 @@ export function canRetry(failure: Failure): boolean {
 // One source for the header link's page (/privacy), the composer note and the README block
 // (tests/logic/privacy.spec.ts keeps the README equal to `summary`). Every claim about
 // CodeAsk's own server comes from the Q68 audit in PLAN.md (file:line per claim); the hosts'
-// logs are confirmed by the step 6 canary. The placeholder marker (Q78) marks the text that waits
-// for the Groq and Voyage terms (3b.6, R11); the step 4 pin gate refuses to pin while it appears.
+// logs are confirmed by the step 6 canary. What Groq and Voyage keep comes from the R11 clauses
+// recorded in PLAN.md (Q79); if those terms or the account settings change, so does this text.
 
 /** When the text below was last checked against the audit and the providers' terms (UTC,
  *  YYYY-MM-DD). Update it whenever the text changes. */
-export const PRIVACY_LAST_CHECKED = "2026-11-13";
+export const PRIVACY_LAST_CHECKED = "2026-11-14";
 
 const ISSUES = "https://github.com/umarjaved204/CodeAsk/issues";
 
 export const PRIVACY = {
   /** The composer note's sentence (followed by the Privacy link). */
-  short: "Questions go to Groq and Voyage; CodeAsk stores none.",
+  short: "Groq and Voyage may keep questions; Voyage may train on them. Please don’t enter " +
+    "personal information.",
   /** The top of /privacy, and the README's privacy block. */
   summary:
     "Questions you type are sent to Groq (to write the answer) and Voyage (to find the code). " +
+    "Both may keep them for a time, and Voyage may use them to train its models, so please " +
+    "don’t enter personal information. " +
     "CodeAsk’s own server stores no question text and no IP addresses, only usage counters. " +
     "Its hosts, Render and Vercel, keep standard request logs, which include IP addresses, for " +
     "their own retention periods. Suggested questions are answered from files shipped with the " +
@@ -273,12 +276,24 @@ export const PRIVACY = {
     },
     {
       heading: "What Groq and Voyage keep",
-      paragraphs: ["PENDING-3B6: what their terms say about retention and training on inputs."],
+      paragraphs: [
+        "Groq keeps no questions by default, but may log questions and answers for up to 30 " +
+        "days to fix errors or investigate abuse. Its terms say it doesn’t train models on " +
+        "them. CodeAsk uses one of Groq’s preview models, and the terms don’t clearly say " +
+        "whether that promise covers preview models.",
+        "Voyage’s terms let it use what it receives to train its models unless the account " +
+        "opts out. CodeAsk hasn’t opted out (it needs a payment method on file), and the terms " +
+        "give no retention period.",
+        "So please don’t enter personal information in a question.",
+      ],
     },
   ],
-  /** Opened in a new tab. Each URL is checked when the terms are read (3b.6). */
+  /** Opened in a new tab. All checked to load on 2026-11-14 (R11 clauses in PLAN.md). */
   links: [
+    { label: "Groq: how it handles API data", href: "https://console.groq.com/docs/your-data" },
+    { label: "Groq services agreement", href: "https://console.groq.com/docs/legal/services-agreement" },
     { label: "Groq privacy policy", href: "https://groq.com/privacy-policy" },
+    { label: "Voyage AI terms of service", href: "https://www.voyageai.com/tos" },
     { label: "Voyage AI privacy policy", href: "https://www.voyageai.com/privacy" },
     { label: "Render privacy policy", href: "https://render.com/privacy" },
     { label: "Vercel privacy policy", href: "https://vercel.com/legal/privacy-policy" },

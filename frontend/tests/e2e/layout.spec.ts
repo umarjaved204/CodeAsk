@@ -78,7 +78,10 @@ for (const [width, height, short] of [[844, 390, true], [390, 844, false]] as co
       await expect(page.getByText(/^Example answer/)).toBeVisible();
       const position = await page.locator("#ask").evaluate((el) => getComputedStyle(el).position);
       expect(position).toBe(short ? "static" : "sticky");
-      const note = page.getByText(/^Answers use only the code of the featured repos/);
+      // The composer's note (Q79 wording); scoped to the form, since the empty state says the
+      // same first sentence.
+      const note = page.locator("#ask").getByText(/^Answers cite the lines they use\./);
+      expect(await note.count()).toBe(1); // present in the DOM, so "hidden" can't pass vacuously
       if (short) {
         await expect(note).toBeHidden();
         await expect(page.locator(".answer p").first()).toBeInViewport();

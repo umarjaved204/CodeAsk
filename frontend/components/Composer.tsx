@@ -92,9 +92,10 @@ export function Composer({ repo, repos, onRepoChange, onAsk, canAsk, asking, sta
         </button>
       </div>
       {/* The privacy sentence replaces "Rate-limited demo; each question is answered on its
-          own." (Q78), so the note never gains a line (site.spec.ts measures it). */}
+          own." (Q78), and the first sentence is shortened for its longer final wording (Q79),
+          so the note never gains a line (privacy.spec.ts measures it). */}
       <p className="mt-2 text-micro text-text-muted short:hidden">
-        Answers use only the code of the featured repos and cite the lines they rely on.{" "}
+        Answers cite the lines they use.{" "}
         {PRIVACY.short}{" "}
         <NewTabLink href="/privacy" className="underline">Privacy</NewTabLink>
       </p>
