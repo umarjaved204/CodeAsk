@@ -1646,6 +1646,15 @@ shows the Starter tier (includes 500 free minutes; $5 per 1,000 beyond) with a *
 limit** ("If you reach this limit and run out of minutes, builds and other pre-deploy tasks stop
 running"). Still to do for Q75: auto-deploy off on `codeask-api` when it is created (step 5).
 
+**Re-pin (2026-11-14, Q85): `release` = `60bac281bd8b36b9891c33477563bfee23af35e0`** (was
+`2757ddc`; a fast-forward). The only code change since the first pin is the privacy wording in
+`frontend/lib/messages.ts` (plus README and PLAN.md). Gate repeated on `60bac28`, all green:
+`check.ps1` (pytest 531 passed, 2 skipped; logic 106; e2e 164), `pytest -m db` 41 passed,
+gitleaks no leaks, no `PENDING-3B6` outside PLAN.md, working tree clean; the Q68 audit holds
+unchanged (no backend change; the storage grep identical). Note: that commit's message reads
+"confirmed at \ (Q75)" because PowerShell expanded `$0` (its escape is a backtick, not a
+backslash); cosmetic, left as is rather than rewriting a pushed commit.
+
 **R11 clauses (read 2026-11-13 by Claude through web fetches, at my request; quotes verbatim).**
 Account settings behind the login are mine to check.
 - **Groq: retention.** [Your data](https://console.groq.com/docs/your-data) (no date): "By
