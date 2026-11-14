@@ -1608,6 +1608,17 @@ Recorded in `docs/smoke-results/2026-11-14.md` and the checklist's Changes. If S
 prod, the attribute fix means a re-pin. **Separate, my decision later:** the snapshot shows four
 pre-existing inbound rules allowing Node.js on **Public** networks (unrelated to CodeAsk).
 
+**Step 4 results (2026-11-14): pinned. `release` = `2757ddc1c8d22e67bd669a4409d43242d3b44d85`.**
+The last code change is `b17d336`; `2757ddc` adds docs only. Gate, all on that tree:
+`check.ps1` green (pytest 531 passed, 2 skipped; logic 106; e2e 164); `pytest -m db` 41 passed
+(12 test_db + 29 test_grants); gitleaks 8.30.1 over 99 commits, no leaks; `PENDING-3B6` absent
+outside PLAN.md; working tree clean; the Q68 code-half audit re-verified at `b17d336`. S19 moved
+to prod by the fallback above. The branch was created with
+`git push origin <sha>:refs/heads/release` (the first push needs the full ref; later moves use the
+README's `git push origin <sha>:release`) and checked with `git ls-remote`. From here only docs
+commits go to `main` until this release is deployed and checked; any re-pin is recorded here and
+repeats the gate.
+
 **R11 clauses (read 2026-11-13 by Claude through web fetches, at my request; quotes verbatim).**
 Account settings behind the login are mine to check.
 - **Groq: retention.** [Your data](https://console.groq.com/docs/your-data) (no date): "By
