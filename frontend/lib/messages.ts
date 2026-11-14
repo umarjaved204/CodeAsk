@@ -231,13 +231,12 @@ const ISSUES = "https://github.com/umarjaved204/CodeAsk/issues";
 
 export const PRIVACY = {
   /** The composer note's sentence (followed by the Privacy link). */
-  short: "Groq and Voyage may keep questions; Voyage may train on them. Please don’t enter " +
-    "personal information.",
+  short: "Voyage may keep and train on questions. Please don’t enter personal information.",
   /** The top of /privacy, and the README's privacy block. */
   summary:
     "Questions you type are sent to Groq (to write the answer) and Voyage (to find the code). " +
-    "Both may keep them for a time, and Voyage may use them to train its models, so please " +
-    "don’t enter personal information. " +
+    "Groq is set not to store them; Voyage may keep them and use them to train its models, so " +
+    "please don’t enter personal information. " +
     "CodeAsk’s own server stores no question text and no IP addresses, only usage counters. " +
     "Its hosts, Render and Vercel, keep standard request logs, which include IP addresses, for " +
     "their own retention periods. Suggested questions are answered from files shipped with the " +
@@ -281,10 +280,11 @@ export const PRIVACY = {
     {
       heading: "What Groq and Voyage keep",
       paragraphs: [
-        "Groq keeps no questions by default, but may log questions and answers for up to 30 " +
-        "days to fix errors or investigate abuse. Its terms say it doesn’t train models on " +
-        "them. CodeAsk uses one of Groq’s preview models, and the terms don’t clearly say " +
-        "whether that promise covers preview models.",
+        "CodeAsk has turned on Groq’s Zero Data Retention for its inference API, the setting " +
+        "that stops Groq storing questions and answers (without it, Groq may keep them for up " +
+        "to 30 days to fix errors or investigate abuse). Groq’s terms say it doesn’t train " +
+        "models on them. CodeAsk uses one of Groq’s preview models, and the terms don’t clearly " +
+        "say whether that promise covers preview models.",
         "Voyage’s terms let it use what it receives to train its models unless the account " +
         "opts out. CodeAsk hasn’t opted out (it needs a payment method on file), and the terms " +
         "give no retention period.",
