@@ -7,6 +7,7 @@
     },
     "headers": {
       "access-control-expose-headers": "X-Request-Id, Retry-After",
+      "cache-control": "no-store",
       "retry-after": "19"
     },
     "status": 503
@@ -19,6 +20,7 @@
     },
     "headers": {
       "access-control-expose-headers": "X-Request-Id, Retry-After",
+      "cache-control": "no-store",
       "retry-after": "86400"
     },
     "status": 429
@@ -31,6 +33,7 @@
     },
     "headers": {
       "access-control-expose-headers": "X-Request-Id, Retry-After",
+      "cache-control": "no-store",
       "retry-after": "30"
     },
     "status": 429
@@ -42,7 +45,8 @@
       "request_id": "a1b2c3d4"
     },
     "headers": {
-      "access-control-expose-headers": "X-Request-Id, Retry-After"
+      "access-control-expose-headers": "X-Request-Id, Retry-After",
+      "cache-control": "no-store"
     },
     "status": 503
   },
@@ -54,6 +58,7 @@
     },
     "headers": {
       "access-control-expose-headers": "X-Request-Id, Retry-After",
+      "cache-control": "no-store",
       "retry-after": "86400"
     },
     "status": 429

@@ -177,6 +177,16 @@ for (const [system, stored] of [["light", "dark"], ["dark", "light"]] as const) 
   });
 }
 
+// What the phone's keyboard may do to identifiers (docs/smoke-checklist.md S19, Q80): no
+// attribute is set today, so the browser's defaults apply. If S19 fails, autoCorrect and
+// autoCapitalize go "off" in Composer.tsx and these expected values change with them.
+test("the question box's autocapitalize, autocorrect and spellcheck are as shipped", async ({ page }) => {
+  await page.goto("/");
+  const attributes = await box(page).evaluate((el) =>
+    ["autocapitalize", "autocorrect", "spellcheck"].map((name) => el.getAttribute(name)));
+  expect(attributes).toEqual([null, null, null]);
+});
+
 test("desktop 1440x900: the ask box and Ask are fully visible without scrolling", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByText(/^Example answer/)).toBeVisible();

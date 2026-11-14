@@ -533,6 +533,80 @@ def test_outcomes_count_the_unknown_bucket_but_never_more(monkeypatch):
     assert store.outcomes == Counter({"answered": 2, "no_client_ip": 1, "not_found": 1})
 
 
+# ---------- no error reply is ever cached (Q71; slice 6 step 3c) ----------
+def _paused(mp):
+    with client(mp, store=FakeStore(paused=True)) as c:
+        return ask(c)
+
+
+def _daily_limit(mp):
+    with client(mp, store=FakeStore(public_budget_tokens=config.QUESTION_RESERVE_TOKENS - 1)) as c:
+        return ask(c)
+
+
+def _per_ip_limit(mp):
+    with client(mp, store=FakeStore(per_ip_daily=1)) as c:
+        ask(c, ip=IP)
+        return ask(c, ip=IP)
+
+
+def _in_progress(mp):
+    visitors = Visitors()
+    visitors.accept(client_key(IP, SALT), 5, time.monotonic() + 30)
+    with client(mp, visitors=visitors) as c:
+        return ask(c, ip=IP)
+
+
+def _busy(mp):
+    queue, now = AskQueue(Pacer()), time.monotonic()
+    queue.try_start(queue.join("someone", now + 90, now), now)
+    with client(mp, queue=queue) as c:
+        return ask(c, ip=IP)
+
+
+def _after_acceptance(embedder=None, llm=None, search_error=None):
+    def run(mp):
+        store = FakeStore()
+        store.search_error = search_error
+        with client(mp, embedder=embedder, llm=llm, store=store) as c:
+            return ask(c, ip=IP)
+    return run
+
+
+def _request(method, path, **kwargs):
+    def run(mp):
+        with client(mp) as c:
+            return c.request(method, path, **kwargs)
+    return run
+
+
+# Both routes into error_json: the refusals and failures in /ask are re-raised to the exception
+# middleware; the 404s, the 405 and the 422 come from the exception handlers.
+ERROR_REPLIES = [  # (the code the reply must carry, how to provoke it)
+    ("paused", _paused),
+    ("daily_limit", _daily_limit),
+    ("per_ip_limit", _per_ip_limit),
+    ("in_progress", _in_progress),
+    ("busy", _busy),
+    ("timeout", _after_acceptance(embedder=FakeEmbedder(DeadlineExceeded()))),
+    ("upstream_error", _after_acceptance(embedder=FakeEmbedder(requests.ConnectionError("x")))),
+    ("model_unavailable", _after_acceptance(llm=FakeLLM(error=GroqError("Groq 404", 404)))),
+    ("database_unavailable", _after_acceptance(search_error=psycopg.OperationalError("x"))),
+    ("internal_error", _after_acceptance(llm=FakeLLM(error=ValueError("bug")))),
+    ("not_found", _request("POST", "/ask", json={"repo": "other/repo", "question": QUESTION})),
+    ("not_found", _request("GET", "/no-such-route")),
+    ("invalid_request", _request("POST", "/ask", json={"repo": SLUG, "question": ""})),
+    ("method_not_allowed", _request("GET", "/ask")),
+]
+
+
+@pytest.mark.parametrize("code, provoke", ERROR_REPLIES, ids=[f"{c}-{i}" for i, (c, _) in enumerate(ERROR_REPLIES)])
+def test_every_error_reply_is_never_cached(monkeypatch, code, provoke):
+    r = provoke(monkeypatch)
+    assert r.json()["error"] == code
+    assert r.headers["cache-control"] == "no-store"
+
+
 # ---------- /status from memory (Q40, Q45, Q46 C4) ----------
 def test_status_is_never_cached_and_has_no_queue_without_a_client_ip(monkeypatch):
     with client(monkeypatch) as c:

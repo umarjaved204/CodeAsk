@@ -98,10 +98,13 @@ def classify(exc: Exception) -> ApiError:
 
 
 def error_json(err: ApiError, request: Request) -> JSONResponse:
+    """Every error reply: refusals and failures in /ask reach it through the exception
+    middleware, and 404, 405 and 422 through the exception handlers.
+    Never cached (Q71): a refusal is about this visitor at this moment."""
     request.state.outcome = err.code
     return JSONResponse({"error": err.code, "message": err.message,
                          "request_id": getattr(request.state, "request_id", None)},
-                        err.status, headers=err.headers)
+                        err.status, headers={**(err.headers or {}), "Cache-Control": "no-store"})
 
 
 def normalize_slug(repo: str) -> str:
