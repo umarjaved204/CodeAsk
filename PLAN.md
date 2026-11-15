@@ -1705,6 +1705,66 @@ test was stricter than Q66 needs; the criterion recorded is "same chunks and lin
 may swap". The model gets the same five chunks; the pre-generated answers ship unchanged (Q47).
 Not measured: per-vector dev/prod similarity (offered, declined). **Step 5.3 done.**
 
+**Step 5.4 Render (2026-11-15):** GitHub's Installed Apps listed neither Render nor Vercel (the
+spikes' access ended with the 1.7 rewrite). `codeask-api` was created from **"Public Git
+Repository"** (`https://github.com/umarjaved204/CodeAsk`, branch `release`): Render gets no
+GitHub access and receives no push events. Free (0.1 CPU, 512 MB), Ohio, root = repo root, Q69
+start command, health check `/health`, env names: `PYTHON_VERSION=3.13.0`, `WEB_CONCURRENCY=1`,
+`DATABASE_URL` (API role, pooled), new prod `VOYAGE_API_KEY` and `GROQ_API_KEY`, a new `IP_SALT`,
+`ALLOWED_ORIGINS=https://codeask-pi.vercel.app`; no `DATABASE_OWNER_URL`, no cold-start
+constants. URL: `https://codeask-api.onrender.com` (the name fixed the hostname).
+- **First build was wrong:** the Build Command kept Render's default (`requirements.txt`), so
+  tree-sitter, tokenizers, voyageai, groq, google-genai and langchain were installed. Fixed to
+  `pip install -r requirements-api.txt` and redeployed: checked out `60bac28` on `release`
+  (= the pin), Python 3.13.0, and pip installed exactly the five pins and their dependencies
+  (21 packages, none of the ingestion set). Every package was installed fresh, not "already
+  satisfied", so the restored 71 MiB cache was pip's download cache, not the old environment.
+- Startup: `model qwen/qwen3.8-27b available: True`; `cold-start constants:
+  PROJECTED_SERVICE_SEED_S=15 (default), MIN_TIME_TO_START_S=25 (default)`; only the app's own
+  request lines (`HEAD / 200`): `--no-access-log` holds on Render.
+- `/health` 200 `{"service":"codeask"}`. The first `/status`, 8 s after a wake, said
+  `"service":"ok"` although prod is paused: `/status` reads a cached settings row and answers
+  `ok` while no copy exists yet (`app.py:326`, `gate.py:68`). After the redeploy: the first call
+  `ok` again (empty cache, refresh started), the second `"service":"paused"`, so Render's
+  `DATABASE_URL` reads prod. Behaviour as designed (Q40: `/status` never waits on the DB), but
+  noted for the smoke checklist: right after a wake, `/status` can say `ok` for one call while
+  prod is paused; `/ask` reads the row itself (`gate.py:46`), so it still refuses. Responses come
+  through Cloudflare (`CF-RAY`), as `CF-Connecting-IP` needs.
+- **Auto-Deploy showed "On Commit"** for the public-repo service (so not "can't auto-deploy");
+  set to **Off** (Q75, Q69).
+- **Render maintenance 2026-11-18 02:00 UTC (07:00 local):** no cold-start or smoke runs near it.
+
+**Step 5.4 Vercel (2026-11-15), project `codeask` reused (Q64 amendment):**
+- (a) Env: the spike's `NEXT_PUBLIC_API_URL` removed; `NEXT_PUBLIC_API_URL=https://codeask-api.onrender.com`
+  and `NEXT_PUBLIC_SITE_URL=https://codeask-pi.vercel.app`, Production only, type **Config**
+  (Vercel flags `NEXT_PUBLIC_` values as browser-visible; both are public URLs, and Config lets
+  step 6 read them back). `SITE_INDEXABLE` and `CSP_MODE` unset (defaults).
+- (b, c) The dead `umarjaved204/codeask` link disconnected; `umarjaved204/CodeAsk` connected
+  (the Vercel GitHub app on that repo only). **Connecting started no build.**
+- **Found:** the project's Root Directory was `spike/m2/web`, so every deployment so far was the
+  spike, auto-built from each push to the old repo's `main`; production was still serving
+  `2777f70` (the pre-rewrite HEAD). Unshared and noindex; deleted after the new deploy (Q64).
+- (d) Production branch `release` (auto-assign production domains left on, so the new build
+  takes `codeask-pi.vercel.app`); Ignored Build Step "Only build production"; Root Directory
+  `frontend` ("include files outside the root" on; **"skip deployments when unchanged" off**, so
+  every `release` move builds and step 6 has one answer to "did it deploy"); Node.js 24.x (local
+  v24.21.0; `frontend/package.json` has no `engines`); Vercel Authentication on, Standard
+  Protection (previews and unique URLs need a login; only the production domain is public).
+- **First production deploy:** Deployments → ⋯ → Create Deployment, ref `release`. `curl -I` on
+  `https://codeask-pi.vercel.app/`: 200, `X-Robots-Tag: noindex`, `Content-Security-Policy-Report-Only`
+  with `connect-src 'self' https://codeask-api.onrender.com` (no spike host), `X-Frame-Options:
+  DENY`, `nosniff`, HSTS. The page names `codeask-api.onrender.com` twice. Vercel adds
+  `Access-Control-Allow-Origin: *` to the prerendered HTML (its default for static responses; a
+  public page with no credentials, so nothing to read cross-origin that isn't public anyway).
+- **Spike deployments deleted (Q64 amendment, Q72 item 2 as amended):** 63 old production
+  deployments, all built from `spike/m2/web` off the old repo's `main` (Nov 2-13). Removed with
+  the Vercel CLI from my home folder (`npx vercel@65.16.0 remove codeask --safe`: 62, keeping
+  deployments with a live URL), the remaining old one by hand in the dashboard, then
+  `vercel logout`. Afterwards only `60bac28` (`release`) is listed and the site loads. Node
+  version line from the build log not captured (project setting 24.x).
+- **Step 5 done** (2026-11-15). Prod stays paused, `noindex` on, CSP report-only, URL unshared.
+  Next: step 6 checks.
+
 **R11 clauses (read 2026-11-13 by Claude through web fetches, at my request; quotes verbatim).**
 Account settings behind the login are mine to check.
 - **Groq: retention.** [Your data](https://console.groq.com/docs/your-data) (no date): "By
