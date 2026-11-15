@@ -1655,6 +1655,56 @@ unchanged (no backend change; the storage grep identical). Note: that commit's m
 "confirmed at \ (Q75)" because PowerShell expanded `$0` (its escape is a backtick, not a
 backslash); cosmetic, left as is rather than rewriting a pushed commit.
 
+**Step 5.1a (2026-11-15, in progress):** prod Neon project `codeask-prod` created: AWS US East 2
+(Ohio), Free plan, Postgres 18, one branch (`production`), default compute 0.25 ↔ 2 CU
+(autoscaling), history retention 6 hours, no IP restrictions; usage zero. The project ID is not
+recorded (1.4 redaction scope). **R6 settled (Billing page, per project):** 1 GB storage,
+autoscaling to 2 CU, 100 compute hours, 10 branches, $0/month. Dev is also Postgres 18 (same
+compute and history settings), so the grants tests and the 4b rehearsal ran on prod's major
+version. Compute left at 0.25 ↔ 2 CU.
+
+**Step 5.1b-5.2 (2026-11-15, owner half):** `.env.prod` created in the repo root (gitignored by
+`.env.*`, checked with `git check-ignore`). The API role was made by a prod copy of the Q84
+helper (`api_role_prod.py`, outside the repo): reads `.env.prod` only, role fixed to
+`codeask_api`, the pooled host derived from the owner's direct host (`<endpoint>-pooler`, since
+`DATABASE_URL` is empty before the role exists), host shown and `prod` typed before the write,
+the URL written into `.env.prod`'s `DATABASE_URL` line, no drop action. Read-only `exists` first
+(False), then `create`: `CREATE ROLE codeask_api WITH LOGIN`, password sent once over TLS, never
+printed. As the owner over the direct URL: `admin --prod setup` ("usage tables ready"; `setup`
+creates every table, content ones included, with `IF NOT EXISTS`, and nothing drops tables, so
+the grants cover the later ingest), `admin --prod grants codeask_api`: "LOGIN only, no
+memberships, exactly the expected privileges in schema public". **As `codeask_api` (pooled):**
+`grants --check` passed (same line); `pause` False -> True; `budget 60000` (from the default
+120,000); `status`: budget 60,000 (used 0), 5 per visitor, paused. **Step 5.2 done.**
+
+**Step 5.3 ingest (2026-11-15):** `ingest <url> --prod`, defaults only (no `--tests`/`--docs`),
+each at its pinned commit (printed and matching `FEATURED_SHAS`):
+
+| Repo | Files (src + README) | Chunks | Tokens | Voyage requests | Time |
+|---|---|---|---|---|---|
+| pallets/itsdangerous | 9 + 1 | 72 | 11,877 | 5 (0 × 429) | 77 s |
+| psf/requests | 21 + 1 | 292 | 58,456 | 21 (0 × 429) | 422 s |
+| expressjs/express | 50 + 1 | 287 | 35,854 | 14 (1 × 429) | 290 s |
+
+About 13 min of embedding in all (Q66 estimated ~15). The one 429 came at express's second
+batch, started right after requests finished: the limiter is per process, so a new run can't
+see the previous run's slots; the retry after 65 s handled it. The Q66 comparison with dev runs
+from a read-only script outside the repo (`q66_check.py`; `search` has no `--prod`, and after the
+pin only docs commits go to `main`).
+
+**Q66 checks (2026-11-15): accepted (my decision).** Both DBs read as the API role. Pins: dev =
+prod = `FEATURED_SHAS` for all three. Settings snapshots: identical. Files / chunks / embedded
+chunks, dev = prod: itsdangerous 10 / 72 / 72, requests 22 / 292 / 292, express 51 / 287 / 287.
+Search, one question per repo, one Voyage request, the same query vector on both, top 5 by
+`(path, start_line, end_line)`: requests and express identical (max distance difference 0.0001
+and 0.0009); **itsdangerous: the same 5 chunks with identical line ranges, ranks 3 and 4
+swapped** (`signer.py:129-173` and `:175-180`), max distance difference 0.0031. Cause: the stored
+vectors are not bit-identical across ingests (dev's were embedded earlier, in different batches;
+Voyage's output isn't bit-for-bit deterministic), so a near-tie flipped. The script's "same order"
+test was stricter than Q66 needs; the criterion recorded is "same chunks and line ranges, near-ties
+may swap". The model gets the same five chunks; the pre-generated answers ship unchanged (Q47).
+Not measured: per-vector dev/prod similarity (offered, declined). **Step 5.3 done.**
+
 **R11 clauses (read 2026-11-13 by Claude through web fetches, at my request; quotes verbatim).**
 Account settings behind the login are mine to check.
 - **Groq: retention.** [Your data](https://console.groq.com/docs/your-data) (no date): "By
@@ -2126,7 +2176,7 @@ is not re-tuned on these questions.
 | R4 | qwen's reasoning tokens may count against 1,000 output tokens/min and lengthen answers | Slice 1 model comparison |
 | R5 | Groq's free catalogue changes; the configured model can disappear | Startup model check (Q15); no model fallback (Q15c), so pre-generated answers + a notice |
 | R13 | **qwen3.8-27b is a Groq "Preview" model** ("should not be used in production"); it may change or disappear. Same risk for M4's tool calls | Not a reason to change the default. Mitigations: pre-generated answers as graceful degradation; model id in config + startup check; when choosing any future fallback, check Groq's production vs preview lists; the re-runnable comparison (`eval/m2_compare.py` + `m2_rescore.py`): switch default, re-run, regenerate pre-generated answers (each records model id and date); README says "tested with qwen3.8-27b (Groq Preview) as of Nov 2026"; M4 agent mode stays an eval/replay feature |
-| R6 | Neon prod storage is 0.5 or 1 GB (sources conflict); compute 100 CU-h/month per project; Neon wake adds 0.7–3.2 s to a cold request | Check the prod project's dashboard in slice 6 |
+| R6 | Neon prod storage is 0.5 or 1 GB (sources conflict); compute 100 CU-h/month per project; Neon wake adds 0.7–3.2 s to a cold request | **Settled 2026-11-15 (step 5.1a):** the Free plan's Billing page gives 1 GB storage and 100 compute hours per project, autoscaling to 2 CU |
 | R7 | Card on file at Render (docs: optional; in practice asked at my first deploy). With a card, overage **bills** instead of suspending: bandwidth beyond 5 GB at $0.15/GB with **no spend cap** (HTTP responses, service-initiated traffic, DB responses leaving Render); build minutes beyond 500 (cappable: Workspace Settings → Build Pipeline → spend limit); custom domains beyond 2 at $0.25/month. Email alerts near and over limits (not configurable). 750 instance-hours are shared by all services in the workspace | Try removing the card; if it must stay: decision-log exception, build spend limit $0, auto-deploy off, low-limit virtual card, delete spike services. **If a card isn't acceptable: Northflank free Sandbox is the fallback** (retry signup; untested because signups were disabled on 2026-11-02), then Koyeb |
 | R8 | One Voyage key for local ingestion and the live app; the limiter is in-process, so a local prod ingest can collide with live queries | Ingest into prod only when the demo is idle, or with reserved slots |
 | R9 | Per-IP limits reset on restart/sleep and are bypassed by IP rotation | Accepted; the global daily cap and Groq's own limits are the backstop |
